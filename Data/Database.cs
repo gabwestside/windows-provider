@@ -14,14 +14,16 @@ public static class Database
 
     public static (bool mfaenabled, bool configured, string? secret) GetUser(string username)
     {
+        username = Normalize(username);
+
         using var conn = GetConnection();
         conn.Open();
 
         var cmd = conn.CreateCommand();
         cmd.CommandText =
         @"SELECT mfaenabled, configured, totpsecret
-      FROM users
-      WHERE lower(username) = lower($user)";
+          FROM users
+          WHERE lower(username) = lower($user)";
 
         cmd.Parameters.AddWithValue("$user", username);
 
@@ -41,6 +43,8 @@ public static class Database
 
     public static void SaveSecret(string username, string secret)
     {
+        username = Normalize(username);
+
         using var conn = GetConnection();
         conn.Open();
 
@@ -48,31 +52,31 @@ public static class Database
 
         cmd.CommandText =
         @"UPDATE users
-      SET totpsecret = $secret,
-          configured = 1
-      WHERE username = $user";
+          SET totpsecret = $secret,
+              configured = 1
+          WHERE lower(username) = lower($user)";
 
         cmd.Parameters.AddWithValue("$secret", secret);
         cmd.Parameters.AddWithValue("$user", username);
 
-        cmd.ExecuteNonQuery();
+        int rows = cmd.ExecuteNonQuery();
+
+        if (rows == 0)
+        {
+            throw new Exception("Usuário não encontrado ao salvar MFA.");
+        }
     }
 
-    public static void SetConfigured(string username, bool configured)
+    private static string Normalize(string user)
     {
-        using var conn = GetConnection();
-        conn.Open();
+        user = user.Trim();
 
-        var cmd = conn.CreateCommand();
+        if (user.Contains("\\"))
+            user = user.Split('\\')[1];
 
-        cmd.CommandText =
-        @"UPDATE users
-      SET configured = $configured
-      WHERE username = $user";
+        if (user.Contains("@"))
+            user = user.Split('@')[0];
 
-        cmd.Parameters.AddWithValue("$configured", configured ? 1 : 0);
-        cmd.Parameters.AddWithValue("$user", username);
-
-        cmd.ExecuteNonQuery();
+        return user.ToLower();
     }
 }

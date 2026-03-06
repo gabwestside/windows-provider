@@ -10,6 +10,29 @@ namespace CredentialProviderAPP
         {
             base.OnStartup(e);
 
+            // execução chamada pelo Credential Provider
+            if (e.Args.Length > 0)
+            {
+                string mode = e.Args[0].ToLower();
+
+                if (mode == "mfa")
+                {
+                    string login = e.Args.Length > 1 ? e.Args[1] : "";
+                    var mainWindow = new MainWindow(login);
+                    mainWindow.Show();
+                    return;
+                }
+
+                if (mode == "reset")
+                {
+                    string login = e.Args.Length > 1 ? e.Args[1] : "";
+                    var reset = new ResetSenhaWindow(login);
+                    reset.Show();
+                    return;
+                }
+            }
+
+            // execução manual
             if (UsuarioEhAdministrador())
             {
                 var adminWindow = new AdminWindow();

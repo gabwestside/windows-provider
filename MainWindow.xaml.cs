@@ -15,47 +15,51 @@ public partial class MainWindow : Window
     private string? currentSecret;
 
     private bool autenticado = false;
-
     private bool mostrandoDialog = false;
+
+    private string loginAtual = "";
 
     public MainWindow()
     {
         InitializeComponent();
+    }
 
-        string[] args = Environment.GetCommandLineArgs();
+    public MainWindow(string login)
+    {
+        InitializeComponent();
 
-        if (args.Length > 1)
+        if (string.IsNullOrEmpty(login))
+            return;
+
+        loginAtual = login;
+
+        var user = Database.GetUser(login);
+
+        txtUser.Text = login;
+        txtUser.IsReadOnly = true;
+        btnBuscar.Visibility = Visibility.Collapsed;
+
+        if (!user.configured && user.mfaenabled)
         {
-            string username = args[1];
+            lblMensagem.Text =
+$@"Bem-vindo {login}
 
-            var user = Database.GetUser(username);
+Para proteger sua conta,
+gere agora o QR Code para configurar
+a autenticação em dois fatores.";
 
-            txtUser.Text = username;
-            txtUser.IsReadOnly = true;
-            btnBuscar.Visibility = Visibility.Collapsed;
+            btnGerarQR.Visibility = Visibility.Visible;
+            return;
+        }
 
-            if (!user.configured && user.mfaenabled)
-            {
-                lblMensagem.Text =
-                    $@"Bem-vindo {username}
-
-                    Para proteger sua conta,
-                    gere agora o QR Code para configurar
-                    a autenticação em dois fatores.";
-
-                btnGerarQR.Visibility = Visibility.Visible;
-                return;
-            }
-
-            if (user.configured)
-            {
-                VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
-                win.ShowDialog();
-                Environment.Exit(1);
-            }
-
+        if (user.configured && !string.IsNullOrEmpty(user.secret))
+        {
+            VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
+            win.ShowDialog();
             Environment.Exit(1);
         }
+
+        Environment.Exit(1);
     }
 
     private void BuscarUsuario_Click(object sender, RoutedEventArgs e)
@@ -73,7 +77,7 @@ public partial class MainWindow : Window
         txtUser.IsReadOnly = true;
         btnBuscar.Visibility = Visibility.Collapsed;
 
-        if (user.configured)
+        if (user.configured && !string.IsNullOrEmpty(user.secret))
         {
             VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
             win.ShowDialog();
@@ -81,11 +85,11 @@ public partial class MainWindow : Window
         }
 
         lblMensagem.Text =
-            $@"Bem-vindo {username}
+$@"Bem-vindo {username}
 
-            Para proteger sua conta,
-            gere agora o QR Code para configurar
-            a autenticação em dois fatores.";
+Para proteger sua conta,
+gere agora o QR Code para configurar
+a autenticação em dois fatores.";
 
         btnGerarQR.Visibility = Visibility.Visible;
     }
@@ -114,10 +118,10 @@ public partial class MainWindow : Window
             imgQR.Visibility = Visibility.Visible;
 
             lblMensagem.Text =
-                @"Escaneie o QR Code no Google Authenticator.
+@"Escaneie o QR Code no Google Authenticator.
 
-                Agora valide o código gerado
-                para confirmar a configuração.";
+Agora valide o código gerado
+para confirmar a configuração.";
 
             txtCode.Visibility = Visibility.Visible;
             btnValidar.Visibility = Visibility.Visible;
@@ -158,7 +162,6 @@ public partial class MainWindow : Window
                 return;
 
             Database.SaveSecret(username, currentSecret);
-            Database.SetConfigured(username, true);
 
             autenticado = true;
 
