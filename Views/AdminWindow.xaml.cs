@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using CredentialProviderAPP.Models;
 using CredentialProviderAPP.Services;
 
 namespace CredentialProviderAPP.Views
