@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System.Security.Principal;
+using System.Windows;
+using CredentialProviderAPP.Views;
 
 namespace CredentialProviderAPP
 {
@@ -8,8 +10,24 @@ namespace CredentialProviderAPP
         {
             base.OnStartup(e);
 
-            var mainWindow = new MainWindow();
-            mainWindow.Show();
+            if (UsuarioEhAdministrador())
+            {
+                var adminWindow = new AdminWindow();
+                adminWindow.Show();
+            }
+            else
+            {
+                var mainWindow = new MainWindow();
+                mainWindow.Show();
+            }
+        }
+
+        private bool UsuarioEhAdministrador()
+        {
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            WindowsPrincipal principal = new WindowsPrincipal(identity);
+
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
     }
 }
