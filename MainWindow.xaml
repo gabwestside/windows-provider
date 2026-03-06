@@ -11,38 +11,97 @@
 
     <Grid>
 
+        <!-- Botão verificar MFA -->
+        <Button x:Name="btnVerificarCodigo"
+                Content="Verificar Código"
+                Width="140"
+                Height="30"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="10"
+                Click="VerificarCodigo_Click"/>
+
         <StackPanel HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Width="400">
+                    Width="320">
 
             <!-- Logo -->
             <Image Source="Resources/Icon.bmp"
-                   Width="150"
-                   Height="150"
-                   Margin="0,0,0,30"
+                   Width="90"
+                   Height="90"
+                   Margin="0,0,0,10"
                    HorizontalAlignment="Center"/>
 
             <!-- Título -->
             <TextBlock Text="CredentialProviderAPP"
-                       FontSize="36"
+                       FontSize="24"
                        Foreground="White"
                        HorizontalAlignment="Center"
-                       Margin="0,0,0,30"/>
+                       Margin="0,0,0,15"/>
 
-            <!-- Botão suporte -->
-            <Button Content="Ferramenta de Suporte"
-                    Height="70"
-                    Margin="0,0,0,20"
-                    FontSize="20"
-                    Background="#D9D9D9"
-                    Click="Suporte_Click"/>
+            <!-- Username + Buscar -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,10">
 
-            <!-- Botão QR -->
-            <Button Content="Login via QR Code"
-                    Height="70"
-                    FontSize="20"
+                <TextBox x:Name="txtUser"
+                         Width="200"
+                         Height="32"
+                         FontSize="14"
+                         Margin="0,0,10,0"/>
+
+<Button x:Name="btnBuscar"
+        Content="Buscar"
+        Width="80"
+        Height="32"
+        Click="BuscarUsuario_Click"/>
+            </StackPanel>
+
+            <!-- Botão gerar QR -->
+            <Button x:Name="btnGerarQR"
+                    Content="Gerar QR Code MFA"
+                    Height="40"
+                    Margin="0,0,0,10"
+                    FontSize="14"
                     Background="#D9D9D9"
-                    Click="QRLogin_Click"/>
+                    Click="GerarQR_Click"/>
+
+            <!-- Secret -->
+            <TextBox x:Name="txtSecret"
+                     Height="30"
+                     FontSize="12"
+                     Margin="0,0,0,10"
+                     IsReadOnly="True"/>
+
+            <!-- QR Code -->
+            <Image x:Name="imgQR"
+                   Width="170"
+                   Height="170"
+                   Margin="0,0,0,10"
+                   HorizontalAlignment="Center"/>
+
+            <!-- Texto validação -->
+            <TextBlock x:Name="lblValidacao"
+                       Text="Valide o QRCode com o código do celular"
+                       Foreground="White"
+                       FontSize="13"
+                       Margin="0,5,0,5"
+                       TextAlignment="Center"/>
+
+            <!-- Código -->
+            <TextBox x:Name="txtCode"
+                     Height="32"
+                     FontSize="16"
+                     MaxLength="6"
+                     Margin="0,0,0,8"
+                     HorizontalContentAlignment="Center"/>
+
+            <!-- Botão validar -->
+            <Button x:Name="btnValidar"
+                    Content="Validar código"
+                    Height="36"
+                    FontSize="14"
+                    Click="ValidarCodigo_Click"/>
 
         </StackPanel>
 
