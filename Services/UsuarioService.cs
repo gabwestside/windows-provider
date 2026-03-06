@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using CredentialProviderAPP.Models;
 
 namespace CredentialProviderAPP.Services
 {

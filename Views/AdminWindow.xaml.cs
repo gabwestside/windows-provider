@@ -2,13 +2,13 @@
 using System.Windows.Controls;
 using CredentialProviderAPP.Services;
 
-namespace CredentialProviderAPP
+namespace CredentialProviderAPP.Views
 {
-    public partial class MainWindow : Window
+    public partial class AdminWindow : Window
     {
         private readonly UsuarioService _usuarioService;
 
-        public MainWindow()
+        public AdminWindow()
         {
             InitializeComponent();
             _usuarioService = new UsuarioService();

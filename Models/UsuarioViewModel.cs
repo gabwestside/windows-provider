@@ -1,3 +1,5 @@
+namespace CredentialProviderAPP.Models;
+
 public class UsuarioViewModel
 {
     public string? DataCadastro { get; set; }
