@@ -1,0 +1,43 @@
+<Window
+    x:Class="CredentialProviderAPP.Views.NovaSenhaWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Nova senha"
+    Width="350"
+    Height="260"
+    Background="#1E1E1E"
+    WindowStartupLocation="CenterScreen">
+
+    <Grid>
+
+        <StackPanel
+            Width="220"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+
+            <TextBlock
+                Text="Definir nova senha"
+                FontSize="20"
+                Foreground="White"
+                Margin="0,0,0,20"
+                TextAlignment="Center"/>
+
+            <PasswordBox
+                x:Name="txtSenha"
+                Height="35"
+                Margin="0,0,0,10"/>
+
+            <PasswordBox
+                x:Name="txtConfirmar"
+                Height="35"
+                Margin="0,0,0,20"/>
+
+            <Button
+                Height="35"
+                Click="Salvar_Click"
+                Content="Alterar senha"/>
+
+        </StackPanel>
+
+    </Grid>
+</Window>

@@ -62,7 +62,7 @@ public partial class ResetSenhaWindow : Window
         bool valid = totp.VerifyTotp(
             code,
             out long step,
-            new VerificationWindow(1,1)
+            new VerificationWindow(1, 1)
         );
 
         if (!valid)
@@ -74,6 +74,11 @@ public partial class ResetSenhaWindow : Window
         autenticado = true;
 
         MessageBox.Show("MFA validado.");
+
+        NovaSenhaWindow win = new NovaSenhaWindow(login);
+        win.ShowDialog();
+
+        Close();
 
         // aqui você abre tela de nova senha depois
     }
