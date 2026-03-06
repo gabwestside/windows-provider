@@ -1,9 +1,10 @@
-﻿using System;
-using System.Windows;
+﻿using CredentialProviderAPP.Data;
+using CredentialProviderAPP.Views;
 using OtpNet;
 using QRCoder;
 using System.Drawing;
 using System.IO;
+using System.Windows;
 using System.Windows.Media.Imaging;
 
 namespace CredentialProviderAPP;
@@ -36,11 +37,11 @@ public partial class MainWindow : Window
             if (!user.configured && user.mfaenabled)
             {
                 lblMensagem.Text =
-$@"Bem-vindo {username}
+                    $@"Bem-vindo {username}
 
-Para proteger sua conta,
-gere agora o QR Code para configurar
-a autenticação em dois fatores.";
+                    Para proteger sua conta,
+                    gere agora o QR Code para configurar
+                    a autenticação em dois fatores.";
 
                 btnGerarQR.Visibility = Visibility.Visible;
                 return;
@@ -80,11 +81,11 @@ a autenticação em dois fatores.";
         }
 
         lblMensagem.Text =
-$@"Bem-vindo {username}
+            $@"Bem-vindo {username}
 
-Para proteger sua conta,
-gere agora o QR Code para configurar
-a autenticação em dois fatores.";
+            Para proteger sua conta,
+            gere agora o QR Code para configurar
+            a autenticação em dois fatores.";
 
         btnGerarQR.Visibility = Visibility.Visible;
     }
@@ -113,10 +114,10 @@ a autenticação em dois fatores.";
             imgQR.Visibility = Visibility.Visible;
 
             lblMensagem.Text =
-@"Escaneie o QR Code no Google Authenticator.
+                @"Escaneie o QR Code no Google Authenticator.
 
-Agora valide o código gerado
-para confirmar a configuração.";
+                Agora valide o código gerado
+                para confirmar a configuração.";
 
             txtCode.Visibility = Visibility.Visible;
             btnValidar.Visibility = Visibility.Visible;
@@ -144,7 +145,7 @@ para confirmar a configuração.";
             bool valid = totp.VerifyTotp(
                 code,
                 out long step,
-                new VerificationWindow(1,1)
+                new VerificationWindow(1, 1)
             );
 
             if (!valid)

@@ -1,10 +1,9 @@
-using System;
+using OtpNet;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
-using OtpNet;
 
-namespace CredentialProviderAPP;
+namespace CredentialProviderAPP.Views;
 
 public partial class VerificarCodigoWindow : Window
 {

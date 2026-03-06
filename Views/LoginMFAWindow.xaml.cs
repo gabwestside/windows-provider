@@ -1,7 +1,7 @@
 using System.Windows;
 using OtpNet;
 
-namespace CredentialProviderAPP;
+namespace CredentialProviderAPP.Views;
 
 public partial class LoginMFAWindow : Window
 {

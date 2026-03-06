@@ -1,6 +1,6 @@
 using Microsoft.Data.Sqlite;
 
-namespace CredentialProviderAPP;
+namespace CredentialProviderAPP.Data;
 
 public static class Database
 {
@@ -39,24 +39,24 @@ public static class Database
         return (false, false, null);
     }
 
-public static void SaveSecret(string username, string secret)
-{
-    using var conn = GetConnection();
-    conn.Open();
+    public static void SaveSecret(string username, string secret)
+    {
+        using var conn = GetConnection();
+        conn.Open();
 
-    var cmd = conn.CreateCommand();
+        var cmd = conn.CreateCommand();
 
-    cmd.CommandText =
-    @"UPDATE users
+        cmd.CommandText =
+        @"UPDATE users
       SET totpsecret = $secret,
           configured = 1
       WHERE username = $user";
 
-    cmd.Parameters.AddWithValue("$secret", secret);
-    cmd.Parameters.AddWithValue("$user", username);
+        cmd.Parameters.AddWithValue("$secret", secret);
+        cmd.Parameters.AddWithValue("$user", username);
 
-    cmd.ExecuteNonQuery();
-}
+        cmd.ExecuteNonQuery();
+    }
 
     public static void SetConfigured(string username, bool configured)
     {
