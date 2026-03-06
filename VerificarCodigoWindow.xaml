@@ -5,7 +5,15 @@
         Height="200"
         Width="300"
         WindowStartupLocation="CenterScreen"
-        Background="#1E1E1E">
+        Background="#1E1E1E"
+
+        ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        Topmost="True"
+        ShowInTaskbar="False"
+
+        Loaded="Window_Loaded"
+        Deactivated="Window_Deactivated">
 
 <Grid>
 
@@ -16,11 +24,12 @@
 <TextBlock Text="Digite o código do celular"
            Foreground="White"
            Margin="0,0,0,10"
-           TextAlignment="Center"/>
+           TextAlignment="Center"
+           FontSize="14"/>
 
 <TextBox x:Name="txtCode"
          Height="35"
-         FontSize="18"
+         FontSize="20"
          MaxLength="6"
          HorizontalContentAlignment="Center"
          Margin="0,0,0,10"/>

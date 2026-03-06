@@ -1,0 +1,2 @@
+criação do exe único:
+dotnet publish CredentialProviderAPP.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -o "C:\Users\diego.viana\Documents\DEV\scriptdll\MFAAPP"

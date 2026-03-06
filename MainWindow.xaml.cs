@@ -13,84 +13,80 @@ public partial class MainWindow : Window
     private byte[]? currentKey;
     private string? currentSecret;
 
-    private bool usuarioTravado = false;
+    private bool autenticado = false;
+
+    private bool mostrandoDialog = false;
 
     public MainWindow()
     {
         InitializeComponent();
-        EsconderTudo();
-    }
 
-    private void EsconderTudo()
-    {
-        btnGerarQR.Visibility = Visibility.Collapsed;
-        txtSecret.Visibility = Visibility.Collapsed;
-        imgQR.Visibility = Visibility.Collapsed;
-        txtCode.Visibility = Visibility.Collapsed;
-        btnValidar.Visibility = Visibility.Collapsed;
-        lblValidacao.Visibility = Visibility.Collapsed;
-        btnVerificarCodigo.Visibility = Visibility.Collapsed;
+        string[] args = Environment.GetCommandLineArgs();
+
+        if (args.Length > 1)
+        {
+            string username = args[1];
+
+            var user = Database.GetUser(username);
+
+            txtUser.Text = username;
+            txtUser.IsReadOnly = true;
+            btnBuscar.Visibility = Visibility.Collapsed;
+
+            if (!user.configured && user.mfaenabled)
+            {
+                lblMensagem.Text =
+$@"Bem-vindo {username}
+
+Para proteger sua conta,
+gere agora o QR Code para configurar
+a autenticação em dois fatores.";
+
+                btnGerarQR.Visibility = Visibility.Visible;
+                return;
+            }
+
+            if (user.configured)
+            {
+                VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
+                win.ShowDialog();
+                Environment.Exit(1);
+            }
+
+            Environment.Exit(1);
+        }
     }
 
     private void BuscarUsuario_Click(object sender, RoutedEventArgs e)
     {
-        if (usuarioTravado)
-        {
-            txtUser.IsReadOnly = false;
-            txtUser.Text = "";
-            btnBuscar.Content = "Buscar";
-            usuarioTravado = false;
-
-            EsconderTudo();
-            return;
-        }
-
         string username = txtUser.Text.Trim();
 
         if (string.IsNullOrEmpty(username))
         {
-            MessageBox.Show("Digite um usuário.");
+            MostrarMensagem("Digite um usuário.");
             return;
         }
 
         var user = Database.GetUser(username);
 
         txtUser.IsReadOnly = true;
-        btnBuscar.Content = "Limpar";
-        usuarioTravado = true;
+        btnBuscar.Visibility = Visibility.Collapsed;
 
         if (user.configured)
         {
-            MostrarTelaVerificacao();
+            VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
+            win.ShowDialog();
+            return;
         }
-        else
-        {
-            MostrarTelaConfiguracao();
-        }
-    }
 
-    private void MostrarTelaConfiguracao()
-    {
+        lblMensagem.Text =
+$@"Bem-vindo {username}
+
+Para proteger sua conta,
+gere agora o QR Code para configurar
+a autenticação em dois fatores.";
+
         btnGerarQR.Visibility = Visibility.Visible;
-        txtSecret.Visibility = Visibility.Visible;
-        imgQR.Visibility = Visibility.Visible;
-        txtCode.Visibility = Visibility.Visible;
-        btnValidar.Visibility = Visibility.Visible;
-        lblValidacao.Visibility = Visibility.Visible;
-
-        btnVerificarCodigo.Visibility = Visibility.Collapsed;
-    }
-
-    private void MostrarTelaVerificacao()
-    {
-        btnGerarQR.Visibility = Visibility.Collapsed;
-        txtSecret.Visibility = Visibility.Collapsed;
-        imgQR.Visibility = Visibility.Collapsed;
-        txtCode.Visibility = Visibility.Collapsed;
-        btnValidar.Visibility = Visibility.Collapsed;
-        lblValidacao.Visibility = Visibility.Collapsed;
-
-        btnVerificarCodigo.Visibility = Visibility.Visible;
     }
 
     private void GerarQR_Click(object sender, RoutedEventArgs e)
@@ -99,20 +95,10 @@ public partial class MainWindow : Window
         {
             string username = txtUser.Text.Trim();
 
-            var user = Database.GetUser(username);
-
-            if (user.configured)
-            {
-                MessageBox.Show("Usuário já possui MFA configurado.");
-                return;
-            }
-
-            string issuer = "CredentialProvider";
-
             currentKey = KeyGeneration.GenerateRandomKey(20);
             currentSecret = Base32Encoding.ToString(currentKey);
 
-            txtSecret.Text = currentSecret;
+            string issuer = "CredentialProvider";
 
             string url =
                 $"otpauth://totp/{issuer}:{username}?secret={currentSecret}&issuer={issuer}";
@@ -124,10 +110,22 @@ public partial class MainWindow : Window
             Bitmap qrBitmap = qrCode.GetGraphic(20);
 
             imgQR.Source = BitmapToImageSource(qrBitmap);
+            imgQR.Visibility = Visibility.Visible;
+
+            lblMensagem.Text =
+@"Escaneie o QR Code no Google Authenticator.
+
+Agora valide o código gerado
+para confirmar a configuração.";
+
+            txtCode.Visibility = Visibility.Visible;
+            btnValidar.Visibility = Visibility.Visible;
+
+            btnGerarQR.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.ToString());
+            MostrarMensagem(ex.ToString());
         }
     }
 
@@ -139,22 +137,19 @@ public partial class MainWindow : Window
             string code = txtCode.Text.Trim();
 
             if (currentKey == null)
-            {
-                MessageBox.Show("Primeiro gere o QR Code.");
                 return;
-            }
 
             var totp = new Totp(currentKey);
 
             bool valid = totp.VerifyTotp(
                 code,
                 out long step,
-                new VerificationWindow(2, 2)
+                new VerificationWindow(1,1)
             );
 
             if (!valid)
             {
-                MessageBox.Show("Código inválido.");
+                MostrarMensagem("Código inválido.");
                 return;
             }
 
@@ -162,35 +157,47 @@ public partial class MainWindow : Window
                 return;
 
             Database.SaveSecret(username, currentSecret);
+            Database.SetConfigured(username, true);
 
-            MessageBox.Show("MFA configurado com sucesso!");
+            autenticado = true;
 
-            txtSecret.Text = "";
-            txtCode.Text = "";
-            imgQR.Source = null;
+            MostrarMensagem("MFA configurado com sucesso!");
 
-            MostrarTelaVerificacao();
+            Environment.Exit(0);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.ToString());
+            MostrarMensagem(ex.ToString());
         }
     }
 
-    private void VerificarCodigo_Click(object sender, RoutedEventArgs e)
+    private void MostrarMensagem(string msg)
     {
-        string username = txtUser.Text.Trim();
+        mostrandoDialog = true;
+        MessageBox.Show(msg);
+        mostrandoDialog = false;
+    }
 
-        var user = Database.GetUser(username);
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        base.OnClosing(e);
 
-        if (!user.configured || string.IsNullOrEmpty(user.secret))
+        if (!autenticado)
         {
-            MessageBox.Show("Usuário ainda não configurou MFA.");
-            return;
+            Environment.Exit(1);
         }
+    }
 
-        VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
-        win.ShowDialog();
+    private void Window_Deactivated(object sender, EventArgs e)
+    {
+        if (mostrandoDialog)
+            return;
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            Topmost = true;
+            Activate();
+        }));
     }
 
     private BitmapImage BitmapToImageSource(Bitmap bitmap)
