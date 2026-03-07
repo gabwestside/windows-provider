@@ -13,227 +13,328 @@
     mc:Ignorable="d">
 
     <Window.Resources>
+
         <Style x:Key="CardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="#CFEFF7" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Padding" Value="16" />
+            <Setter Property="Background" Value="#CFEFF7"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="16"/>
         </Style>
 
         <Style x:Key="ActionButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="Foreground" Value="#4A4A4A" />
-            <Setter Property="FontSize" Value="22" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Padding" Value="6,2" />
-            <Setter Property="Margin" Value="6,0" />
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#4A4A4A"/>
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="Margin" Value="6,0"/>
         </Style>
 
         <Style x:Key="TextActionStyle" TargetType="TextBlock">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="#5A5A5A" />
-            <Setter Property="FontSize" Value="20" />
-            <Setter Property="Margin" Value="4,0,10,0" />
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="#5A5A5A"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="Margin" Value="4,0,10,0"/>
         </Style>
 
-        <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="#8BBBE6" />
-            <Setter Property="Foreground" Value="Black" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="BorderBrush" Value="#6EA5D3" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
-            <Setter Property="Padding" Value="6" />
-        </Style>
+        <!-- HEADER COM SETA -->
+      <Style TargetType="DataGridColumnHeader">
+
+    <Setter Property="Background" Value="#8BBBE6"/>
+    <Setter Property="Foreground" Value="Black"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="FontSize" Value="16"/>
+    <Setter Property="BorderBrush" Value="#6EA5D3"/>
+    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+    <Setter Property="Padding" Value="6"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+
+    <Setter Property="Template">
+        <Setter.Value>
+
+           <ControlTemplate TargetType="DataGridColumnHeader">
+
+    <Grid Background="{TemplateBinding Background}">
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="18"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <!-- SETA -->
+        <TextBlock
+            x:Name="SortArrow"
+            Grid.Column="0"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Center"
+            FontSize="12"
+            Foreground="#2F5597"
+            Visibility="Collapsed"/>
+
+        <!-- TEXTO -->
+        <ContentPresenter
+            Grid.Column="1"
+            VerticalAlignment="Center"
+            Margin="4,0,0,0"
+            Content="{TemplateBinding Content}"/>
+
+    </Grid>
+
+    <ControlTemplate.Triggers>
+
+        <Trigger Property="SortDirection" Value="Ascending">
+            <Setter TargetName="SortArrow" Property="Text" Value="▲"/>
+            <Setter TargetName="SortArrow" Property="Visibility" Value="Visible"/>
+        </Trigger>
+
+        <Trigger Property="SortDirection" Value="Descending">
+            <Setter TargetName="SortArrow" Property="Text" Value="▼"/>
+            <Setter TargetName="SortArrow" Property="Visibility" Value="Visible"/>
+        </Trigger>
+
+    </ControlTemplate.Triggers>
+
+</ControlTemplate>
+
+        </Setter.Value>
+    </Setter>
+
+</Style>
 
         <Style TargetType="DataGridCell">
-            <Setter Property="BorderBrush" Value="#D0D0D0" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
-            <Setter Property="Padding" Value="6" />
-            <Setter Property="FontSize" Value="15" />
+            <Setter Property="BorderBrush" Value="#D0D0D0"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="FontSize" Value="15"/>
         </Style>
 
-        <Style TargetType="DataGridRow">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Height" Value="34" />
-        </Style>
+<Style TargetType="DataGridRow">
+    <Setter Property="Height" Value="34"/>
+    <Setter Property="Background" Value="White"/>
+
+    <Style.Triggers>
+
+        <!-- Zebra -->
+        <Trigger Property="AlternationIndex" Value="1">
+            <Setter Property="Background" Value="#F3F6FB"/>
+        </Trigger>
+
+        <!-- Hover -->
+        <Trigger Property="IsMouseOver" Value="True">
+            <Setter Property="Background" Value="#DCEBFF"/>
+        </Trigger>
+
+        <!-- Selecionado -->
+        <Trigger Property="IsSelected" Value="True">
+            <Setter Property="Background" Value="#BFD8FF"/>
+        </Trigger>
+
+    </Style.Triggers>
+</Style>
+
     </Window.Resources>
 
     <Grid Margin="38,24,38,40">
+
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="20" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="16" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="16" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!--  Título  -->
+        <!-- Título -->
         <TextBlock
             Grid.Row="0"
-            Margin="0,0,0,6"
             HorizontalAlignment="Center"
             FontSize="34"
             FontWeight="Medium"
             Foreground="#5B4B3F"
-            Text="Cadastro de Usuários" />
+            Text="Cadastro de Usuários"/>
 
-        <!--  Área de filtros  -->
+        <!-- FILTROS -->
         <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
-            <Grid>
-                <Border
-                    Width="620"
-                    Padding="18"
-                    HorizontalAlignment="Left"
-                    Background="#EFEFEF"
-                    BorderBrush="#BFBFBF"
-                    BorderThickness="1"
-                    CornerRadius="6">
-                    <StackPanel Orientation="Horizontal">
-                        <StackPanel Margin="0,0,18,0">
-                            <TextBlock
-                                Margin="8,0,0,2"
-                                FontSize="12"
-                                Foreground="#5F5F5F"
-                                Text="Filtrar por" />
-                            <ComboBox
-                                x:Name="cmbFiltro"
-                                Width="140"
-                                Height="32"
-                                FontSize="15"
-                                SelectedIndex="0">
-                                <ComboBoxItem Content="Login" />
-                                <ComboBoxItem Content="Nome" />
-                                <ComboBoxItem Content="Tipo" />
-                            </ComboBox>
-                        </StackPanel>
 
-                        <StackPanel>
-                            <TextBlock
-                                Margin="0,0,0,2"
-                                FontSize="12"
-                                Text=" " />
-                            <TextBox
-                                x:Name="txtPesquisa"
-                                Width="300"
-                                Height="32"
-                                VerticalContentAlignment="Center"
-                                FontSize="15"
-                                Text="Pesquisar" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </Border>
+            <StackPanel Orientation="Horizontal">
 
-        <!--  Barra de ações  -->
-        <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}">
-            <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                <Button Click="NovoUsuario_Click" Style="{StaticResource ActionButtonStyle}">⌂</Button>
-                <TextBlock Style="{StaticResource TextActionStyle}" Text="+ Novo usuário" />
+                <StackPanel Margin="0,0,18,0">
 
-                <TextBlock
-                    Margin="12,0"
-                    FontSize="22"
-                    Foreground="#8A8A8A"
-                    Text="|" />
+                    <TextBlock FontSize="12" Text="Filtrar por"/>
 
-                <Button Click="ImportarUsuarios_Click" Style="{StaticResource ActionButtonStyle}">⇪</Button>
-                <TextBlock Style="{StaticResource TextActionStyle}" Text="Importar usuários" />
+                    <ComboBox
+                        x:Name="cmbFiltro"
+                        Width="140"
+                        Height="32"
+                        SelectedIndex="0">
 
-                <TextBlock
-                    Margin="12,0"
-                    FontSize="22"
-                    Foreground="#8A8A8A"
-                    Text="|" />
+                        <ComboBoxItem Content="Login"/>
+                        <ComboBoxItem Content="Nome"/>
 
-                <Button Click="Atualizar_Click" Style="{StaticResource ActionButtonStyle}">↺</Button>
-                <TextBlock Style="{StaticResource TextActionStyle}" Text="Atualizar" />
+                    </ComboBox>
 
-                <TextBlock
-                    Margin="18,0,8,0"
-                    VerticalAlignment="Center"
-                    FontSize="26"
-                    Foreground="#5A5A5A"
-                    Text="⋮" />
-                <TextBlock Style="{StaticResource TextActionStyle}" Text="Gerenciamento" />
+                </StackPanel>
 
-                <TextBlock
-                    Margin="12,0"
-                    FontSize="22"
-                    Foreground="#8A8A8A"
-                    Text="|" />
+                <StackPanel>
 
-                <TextBlock Style="{StaticResource TextActionStyle}" Text="Opções" />
-                <TextBlock
-                    Margin="8,0,0,0"
-                    VerticalAlignment="Center"
-                    FontSize="26"
-                    Foreground="#5A5A5A"
-                    Text="⋮" />
+                    <TextBlock FontSize="12" Text="Pesquisar"/>
+
+                    <TextBox
+                        x:Name="txtPesquisa"
+                        Width="260"
+                        Height="32"
+                        TextChanged="FiltroAlterado"/>
+
+                </StackPanel>
+
+                <StackPanel Margin="20,0,0,0">
+
+                    <CheckBox
+                        x:Name="chkUsuariosLocais"
+                        Content="Usuários Locais"
+                        IsChecked="True"
+                        Checked="FiltroAlterado"
+                        Unchecked="FiltroAlterado"/>
+
+                    <CheckBox
+                        x:Name="chkUsuariosAD"
+                        Content="Usuários AD"
+                        Checked="FiltroAlterado"
+                        Unchecked="FiltroAlterado"/>
+
+                </StackPanel>
+
             </StackPanel>
+
         </Border>
 
-        <!--  Tabela  -->
+        <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}">
+    <StackPanel Orientation="Horizontal">
+
+        <Button Click="Atualizar_Click"
+                Style="{StaticResource ActionButtonStyle}">
+            ↺
+        </Button>
+
+        <TextBlock Style="{StaticResource TextActionStyle}"
+                   Text="Atualizar"/>
+
+    </StackPanel>
+</Border>
+
+        <!-- TABELA -->
         <Border
             Grid.Row="6"
             Background="White"
             BorderBrush="#9E9E9E"
             BorderThickness="1">
-            <DataGrid
-                x:Name="dgUsuarios"
-                AutoGenerateColumns="False"
-                Background="White"
-                BorderThickness="0"
-                CanUserAddRows="False"
-                CanUserDeleteRows="False"
-                GridLinesVisibility="None"
-                HeadersVisibility="Column"
-                IsReadOnly="True"
-                RowHeaderWidth="0"
-                SelectionMode="Single"
-                SelectionUnit="FullRow">
+
+<DataGrid
+    x:Name="dgUsuarios"
+    AutoGenerateColumns="False"
+    AlternationCount="2"
+    IsReadOnly="True"
+    Sorting="dgUsuarios_Sorting"
+    CanUserResizeColumns="True"
+    EnableRowVirtualization="True"
+    VirtualizingPanel.IsVirtualizing="True"
+    VirtualizingPanel.VirtualizationMode="Recycling">
+
                 <DataGrid.Columns>
-                    <DataGridTextColumn
-                        Width="170"
-                        Binding="{Binding DataCadastro}"
-                        Header="Data de Cadastro" />
-                    <DataGridTextColumn
-                        Width="160"
-                        Binding="{Binding Tipo}"
-                        Header="Tipo" />
-                    <DataGridTextColumn
-                        Width="*"
-                        Binding="{Binding NomeCompleto}"
-                        Header="Nome Completo" />
-                    <DataGridTextColumn
-                        Width="170"
-                        Binding="{Binding Login}"
-                        Header="Login" />
+
+<DataGridTextColumn
+    Header="Data de Cadastro"
+    Binding="{Binding DataCadastro}"
+    SortMemberPath="DataCadastro"
+    Width="150"/>
+
+<DataGridTextColumn
+    Header="Tipo"
+    Binding="{Binding Tipo}"
+    SortMemberPath="Tipo"
+    Width="90"/>
+
+<DataGridTextColumn
+    Header="Login"
+    Binding="{Binding Login}"
+    SortMemberPath="Login"
+    Width="150"/>
+
+<DataGridTextColumn
+    Header="Nome Completo"
+    Binding="{Binding NomeCompleto}"
+    SortMemberPath="NomeCompleto"
+    Width="*"/>
+
                     <DataGridTemplateColumn Width="90" Header="Ações">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+
                                     <Button
                                         Width="28"
                                         Height="24"
                                         Margin="2"
                                         Click="EditarUsuario_Click"
-                                        Content="✎" />
+                                        Content="✎"/>
+
                                     <Button
                                         Width="28"
                                         Height="24"
                                         Margin="2"
                                         Click="ExcluirUsuario_Click"
-                                        Content="🗑" />
+                                        Content="🗑"/>
+
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
+
                 </DataGrid.Columns>
+
             </DataGrid>
+
         </Border>
+
+        <!-- PAGINAÇÃO -->
+        <StackPanel
+            Grid.Row="7"
+            Orientation="Horizontal"
+            HorizontalAlignment="Center"
+            Margin="0,10">
+
+            <Button
+                x:Name="btnAnterior"
+                Content="◀"
+                Width="40"
+                Height="28"
+                Click="PaginaAnterior_Click"/>
+
+            <TextBlock
+                x:Name="lblPagina"
+                Margin="10,0"
+                VerticalAlignment="Center"
+                FontSize="16"
+                Text="Página 1"/>
+
+            <Button
+                x:Name="btnProxima"
+                Content="▶"
+                Width="40"
+                Height="28"
+                Click="ProximaPagina_Click"/>
+
+            <TextBlock
+                x:Name="lblTotal"
+                Margin="20,0,0,0"
+                VerticalAlignment="Center"
+                FontSize="14"
+                Foreground="#555"/>
+
+        </StackPanel>
+
     </Grid>
 </Window>

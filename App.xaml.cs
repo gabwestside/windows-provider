@@ -1,4 +1,5 @@
-﻿using System.Security.Principal;
+﻿using System;
+using System.Security.Principal;
 using System.Windows;
 using CredentialProviderAPP.Views;
 
@@ -8,41 +9,63 @@ namespace CredentialProviderAPP
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            this.DispatcherUnhandledException += App_DispatcherUnhandledException;
+
             base.OnStartup(e);
 
-            // execução chamada pelo Credential Provider
-            if (e.Args.Length > 0)
+            try
             {
-                string mode = e.Args[0].ToLower();
-
-                if (mode == "mfa")
+                if (e.Args.Length > 0)
                 {
-                    string login = e.Args.Length > 1 ? e.Args[1] : "";
-                    var mainWindow = new MainWindow(login);
+                    string mode = e.Args[0].ToLower();
+
+                    if (mode == "mfa")
+                    {
+                        string login = e.Args.Length > 1 ? e.Args[1] : "";
+                        var mainWindow = new MainWindow(login);
+                        mainWindow.Show();
+                        return;
+                    }
+
+                    if (mode == "reset")
+                    {
+                        string login = e.Args.Length > 1 ? e.Args[1] : "";
+                        var reset = new ResetSenhaWindow(login);
+                        reset.Show();
+                        return;
+                    }
+                }
+
+                if (UsuarioEhAdministrador())
+                {
+                    var adminWindow = new AdminWindow();
+                    adminWindow.Show();
+                }
+                else
+                {
+                    var mainWindow = new MainWindow();
                     mainWindow.Show();
-                    return;
-                }
-
-                if (mode == "reset")
-                {
-                    string login = e.Args.Length > 1 ? e.Args[1] : "";
-                    var reset = new ResetSenhaWindow(login);
-                    reset.Show();
-                    return;
                 }
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Erro ao iniciar aplicação:\n\n" + ex.ToString(),
+                    "Erro crítico",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
 
-            // execução manual
-            if (UsuarioEhAdministrador())
-            {
-                var adminWindow = new AdminWindow();
-                adminWindow.Show();
-            }
-            else
-            {
-                var mainWindow = new MainWindow();
-                mainWindow.Show();
-            }
+        private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            MessageBox.Show(
+                "Erro não tratado:\n\n" + e.Exception.ToString(),
+                "Erro WPF",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+
+            e.Handled = true;
         }
 
         private bool UsuarioEhAdministrador()
