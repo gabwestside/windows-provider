@@ -1,0 +1,140 @@
+<Window
+    x:Class="CredentialProviderAPP.Views.RegraSenhaWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Regra de Senha"
+
+    Width="720"
+    Height="800"
+
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterOwner"
+    ShowInTaskbar="False"
+    WindowStyle="SingleBorderWindow"
+
+    Background="#F5F7FA">
+
+    <Grid>
+
+        <Border
+            Width="600"
+            Padding="40"
+            Background="White"
+            CornerRadius="8"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            BorderBrush="#D6D6D6"
+            BorderThickness="1">
+
+            <StackPanel>
+
+                <!-- TÍTULO -->
+                <TextBlock
+                    Text="Política de Senha"
+                    FontSize="28"
+                    FontWeight="SemiBold"
+                    Margin="0,0,0,30"/>
+
+                <!-- TAMANHO -->
+                <TextBlock
+                    Text="Tamanho mínimo da senha"
+                    FontSize="13"/>
+
+                <TextBox
+                    x:Name="txtTamanhoSenha"
+                    Height="38"
+                    Margin="0,6,0,20"
+                    Padding="8"
+                    FontSize="14"
+                    PreviewTextInput="NumeroOnly"/>
+
+                <!-- ESPECIAIS -->
+                <TextBlock
+                    Text="Quantidade de caracteres especiais"
+                    FontSize="13"/>
+
+                <TextBox
+                    x:Name="txtQtdEspecial"
+                    Height="38"
+                    Margin="0,6,0,20"
+                    Padding="8"
+                    FontSize="14"
+                    PreviewTextInput="NumeroOnly"/>
+
+                <!-- CARACTERES -->
+                <TextBlock
+                    Text="Caracteres especiais permitidos"
+                    FontSize="13"/>
+
+                <TextBox
+                    x:Name="txtCaracteres"
+                    Height="38"
+                    Margin="0,6,0,25"
+                    Padding="8"
+                    FontSize="14"
+                    Text="!@#$%&amp;*"/>
+
+                <!-- REQUISITOS -->
+                <TextBlock
+                    Text="Requisitos adicionais"
+                    FontWeight="SemiBold"
+                    Margin="0,0,0,10"
+                    FontSize="14"/>
+
+                <StackPanel Margin="10,0,0,30">
+
+                    <CheckBox
+                        x:Name="chkMaiuscula"
+                        Content="Exigir letra maiúscula"
+                        Margin="0,4"
+                        FontSize="13"/>
+
+                    <CheckBox
+                        x:Name="chkMinuscula"
+                        Content="Exigir letra minúscula"
+                        Margin="0,4"
+                        FontSize="13"/>
+
+                    <CheckBox
+                        x:Name="chkNumero"
+                        Content="Exigir número"
+                        Margin="0,4"
+                        FontSize="13"/>
+
+                </StackPanel>
+
+                <!-- BOTÕES -->
+                <StackPanel
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+
+                    <Button
+                        x:Name="btnSalvar"
+                        Content="Salvar"
+                        Width="130"
+                        Height="40"
+                        Margin="6"
+                        Background="#2D89EF"
+                        Foreground="White"
+                        BorderThickness="0"
+                        FontWeight="SemiBold"
+                        Click="Salvar_Click"/>
+
+                    <Button
+                        Content="Cancelar"
+                        Width="130"
+                        Height="40"
+                        Margin="6"
+                        Background="#E1E1E1"
+                        BorderThickness="0"
+                        Click="Cancelar_Click"/>
+
+                </StackPanel>
+
+            </StackPanel>
+
+        </Border>
+
+    </Grid>
+
+</Window>

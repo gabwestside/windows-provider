@@ -66,29 +66,29 @@ namespace CredentialProviderAPP.Views
             }
         }
 
-private void dgUsuarios_Sorting(object sender, DataGridSortingEventArgs e)
-{
-    string coluna = e.Column.SortMemberPath;
+        private void dgUsuarios_Sorting(object sender, DataGridSortingEventArgs e)
+        {
+            string coluna = e.Column.SortMemberPath;
 
-    if (_colunaOrdenacao == coluna)
-        _ordemAscendente = !_ordemAscendente;
-    else
-    {
-        _colunaOrdenacao = coluna;
-        _ordemAscendente = true;
-    }
+            if (_colunaOrdenacao == coluna)
+                _ordemAscendente = !_ordemAscendente;
+            else
+            {
+                _colunaOrdenacao = coluna;
+                _ordemAscendente = true;
+            }
 
-    foreach (var col in dgUsuarios.Columns)
-        col.SortDirection = null;
+            foreach (var col in dgUsuarios.Columns)
+                col.SortDirection = null;
 
-    e.Column.SortDirection = _ordemAscendente
-        ? System.ComponentModel.ListSortDirection.Ascending
-        : System.ComponentModel.ListSortDirection.Descending;
+            e.Column.SortDirection = _ordemAscendente
+                ? System.ComponentModel.ListSortDirection.Ascending
+                : System.ComponentModel.ListSortDirection.Descending;
 
-    _paginaAtual = 1;
+            _paginaAtual = 1;
 
-    AtualizarGrid();
-}
+            AtualizarGrid();
+        }
 
         private bool VerificarDominio()
         {
@@ -421,6 +421,12 @@ private void dgUsuarios_Sorting(object sender, DataGridSortingEventArgs e)
                 await BuscarUsuariosAsync(txtPesquisa.Text);
             else
                 AtualizarGrid();
+        }
+
+        private void MenuRegraSenha_Click(object sender, RoutedEventArgs e)
+        {
+            var tela = new RegraSenhaWindow();
+            tela.ShowDialog();
         }
     }
 

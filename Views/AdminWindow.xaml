@@ -134,6 +134,23 @@
 
     </Window.Resources>
 
+    <DockPanel>
+
+    <!-- MENU SUPERIOR -->
+    <Menu DockPanel.Dock="Top">
+
+        <MenuItem Header="Usuários"/>
+
+        <MenuItem Header="Segurança">
+            <MenuItem
+                Header="Regra de Senha"
+                Click="MenuRegraSenha_Click"/>
+        </MenuItem>
+
+        <MenuItem Header="Configurações"/>
+
+    </Menu>
+
     <Grid Margin="38,24,38,40">
 
         <Grid.RowDefinitions>
@@ -336,5 +353,8 @@
 
         </StackPanel>
 
-    </Grid>
+</Grid>
+
+</DockPanel>
+
 </Window>
