@@ -10,6 +10,8 @@ using System.Linq;
 using Microsoft.Data.Sqlite;
 using System.IO;
 using System.DirectoryServices;
+using CredentialProviderAPP.Data;
+using CredentialProviderAPP.Config;
 
 namespace CredentialProviderAPP.Views
 {
@@ -21,7 +23,8 @@ namespace CredentialProviderAPP.Views
         private List<UsuarioViewModel> _usuariosLocais = new();
         private List<UsuarioViewModel> _usuariosAD = new();
 
-        private Dictionary<string, (int mfaenabled, int configured)> _usuariosMFA = new();
+        private Dictionary<string, (int mfaenabled, int configured)> _usuariosMFA =
+    new(StringComparer.OrdinalIgnoreCase);
 
         private bool _computadorEmDominio = false;
         private bool _temProximaPagina = false;
@@ -352,41 +355,6 @@ namespace CredentialProviderAPP.Views
             btnProxima.IsEnabled = _temProximaPagina;
         }
 
-        private Dictionary<string, (int mfaenabled, int configured)> CarregarMFA()
-        {
-            var resultado = new Dictionary<string, (int, int)>();
-
-            try
-            {
-                string caminho = @"C:\credentialprovider\mfa.db";
-
-                if (!File.Exists(caminho))
-                    return resultado;
-
-                using var conn = new SqliteConnection($"Data Source={caminho}");
-                conn.Open();
-
-                var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT username, mfaenabled, configured FROM users";
-
-                using var reader = cmd.ExecuteReader();
-
-                while (reader.Read())
-                {
-                    string user = reader.GetString(0).Trim().ToLower();
-                    int mfa = reader.GetInt32(1);
-                    int configured = reader.GetInt32(2);
-
-                    resultado[user] = (mfa, configured);
-                }
-            }
-            catch
-            {
-            }
-
-            return resultado;
-        }
-
         private async void FiltroAlterado(object sender, RoutedEventArgs e)
         {
             if (!_computadorEmDominio)
@@ -446,16 +414,12 @@ namespace CredentialProviderAPP.Views
                     MessageBox.Show("Exclusão simulada.");
             }
         }
-
         private string ObterStatusMFA(string login)
         {
             if (string.IsNullOrWhiteSpace(login))
                 return "Não configurado";
 
-            login = login.Trim().ToLower();
-
-            if (login.Contains("\\"))
-                login = login.Split('\\')[1];
+            login = Database.Normalize(login);
 
             if (_usuariosMFA.TryGetValue(login, out var dados))
             {
@@ -464,8 +428,6 @@ namespace CredentialProviderAPP.Views
 
                 if (dados.mfaenabled == 1 && dados.configured == 0)
                     return "Pendente";
-
-                return "Desativado";
             }
 
             return "Não configurado";
@@ -502,13 +464,56 @@ namespace CredentialProviderAPP.Views
             tela.ShowDialog();
         }
 
+        private void AtivarMFAEmMassa(List<UsuarioViewModel> usuarios)
+        {
+            try
+            {
+                using var conn = Database.GetConnection();
+                conn.Open();
+
+                using var transaction = conn.BeginTransaction();
+
+                foreach (var user in usuarios)
+                {
+                    var login = Database.Normalize(user.Login);
+
+                    System.Diagnostics.Debug.WriteLine($"ATIVANDO MFA -> {login}");
+
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = @"
+INSERT INTO users (username, mfaenabled, configured, createdat)
+SELECT username, 1, 0, datetime('now')
+FROM (
+    SELECT @username AS username
+)
+WHERE NOT EXISTS (
+    SELECT 1 FROM users WHERE LOWER(username) = LOWER(@username)
+);
+
+UPDATE users
+SET mfaenabled = 1
+WHERE LOWER(username) = LOWER(@username);
+";
+
+                    cmd.Parameters.AddWithValue("@username", login);
+                    cmd.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+
+                MessageBox.Show($"MFA ativado para {usuarios.Count} usuários.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao ativar MFA: " + ex.Message);
+            }
+        }
+
         private void ProvisionarMFAEmMassa(List<UsuarioViewModel> usuarios)
         {
             try
             {
-                string caminho = @"C:\credentialprovider\mfa.db";
-
-                using var conn = new SqliteConnection($"Data Source={caminho}");
+                using var conn = Database.GetConnection();
                 conn.Open();
 
                 using var transaction = conn.BeginTransaction();
@@ -518,7 +523,7 @@ namespace CredentialProviderAPP.Views
                     if (user.MFAStatus != "Não configurado")
                         continue;
 
-                    var login = user.Login.ToLower();
+                    var login = Database.Normalize(user.Login);
 
                     if (login.Contains("\\"))
                         login = login.Split('\\')[1];
@@ -559,43 +564,44 @@ DO UPDATE SET mfaenabled = 1";
             AtualizarGrid();
         }
 
-        private void AtivarMFAEmMassa(List<UsuarioViewModel> usuarios)
+        private Dictionary<string, (int mfaenabled, int configured)> CarregarMFA()
         {
+            var resultado = new Dictionary<string, (int, int)>(StringComparer.OrdinalIgnoreCase);
+
             try
             {
-                string caminho = @"C:\credentialprovider\mfa.db";
+                var caminho = AppConfig.DatabasePath;
 
-                using var conn = new SqliteConnection($"Data Source={caminho}");
+                MessageBox.Show("Carregando MFA do banco:\n" + caminho);
+
+                using var conn = Database.GetConnection();
                 conn.Open();
 
-                using var transaction = conn.BeginTransaction();
+                MessageBox.Show("SQLite conectado em:\n" + conn.DataSource);
 
-                foreach (var user in usuarios)
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT username, mfaenabled, configured FROM users";
+
+                using var reader = cmd.ExecuteReader();
+
+                while (reader.Read())
                 {
-                    var login = user.Login.ToLower();
+                    string user = reader.GetString(0).Trim(); // NÃO usa ToLower
+                    int mfa = reader.GetInt32(1);
+                    int configured = reader.GetInt32(2);
 
-                    if (login.Contains("\\"))
-                        login = login.Split('\\')[1];
+                    resultado[user] = (mfa, configured);
 
-                    var cmd = conn.CreateCommand();
-                    cmd.CommandText = @"
-INSERT INTO users (username, mfaenabled, configured, createdat)
-VALUES (@username, 1, 0, datetime('now'))
-ON CONFLICT(username)
-DO UPDATE SET mfaenabled = 1";
-
-                    cmd.Parameters.AddWithValue("@username", login);
-                    cmd.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine(
+                        $"MFA LOAD -> {user} | enabled={mfa} configured={configured}");
                 }
-
-                transaction.Commit();
-
-                MessageBox.Show($"MFA ativado para {usuarios.Count} usuários.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao ativar MFA: " + ex.Message);
+                MessageBox.Show("Erro carregando MFA:\n" + ex.Message);
             }
+
+            return resultado;
         }
 
         private void AtivarMFATodos_Click(object sender, RoutedEventArgs e)
@@ -662,16 +668,13 @@ DO UPDATE SET mfaenabled = 1";
         {
             try
             {
-                string caminho = @"C:\credentialprovider\mfa.db";
-
-                using var conn = new SqliteConnection($"Data Source={caminho}");
+                using var conn = Database.GetConnection();
                 conn.Open();
-
                 using var transaction = conn.BeginTransaction();
 
                 foreach (var user in usuarios)
                 {
-                    var login = user.Login.ToLower();
+                    var login = Database.Normalize(user.Login);
 
                     if (login.Contains("\\"))
                         login = login.Split('\\')[1];
@@ -695,6 +698,130 @@ WHERE LOWER(username) = LOWER(@username)";
             catch (Exception ex)
             {
                 MessageBox.Show("Erro ao resetar MFA: " + ex.Message);
+            }
+        }
+
+        private void ResetarMFATodos_Click(object sender, RoutedEventArgs e)
+        {
+            var todos = new List<UsuarioViewModel>();
+
+            if (chkUsuariosAD.IsChecked == true)
+                todos.AddRange(_usuariosAD);
+
+            if (chkUsuariosLocais.IsChecked == true)
+                todos.AddRange(_usuariosLocais);
+
+            var usuarios = todos
+                .Where(u => ObterStatusMFA(u.Login) != "Não configurado")
+                .ToList();
+
+            if (!usuarios.Any())
+            {
+                MessageBox.Show("Nenhum usuário possui MFA.");
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Resetar MFA para {usuarios.Count} usuários?",
+                "Confirmação",
+                MessageBoxButton.YesNo);
+
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            ResetarMFA(usuarios);
+
+            _usuariosMFA = CarregarMFA();
+            AtualizarGrid();
+        }
+
+        private void RemoverMFASelecionados_Click(object sender, RoutedEventArgs e)
+        {
+            var usuarios = dgUsuarios.SelectedItems
+                .Cast<UsuarioViewModel>()
+                .ToList();
+
+            if (!usuarios.Any())
+            {
+                MessageBox.Show("Selecione pelo menos um usuário.");
+                return;
+            }
+
+            RemoverMFA(usuarios);
+
+            _usuariosMFA = CarregarMFA();
+            AtualizarGrid();
+        }
+
+        private void RemoverMFATodos_Click(object sender, RoutedEventArgs e)
+        {
+            var todos = new List<UsuarioViewModel>();
+
+            if (chkUsuariosAD.IsChecked == true)
+                todos.AddRange(_usuariosAD);
+
+            if (chkUsuariosLocais.IsChecked == true)
+                todos.AddRange(_usuariosLocais);
+
+            var usuarios = todos
+                .Where(u => ObterStatusMFA(u.Login) != "Não configurado")
+                .ToList();
+
+            if (!usuarios.Any())
+            {
+                MessageBox.Show("Nenhum usuário possui MFA.");
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Remover MFA de {usuarios.Count} usuários?",
+                "Confirmação",
+                MessageBoxButton.YesNo);
+
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            RemoverMFA(usuarios);
+
+            _usuariosMFA = CarregarMFA();
+            AtualizarGrid();
+        }
+        private void RemoverMFA(List<UsuarioViewModel> usuarios)
+        {
+            try
+            {
+                using var conn = Database.GetConnection();
+                conn.Open();
+
+                using var transaction = conn.BeginTransaction();
+
+                foreach (var user in usuarios)
+                {
+                    var login = Database.Normalize(user.Login);
+
+                    if (login.Contains("\\"))
+                        login = login.Split('\\')[1];
+
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = @"
+UPDATE users
+SET 
+    mfaenabled = 0,
+    configured = 0,
+    totpsecret = NULL
+WHERE LOWER(username) = LOWER(@username)";
+
+                    cmd.Parameters.AddWithValue("@username", login);
+                    cmd.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+
+                MessageBox.Show($"MFA removido de {usuarios.Count} usuários.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao remover MFA: " + ex.Message);
             }
         }
     }

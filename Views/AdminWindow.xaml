@@ -252,18 +252,32 @@
           BorderThickness="1"
           Cursor="Hand">
 
-                <MenuItem Header="Ativar MFA Selecionados"
-                          Click="AtivarMFASelecionados_Click"/>
+    <!-- ATIVAÇÃO -->
+    <MenuItem Header="Ativar MFA Selecionados"
+              Click="AtivarMFASelecionados_Click"/>
 
-                <MenuItem Header="Ativar MFA para TODOS não configurados"
-                          Click="AtivarMFATodos_Click"/>
+    <MenuItem Header="Ativar MFA para TODOS não configurados"
+              Click="AtivarMFATodos_Click"/>
 
-                <Separator/>
+    <Separator/>
 
-                <MenuItem Header="Resetar MFA Selecionados"
-                          Click="ResetarMFASelecionados_Click"/>
+    <!-- RESET -->
+    <MenuItem Header="Resetar MFA Selecionados"
+              Click="ResetarMFASelecionados_Click"/>
 
-            </MenuItem>
+    <MenuItem Header="Resetar MFA para TODOS"
+              Click="ResetarMFATodos_Click"/>
+
+    <Separator/>
+
+    <!-- REMOÇÃO -->
+    <MenuItem Header="Remover MFA Selecionados"
+              Click="RemoverMFASelecionados_Click"/>
+
+    <MenuItem Header="Remover MFA de TODOS"
+              Click="RemoverMFATodos_Click"/>
+
+</MenuItem>
 
         </Menu>
 

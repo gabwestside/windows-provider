@@ -1,16 +1,23 @@
 using Microsoft.Data.Sqlite;
+using CredentialProviderAPP.Config;
+using System.IO;
 
 namespace CredentialProviderAPP.Data;
 
 public static class Database
 {
-    private static string dbPath =
-        @"C:\CredentialProvider\mfa.db";
-
     public static SqliteConnection GetConnection()
     {
-        return new SqliteConnection($"Data Source={dbPath}");
+        var path = AppConfig.DatabasePath;
+
+        var folder = Path.GetDirectoryName(path);
+
+        if (!Directory.Exists(folder))
+            Directory.CreateDirectory(folder!);
+
+        return new SqliteConnection($"Data Source={path}");
     }
+
 
     public static (bool mfaenabled, bool configured, string? secret) GetUser(string username)
     {
@@ -67,7 +74,7 @@ public static class Database
         }
     }
 
-    private static string Normalize(string user)
+    public static string Normalize(string user)
     {
         user = user.Trim();
 
@@ -77,6 +84,6 @@ public static class Database
         if (user.Contains("@"))
             user = user.Split('@')[0];
 
-        return user.ToLower();
+        return user; // NÃO altera maiúsculo/minúsculo
     }
 }
