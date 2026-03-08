@@ -84,15 +84,18 @@ public partial class ResetSenhaWindow : Window
             return;
         }
 
+        // MFA OK
         autenticado = true;
 
-        mostrandoDialog = true;
-        MessageBox.Show("MFA validado.");
-        mostrandoDialog = false;
+        // esconder janela MFA
+        Hide();
 
+        // abrir nova senha
         NovaSenhaWindow win = new NovaSenhaWindow(login);
+        win.Topmost = true;
         win.ShowDialog();
 
+        // fechar MFA depois
         Close();
     }
 

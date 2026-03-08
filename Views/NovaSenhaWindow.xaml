@@ -2,42 +2,97 @@
     x:Class="CredentialProviderAPP.Views.NovaSenhaWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
     Title="Nova senha"
-    Width="350"
-    Height="260"
-    Background="#1E1E1E"
-    WindowStartupLocation="CenterScreen">
+    Width="420"
+    Height="520"
+
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterScreen"
+    ShowInTaskbar="False"
+    WindowStyle="SingleBorderWindow"
+    Topmost="True"
+
+    Background="#F5F7FA">
 
     <Grid>
 
-        <StackPanel
-            Width="220"
+        <Border
+            Width="340"
+            Padding="30"
+            Background="White"
+            CornerRadius="8"
             HorizontalAlignment="Center"
-            VerticalAlignment="Center">
+            VerticalAlignment="Center"
+            BorderBrush="#D6D6D6"
+            BorderThickness="1">
 
-            <TextBlock
-                Text="Definir nova senha"
-                FontSize="20"
-                Foreground="White"
-                Margin="0,0,0,20"
-                TextAlignment="Center"/>
+            <StackPanel>
 
-            <PasswordBox
-                x:Name="txtSenha"
-                Height="35"
-                Margin="0,0,0,10"/>
+                <TextBlock
+                    Text="Definir nova senha"
+                    FontSize="24"
+                    FontWeight="SemiBold"
+                    Margin="0,0,0,25"
+                    TextAlignment="Center"/>
 
-            <PasswordBox
-                x:Name="txtConfirmar"
-                Height="35"
-                Margin="0,0,0,20"/>
+                <PasswordBox
+                    x:Name="txtSenha"
+                    Height="38"
+                    Margin="0,0,0,15"
+                    PasswordChanged="SenhaChanged"/>
 
-            <Button
-                Height="35"
-                Click="Salvar_Click"
-                Content="Alterar senha"/>
+                <PasswordBox
+                    x:Name="txtConfirmar"
+                    Height="38"
+                    Margin="0,0,0,25"
+                    PasswordChanged="SenhaChanged"/>
 
-        </StackPanel>
+                <!-- REGRAS -->
+                <StackPanel Margin="0,0,0,20">
+
+<TextBlock
+    x:Name="ruleLength"
+    FontSize="13"/>
+
+<TextBlock
+    x:Name="ruleUpper"
+    FontSize="13"/>
+
+<TextBlock
+    x:Name="ruleLower"
+    FontSize="13"/>
+
+<TextBlock
+    x:Name="ruleNumber"
+    FontSize="13"/>
+
+<TextBlock
+    x:Name="ruleSpecial"
+    FontSize="13"/>
+
+<TextBlock
+    x:Name="ruleMatch"
+    FontSize="13"
+    FontWeight="SemiBold"
+    Margin="0,8,0,0"/>
+
+                </StackPanel>
+
+                <Button
+                    x:Name="btnSalvar"
+                    Height="40"
+                    Background="#2D89EF"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontWeight="SemiBold"
+                    Click="Salvar_Click"
+                    Content="Alterar senha"/>
+
+            </StackPanel>
+
+        </Border>
 
     </Grid>
+
 </Window>
