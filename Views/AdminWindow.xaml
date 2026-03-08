@@ -227,10 +227,10 @@
             </StackPanel>
 
         </Border>
-
-        <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}">
+<Border Grid.Row="4" Style="{StaticResource CardBorderStyle}">
     <StackPanel Orientation="Horizontal">
 
+        <!-- Atualizar -->
         <Button Click="Atualizar_Click"
                 Style="{StaticResource ActionButtonStyle}">
             ↺
@@ -239,9 +239,36 @@
         <TextBlock Style="{StaticResource TextActionStyle}"
                    Text="Atualizar"/>
 
+        <!-- Menu MFA -->
+<Menu Margin="30,0,0,0"
+      Background="Transparent"
+      BorderThickness="0">
+
+<MenuItem Header="⚙ Funções MFA"
+          FontSize="14"
+          Padding="12,6"
+          Background="#E3EEF9"
+          BorderBrush="#7EA6D9"
+          BorderThickness="1"
+          Cursor="Hand">
+
+                <MenuItem Header="Ativar MFA Selecionados"
+                          Click="AtivarMFASelecionados_Click"/>
+
+                <MenuItem Header="Ativar MFA para TODOS não configurados"
+                          Click="AtivarMFATodos_Click"/>
+
+                <Separator/>
+
+                <MenuItem Header="Resetar MFA Selecionados"
+                          Click="ResetarMFASelecionados_Click"/>
+
+            </MenuItem>
+
+        </Menu>
+
     </StackPanel>
 </Border>
-
         <!-- TABELA -->
         <Border
             Grid.Row="6"
@@ -254,13 +281,15 @@
     AutoGenerateColumns="False"
     AlternationCount="2"
     IsReadOnly="True"
+    SelectionMode="Extended"
+    SelectionUnit="FullRow"
     Sorting="dgUsuarios_Sorting"
     CanUserResizeColumns="True"
     EnableRowVirtualization="True"
     VirtualizingPanel.IsVirtualizing="True"
     VirtualizingPanel.VirtualizationMode="Recycling">
 
-                <DataGrid.Columns>
+              <DataGrid.Columns>
 
 <DataGridTextColumn
     Header="Data de Cadastro"
@@ -286,31 +315,45 @@
     SortMemberPath="NomeCompleto"
     Width="*"/>
 
-                    <DataGridTemplateColumn Width="90" Header="Ações">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+<DataGridTemplateColumn Header="MFA" Width="140">
+    <DataGridTemplateColumn.CellTemplate>
+        <DataTemplate>
+            <Border Padding="4" CornerRadius="4">
+                <Border.Style>
+                    <Style TargetType="Border">
 
-                                    <Button
-                                        Width="28"
-                                        Height="24"
-                                        Margin="2"
-                                        Click="EditarUsuario_Click"
-                                        Content="✎"/>
+                        <Setter Property="Background" Value="#E0E0E0"/>
 
-                                    <Button
-                                        Width="28"
-                                        Height="24"
-                                        Margin="2"
-                                        Click="ExcluirUsuario_Click"
-                                        Content="🗑"/>
+                        <Style.Triggers>
 
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+                            <DataTrigger Binding="{Binding MFAStatus}" Value="Ativo">
+                                <Setter Property="Background" Value="#C8E6C9"/>
+                            </DataTrigger>
 
-                </DataGrid.Columns>
+                            <DataTrigger Binding="{Binding MFAStatus}" Value="Pendente">
+                                <Setter Property="Background" Value="#FFF3CD"/>
+                            </DataTrigger>
+
+                            <DataTrigger Binding="{Binding MFAStatus}" Value="Não configurado">
+                                <Setter Property="Background" Value="#FFCDD2"/>
+                            </DataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+                </Border.Style>
+
+                <TextBlock
+                    Text="{Binding MFAStatus}"
+                    HorizontalAlignment="Center"
+                    FontWeight="Bold"/>
+
+            </Border>
+        </DataTemplate>
+    </DataGridTemplateColumn.CellTemplate>
+</DataGridTemplateColumn>
+
+</DataGrid.Columns>
 
             </DataGrid>
 

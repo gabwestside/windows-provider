@@ -7,6 +7,9 @@ using System.Windows;
 using System.Windows.Controls;
 using CredentialProviderAPP.Models;
 using System.Linq;
+using Microsoft.Data.Sqlite;
+using System.IO;
+using System.DirectoryServices;
 
 namespace CredentialProviderAPP.Views
 {
@@ -17,6 +20,8 @@ namespace CredentialProviderAPP.Views
         private bool _ordemAscendente = true;
         private List<UsuarioViewModel> _usuariosLocais = new();
         private List<UsuarioViewModel> _usuariosAD = new();
+
+        private Dictionary<string, (int mfaenabled, int configured)> _usuariosMFA = new();
 
         private bool _computadorEmDominio = false;
         private bool _temProximaPagina = false;
@@ -36,6 +41,8 @@ namespace CredentialProviderAPP.Views
         {
             try
             {
+                _usuariosMFA = CarregarMFA();
+
                 _computadorEmDominio = VerificarDominio();
 
                 if (_computadorEmDominio)
@@ -143,68 +150,64 @@ namespace CredentialProviderAPP.Views
 
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain))
+                using var entry = new DirectoryEntry("LDAP://RootDSE");
+                string domain = entry.Properties["defaultNamingContext"].Value.ToString();
+
+                using var searchRoot = new DirectoryEntry($"LDAP://{domain}");
+                using var searcher = new DirectorySearcher(searchRoot);
+
+                searcher.Filter = "(&(objectCategory=person)(objectClass=user))";
+
+                searcher.PropertiesToLoad.Add("samAccountName");
+                searcher.PropertiesToLoad.Add("displayName");
+                searcher.PropertiesToLoad.Add("lastLogonTimestamp");
+
+                searcher.PageSize = 1000;
+
+                var results = searcher.FindAll();
+
+                foreach (SearchResult result in results)
                 {
-                    GroupPrincipal grupo = GroupPrincipal.FindByIdentity(context, _grupoAD);
+                    string login = result.Properties["samAccountname"].Count > 0
+                        ? result.Properties["samAccountname"][0].ToString()
+                        : "";
 
-                    if (grupo == null)
-                        return usuarios;
+                    string nome = result.Properties["displayname"].Count > 0
+                        ? result.Properties["displayname"][0].ToString()
+                        : login;
 
-                    int skip = (_paginaAtual - 1) * _tamanhoPagina;
+                    string data = "-";
 
-                    // pegamos 1 a mais para saber se existe próxima página
-                    int take = _tamanhoPagina + 1;
-
-                    int index = 0;
-
-                    foreach (var member in grupo.GetMembers())
+                    if (result.Properties["lastLogontimestamp"].Count > 0)
                     {
-                        if (member is not UserPrincipal user)
+                        long ticks = (long)result.Properties["lastlogontimestamp"][0];
+                        DateTime dt = DateTime.FromFileTimeUtc(ticks);
+                        data = dt.ToString("dd/MM/yyyy HH:mm");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(filtro))
+                    {
+                        if (!login.Contains(filtro, StringComparison.OrdinalIgnoreCase) &&
+                            !nome.Contains(filtro, StringComparison.OrdinalIgnoreCase))
                             continue;
-
-                        if (!string.IsNullOrWhiteSpace(filtro))
-                        {
-                            if (!(user.SamAccountName?.Contains(filtro, StringComparison.OrdinalIgnoreCase) ?? false) &&
-                                !(user.DisplayName?.Contains(filtro, StringComparison.OrdinalIgnoreCase) ?? false))
-                                continue;
-                        }
-
-                        if (index++ < skip)
-                            continue;
-
-                        usuarios.Add(new UsuarioViewModel
-                        {
-                            Tipo = "Domínio",
-                            NomeCompleto = user.DisplayName ?? user.Name,
-                            Login = user.SamAccountName,
-                            DataCadastro = user.LastLogon?.ToString("dd/MM/yyyy HH:mm") ?? "-"
-                        });
-
-                        if (usuarios.Count >= take)
-                            break;
                     }
 
-                    // verifica se existe próxima página
-                    if (usuarios.Count > _tamanhoPagina)
+                    usuarios.Add(new UsuarioViewModel
                     {
-                        _temProximaPagina = true;
-
-                        // remove o último (era só para detectar próxima página)
-                        usuarios.RemoveAt(usuarios.Count - 1);
-                    }
-                    else
-                    {
-                        _temProximaPagina = false;
-                    }
+                        Tipo = "Domínio",
+                        Login = login,
+                        NomeCompleto = nome,
+                        DataCadastro = data
+                    });
                 }
             }
             catch
             {
-                _temProximaPagina = false;
             }
 
             return usuarios;
         }
+
         private List<UsuarioViewModel> ObterUsuariosLocais()
         {
             var usuarios = new List<UsuarioViewModel>();
@@ -239,6 +242,7 @@ namespace CredentialProviderAPP.Views
                 .ThenBy(x => x.Login)
                 .ToList();
         }
+
         private void AtualizarGrid()
         {
             if (dgUsuarios == null)
@@ -285,6 +289,12 @@ namespace CredentialProviderAPP.Views
                 {
                     todosUsuarios.AddRange(_usuariosLocais);
                 }
+            }
+
+            // MFA STATUS
+            foreach (var user in todosUsuarios)
+            {
+                user.MFAStatus = ObterStatusMFA(user.Login);
             }
 
             // ORDENAÇÃO
@@ -341,6 +351,42 @@ namespace CredentialProviderAPP.Views
             btnAnterior.IsEnabled = _paginaAtual > 1;
             btnProxima.IsEnabled = _temProximaPagina;
         }
+
+        private Dictionary<string, (int mfaenabled, int configured)> CarregarMFA()
+        {
+            var resultado = new Dictionary<string, (int, int)>();
+
+            try
+            {
+                string caminho = @"C:\credentialprovider\mfa.db";
+
+                if (!File.Exists(caminho))
+                    return resultado;
+
+                using var conn = new SqliteConnection($"Data Source={caminho}");
+                conn.Open();
+
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT username, mfaenabled, configured FROM users";
+
+                using var reader = cmd.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    string user = reader.GetString(0).Trim().ToLower();
+                    int mfa = reader.GetInt32(1);
+                    int configured = reader.GetInt32(2);
+
+                    resultado[user] = (mfa, configured);
+                }
+            }
+            catch
+            {
+            }
+
+            return resultado;
+        }
+
         private async void FiltroAlterado(object sender, RoutedEventArgs e)
         {
             if (!_computadorEmDominio)
@@ -360,6 +406,8 @@ namespace CredentialProviderAPP.Views
         {
             _usuariosLocais.Clear();
             _usuariosAD.Clear();
+
+            _usuariosMFA = CarregarMFA();
 
             if (_computadorEmDominio)
                 await BuscarUsuariosAsync(txtPesquisa.Text);
@@ -398,6 +446,31 @@ namespace CredentialProviderAPP.Views
                     MessageBox.Show("Exclusão simulada.");
             }
         }
+
+        private string ObterStatusMFA(string login)
+        {
+            if (string.IsNullOrWhiteSpace(login))
+                return "Não configurado";
+
+            login = login.Trim().ToLower();
+
+            if (login.Contains("\\"))
+                login = login.Split('\\')[1];
+
+            if (_usuariosMFA.TryGetValue(login, out var dados))
+            {
+                if (dados.mfaenabled == 1 && dados.configured == 1)
+                    return "Ativo";
+
+                if (dados.mfaenabled == 1 && dados.configured == 0)
+                    return "Pendente";
+
+                return "Desativado";
+            }
+
+            return "Não configurado";
+        }
+
         private async void ProximaPagina_Click(object sender, RoutedEventArgs e)
         {
             _paginaAtual++;
@@ -428,6 +501,201 @@ namespace CredentialProviderAPP.Views
             var tela = new RegraSenhaWindow();
             tela.ShowDialog();
         }
-    }
 
+        private void ProvisionarMFAEmMassa(List<UsuarioViewModel> usuarios)
+        {
+            try
+            {
+                string caminho = @"C:\credentialprovider\mfa.db";
+
+                using var conn = new SqliteConnection($"Data Source={caminho}");
+                conn.Open();
+
+                using var transaction = conn.BeginTransaction();
+
+                foreach (var user in usuarios)
+                {
+                    if (user.MFAStatus != "Não configurado")
+                        continue;
+
+                    var login = user.Login.ToLower();
+
+                    if (login.Contains("\\"))
+                        login = login.Split('\\')[1];
+
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = @"
+INSERT INTO users (username, mfaenabled, configured, createdat)
+VALUES (@username, 1, 0, datetime('now'))
+ON CONFLICT(username)
+DO UPDATE SET mfaenabled = 1";
+
+                    cmd.Parameters.AddWithValue("@username", login);
+                    cmd.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao provisionar MFA: " + ex.Message);
+            }
+        }
+        private void AtivarMFASelecionados_Click(object sender, RoutedEventArgs e)
+        {
+            var usuarios = dgUsuarios.SelectedItems
+                .Cast<UsuarioViewModel>()
+                .ToList();
+
+            if (!usuarios.Any())
+            {
+                MessageBox.Show("Selecione pelo menos um usuário.");
+                return;
+            }
+
+            AtivarMFAEmMassa(usuarios);
+
+            _usuariosMFA = CarregarMFA();
+            AtualizarGrid();
+        }
+
+        private void AtivarMFAEmMassa(List<UsuarioViewModel> usuarios)
+        {
+            try
+            {
+                string caminho = @"C:\credentialprovider\mfa.db";
+
+                using var conn = new SqliteConnection($"Data Source={caminho}");
+                conn.Open();
+
+                using var transaction = conn.BeginTransaction();
+
+                foreach (var user in usuarios)
+                {
+                    var login = user.Login.ToLower();
+
+                    if (login.Contains("\\"))
+                        login = login.Split('\\')[1];
+
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = @"
+INSERT INTO users (username, mfaenabled, configured, createdat)
+VALUES (@username, 1, 0, datetime('now'))
+ON CONFLICT(username)
+DO UPDATE SET mfaenabled = 1";
+
+                    cmd.Parameters.AddWithValue("@username", login);
+                    cmd.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+
+                MessageBox.Show($"MFA ativado para {usuarios.Count} usuários.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao ativar MFA: " + ex.Message);
+            }
+        }
+
+        private void AtivarMFATodos_Click(object sender, RoutedEventArgs e)
+        {
+            var todos = new List<UsuarioViewModel>();
+
+            if (chkUsuariosAD.IsChecked == true)
+                todos.AddRange(_usuariosAD);
+
+            if (chkUsuariosLocais.IsChecked == true)
+                todos.AddRange(_usuariosLocais);
+
+            var usuarios = todos
+                .Where(u => ObterStatusMFA(u.Login) == "Não configurado")
+                .ToList();
+
+            if (!usuarios.Any())
+            {
+                MessageBox.Show("Nenhum usuário precisa de MFA.");
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Ativar MFA para {usuarios.Count} usuários?",
+                "Confirmação",
+                MessageBoxButton.YesNo);
+
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            AtivarMFAEmMassa(usuarios);
+
+            _usuariosMFA = CarregarMFA();
+            AtualizarGrid();
+        }
+
+        private void ResetarMFASelecionados_Click(object sender, RoutedEventArgs e)
+        {
+            var usuarios = dgUsuarios.SelectedItems
+                .Cast<UsuarioViewModel>()
+                .ToList();
+
+            if (!usuarios.Any())
+            {
+                MessageBox.Show("Selecione pelo menos um usuário.");
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Resetar MFA para {usuarios.Count} usuários?",
+                "Confirmação",
+                MessageBoxButton.YesNo);
+
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            ResetarMFA(usuarios);
+
+            _usuariosMFA = CarregarMFA();
+            AtualizarGrid();
+        }
+
+        private void ResetarMFA(List<UsuarioViewModel> usuarios)
+        {
+            try
+            {
+                string caminho = @"C:\credentialprovider\mfa.db";
+
+                using var conn = new SqliteConnection($"Data Source={caminho}");
+                conn.Open();
+
+                using var transaction = conn.BeginTransaction();
+
+                foreach (var user in usuarios)
+                {
+                    var login = user.Login.ToLower();
+
+                    if (login.Contains("\\"))
+                        login = login.Split('\\')[1];
+
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = @"
+UPDATE users
+SET configured = 0,
+    totpsecret = NULL,
+    mfaenabled = 1
+WHERE LOWER(username) = LOWER(@username)";
+
+                    cmd.Parameters.AddWithValue("@username", login);
+                    cmd.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+
+                MessageBox.Show($"MFA resetado para {usuarios.Count} usuários.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao resetar MFA: " + ex.Message);
+            }
+        }
+    }
 }
