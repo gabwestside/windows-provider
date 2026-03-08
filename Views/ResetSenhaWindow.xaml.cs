@@ -1,7 +1,7 @@
 using OtpNet;
+using System;
 using System.ComponentModel;
 using System.Windows;
-using System.Windows.Input;
 using CredentialProviderAPP.Data;
 
 namespace CredentialProviderAPP.Views;
@@ -9,12 +9,12 @@ namespace CredentialProviderAPP.Views;
 public partial class ResetSenhaWindow : Window
 {
     private bool autenticado = false;
+    private bool cancelado = false;
     private bool mostrandoDialog = false;
 
     public ResetSenhaWindow(string login)
     {
         InitializeComponent();
-
         txtLogin.Text = login;
     }
 
@@ -28,11 +28,14 @@ public partial class ResetSenhaWindow : Window
         if (mostrandoDialog)
             return;
 
-        Dispatcher.BeginInvoke(new Action(() =>
+        if (!autenticado && !cancelado)
         {
-            Topmost = true;
-            Activate();
-        }));
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Topmost = true;
+                Activate();
+            }));
+        }
     }
 
     private void Validar_Click(object sender, RoutedEventArgs e)
@@ -40,19 +43,24 @@ public partial class ResetSenhaWindow : Window
         string login = txtLogin.Text.Trim();
         string code = txtCode.Text.Trim();
 
-        if (string.IsNullOrEmpty(login))
+        if (code.Length != 6)
         {
-            MessageBox.Show("Digite o login.");
+            mostrandoDialog = true;
+            MessageBox.Show("Digite o código de 6 dígitos.");
+            mostrandoDialog = false;
+
+            txtCode.Focus();
             return;
         }
 
         var user = Database.GetUser(login);
-
         var (mfaenabled, configured, secret) = user;
 
         if (!configured || secret == null)
         {
+            mostrandoDialog = true;
             MessageBox.Show("Usuário não configurado para MFA.");
+            mostrandoDialog = false;
             return;
         }
 
@@ -67,29 +75,56 @@ public partial class ResetSenhaWindow : Window
 
         if (!valid)
         {
+            mostrandoDialog = true;
             MessageBox.Show("Código inválido.");
+            mostrandoDialog = false;
+
+            txtCode.Clear();
+            txtCode.Focus();
             return;
         }
 
         autenticado = true;
 
+        mostrandoDialog = true;
         MessageBox.Show("MFA validado.");
+        mostrandoDialog = false;
 
         NovaSenhaWindow win = new NovaSenhaWindow(login);
         win.ShowDialog();
 
         Close();
-
-        // aqui você abre tela de nova senha depois
     }
 
-    protected override void OnClosing(CancelEventArgs e)
+    private void Cancelar_Click(object sender, RoutedEventArgs e)
     {
-        base.OnClosing(e);
+        cancelado = true;
+        Close();
+    }
 
-        if (!autenticado)
+    private void Window_Closing(object sender, CancelEventArgs e)
+    {
+        if (autenticado || cancelado)
+            return;
+
+        mostrandoDialog = true;
+
+        var result = MessageBox.Show(
+            "Deseja cancelar o processo de redefinição de senha?",
+            "Cancelar",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question
+        );
+
+        mostrandoDialog = false;
+
+        if (result == MessageBoxResult.No)
         {
             e.Cancel = true;
+        }
+        else
+        {
+            cancelado = true;
         }
     }
 }
