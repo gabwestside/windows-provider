@@ -24,8 +24,6 @@
         <SolidColorBrush x:Key="TextSecondary" Color="#6B7280" />
         <SolidColorBrush x:Key="TextMuted" Color="#9CA3AF" />
         <SolidColorBrush x:Key="AccentBlue" Color="#2563EB" />
-        <SolidColorBrush x:Key="AccentHover" Color="#1D4ED8" />
-        <SolidColorBrush x:Key="NavActiveColor" Color="#2563EB" />
         <SolidColorBrush x:Key="TagBg" Color="#F1F5F9" />
         <SolidColorBrush x:Key="TagText" Color="#475569" />
         <SolidColorBrush x:Key="BadgeBg" Color="#FEF2F2" />
@@ -36,15 +34,8 @@
         <SolidColorBrush x:Key="BadgeGreenBorder" Color="#BBF7D0" />
         <SolidColorBrush x:Key="BadgeYellowBg" Color="#FFFBEB" />
         <SolidColorBrush x:Key="BadgeYellowText" Color="#D97706" />
-        <SolidColorBrush x:Key="RowHover" Color="#F8FAFF" />
-        <SolidColorBrush x:Key="RowSelected" Color="#EFF6FF" />
-        <SolidColorBrush x:Key="RowAlt" Color="#FAFBFC" />
 
-        <!--
-            ══════════════════════════════════════
-            TOGGLE SWITCH
-            ══════════════════════════════════════
-        -->
+        <!--  ══ TOGGLE SWITCH ══  -->
         <Style x:Key="ToggleSwitchStyle" TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
             <Setter Property="FontSize" Value="13" />
@@ -54,7 +45,6 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
                         <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-
                             <Border
                                 x:Name="Track"
                                 Width="40"
@@ -79,13 +69,11 @@
                                     </Ellipse.Effect>
                                 </Ellipse>
                             </Border>
-
                             <ContentPresenter
                                 Margin="8,0,0,0"
                                 VerticalAlignment="Center"
                                 RecognizesAccessKey="True" />
                         </StackPanel>
-
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Track" Property="Background" Value="#2563EB" />
@@ -98,11 +86,7 @@
             </Setter>
         </Style>
 
-        <!--
-            ══════════════════════════════════════
-            BOTÃO GHOST
-            ══════════════════════════════════════
-        -->
+        <!--  ══ BOTÃO GHOST ══  -->
         <Style x:Key="BtnGhostStyle" TargetType="Button">
             <Setter Property="Background" Value="White" />
             <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
@@ -138,54 +122,7 @@
             </Setter>
         </Style>
 
-        <!--
-            ══════════════════════════════════════
-            BOTÃO PRIMARY
-            ══════════════════════════════════════
-        -->
-        <Style x:Key="BtnPrimaryStyle" TargetType="Button">
-            <Setter Property="Background" Value="#2563EB" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="16,8" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border
-                            Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="8">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                    BlurRadius="12"
-                                    Opacity="0.30"
-                                    ShadowDepth="2"
-                                    Color="#2563EB" />
-                            </Border.Effect>
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#1D4ED8" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1E40AF" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!--
-            ══════════════════════════════════════
-            COMBOBOX MODERNO
-            ══════════════════════════════════════
-        -->
+        <!--  ══ COMBOBOX ══  -->
         <Style x:Key="ModernComboBox" TargetType="ComboBox">
             <Setter Property="Background" Value="#F8FAFC" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
@@ -259,11 +196,7 @@
             </Setter>
         </Style>
 
-        <!--
-            ══════════════════════════════════════
-            TEXTBOX / SEARCH
-            ══════════════════════════════════════
-        -->
+        <!--  ══ SEARCH BOX ══  -->
         <Style x:Key="SearchBoxStyle" TargetType="TextBox">
             <Setter Property="Background" Value="#F8FAFC" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
@@ -311,11 +244,7 @@
             </Setter>
         </Style>
 
-        <!--
-            ══════════════════════════════════════
-            NAV MENU ITEM
-            ══════════════════════════════════════
-        -->
+        <!--  ══ NAV MENU ITEM ══  -->
         <Style x:Key="NavMenuItemStyle" TargetType="MenuItem">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
@@ -372,7 +301,7 @@
             </Setter>
         </Style>
 
-        <!--  Sub-itens do menu  -->
+        <!--  Sub-itens normais  -->
         <Style x:Key="SubMenuItemStyle" TargetType="MenuItem">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
@@ -403,11 +332,39 @@
             </Setter>
         </Style>
 
-        <!--
-            ══════════════════════════════════════
-            DATAGRID — HEADER
-            ══════════════════════════════════════
-        -->
+        <!--  Sub-item roxo (Senha)  -->
+        <Style x:Key="SubMenuItemAccentStyle" TargetType="MenuItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#7C3AED" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border
+                            x:Name="SubBorder"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                            <ContentPresenter VerticalAlignment="Center" ContentSource="Header" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SubBorder" Property="Background" Value="#F5F3FF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="SubBorder" Property="Background" Value="#EDE9FE" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--  ══ DATAGRID HEADER ══  -->
         <Style TargetType="DataGridColumnHeader">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
@@ -431,7 +388,6 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="16" />
                                 </Grid.ColumnDefinitions>
-                                <!--  Texto em maiúsculo definido diretamente no Header  -->
                                 <ContentPresenter
                                     Grid.Column="0"
                                     VerticalAlignment="Center"
@@ -464,11 +420,7 @@
             </Setter>
         </Style>
 
-        <!--
-            ══════════════════════════════════════
-            DATAGRID — CÉLULA
-            ══════════════════════════════════════
-        -->
+        <!--  ══ DATAGRID CÉLULA ══  -->
         <Style TargetType="DataGridCell">
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0,12" />
@@ -497,11 +449,7 @@
             </Style.Triggers>
         </Style>
 
-        <!--
-            ══════════════════════════════════════
-            DATAGRID — LINHA
-            ══════════════════════════════════════
-        -->
+        <!--  ══ DATAGRID LINHA ══  -->
         <Style TargetType="DataGridRow">
             <Setter Property="Background" Value="White" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderColor}" />
@@ -521,11 +469,7 @@
             </Style.Triggers>
         </Style>
 
-        <!--
-            ══════════════════════════════════════
-            BOTÃO PAGINAÇÃO
-            ══════════════════════════════════════
-        -->
+        <!--  ══ BOTÃO PAGINAÇÃO ══  -->
         <Style x:Key="PagBtnStyle" TargetType="Button">
             <Setter Property="Width" Value="32" />
             <Setter Property="Height" Value="32" />
@@ -568,11 +512,6 @@
 
     </Window.Resources>
 
-    <!--
-        ══════════════════════════════════════════════
-        LAYOUT RAIZ
-        ══════════════════════════════════════════════
-    -->
     <Border
         Background="{StaticResource BgPage}"
         BorderBrush="{StaticResource BorderColor}"
@@ -588,18 +527,11 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <!--  Nav  -->
                 <RowDefinition Height="*" />
-                <!--  Conteúdo  -->
                 <RowDefinition Height="Auto" />
-                <!--  Rodapé  -->
             </Grid.RowDefinitions>
 
-            <!--
-                ══════════════════════════════════
-                NAV BAR (também serve como título — drag)
-                ══════════════════════════════════
-            -->
+            <!--  ══ NAV BAR ══  -->
             <Border
                 Grid.Row="0"
                 Background="{StaticResource BgNav}"
@@ -607,7 +539,6 @@
                 BorderThickness="0,0,0,1"
                 CornerRadius="12,12,0,0"
                 MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-
                 <Grid Height="56" Margin="24,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -615,7 +546,6 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!--  Brand  -->
                     <TextBlock
                         Grid.Column="0"
                         Margin="0,0,24,0"
@@ -626,13 +556,10 @@
                         Foreground="{StaticResource TextPrimary}"
                         Text="CredentialProviderAPP" />
 
-                    <!--  Links de navegação  -->
                     <StackPanel
                         Grid.Column="1"
                         VerticalAlignment="Stretch"
                         Orientation="Horizontal">
-
-                        <!--  Usuários (ativo)  -->
                         <Border
                             x:Name="NavUsuariosBorder"
                             Margin="0,0,4,0"
@@ -646,8 +573,6 @@
                                 Header="Usuários"
                                 Style="{StaticResource NavMenuItemStyle}" />
                         </Border>
-
-                        <!--  Segurança  -->
                         <MenuItem
                             Margin="0,0,4,0"
                             VerticalAlignment="Center"
@@ -658,20 +583,16 @@
                                 Header="Regra de Senha"
                                 Style="{StaticResource SubMenuItemStyle}" />
                         </MenuItem>
-
-                        <!--  Configurações  -->
                         <MenuItem
                             VerticalAlignment="Center"
                             Header="Configurações"
                             Style="{StaticResource NavMenuItemStyle}" />
                     </StackPanel>
 
-                    <!--  Avatar + Fechar  -->
                     <StackPanel
                         Grid.Column="2"
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
-
                         <Border
                             Width="34"
                             Height="34"
@@ -687,7 +608,6 @@
                                 FontSize="14"
                                 Text="👤" />
                         </Border>
-
                         <Button
                             Width="28"
                             Height="28"
@@ -703,32 +623,23 @@
                 </Grid>
             </Border>
 
-            <!--
-                ══════════════════════════════════
-                CONTEÚDO PRINCIPAL
-                ══════════════════════════════════
-            -->
+            <!--  ══ CONTEÚDO ══  -->
             <ScrollViewer
                 Grid.Row="1"
                 HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
-
                 <Grid Margin="32,28,32,20">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <!--  Page header  -->
                         <RowDefinition Height="20" />
                         <RowDefinition Height="Auto" />
-                        <!--  Filtros  -->
                         <RowDefinition Height="16" />
                         <RowDefinition Height="*" />
-                        <!--  Tabela  -->
                         <RowDefinition Height="16" />
                         <RowDefinition Height="Auto" />
-                        <!--  Paginação  -->
                     </Grid.RowDefinitions>
 
-                    <!--  ── PAGE HEADER ──  -->
+                    <!--  PAGE HEADER  -->
                     <Grid Grid.Row="0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -761,115 +672,172 @@
                                 </StackPanel>
                             </Button>
 
-                            <!--  Funções MFA (dropdown)  -->
-                            <Menu
+                            <!--
+                                ════════════════════════════════════════════════════
+                                BOTÃO "FUNÇÕES" — usa Button + ContextMenu
+                                Esta abordagem garante que o popup SEMPRE abre.
+                                ════════════════════════════════════════════════════
+                            -->
+                            <Button
+                                x:Name="btnFuncoes"
                                 VerticalAlignment="Center"
-                                Background="Transparent"
-                                BorderThickness="0">
-                                <MenuItem
-                                    Padding="16,8"
-                                    Background="#2563EB"
-                                    FontWeight="SemiBold"
-                                    Foreground="White"
-                                    Style="{StaticResource NavMenuItemStyle}">
-                                    <MenuItem.Header>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock
-                                                Margin="0,0,6,0"
-                                                VerticalAlignment="Center"
-                                                FontSize="13"
-                                                Text="🔒" />
-                                            <TextBlock
-                                                VerticalAlignment="Center"
-                                                FontSize="13"
-                                                FontWeight="SemiBold"
-                                                Foreground="White"
-                                                Text="Funções MFA" />
-                                        </StackPanel>
-                                    </MenuItem.Header>
-                                    <MenuItem.Template>
-                                        <ControlTemplate TargetType="MenuItem">
-                                            <Border
-                                                x:Name="MfaBtn"
-                                                Padding="16,8"
-                                                Background="#2563EB"
-                                                CornerRadius="8"
-                                                Cursor="Hand">
-                                                <Border.Effect>
-                                                    <DropShadowEffect
-                                                        BlurRadius="12"
-                                                        Opacity="0.30"
-                                                        ShadowDepth="2"
-                                                        Color="#2563EB" />
-                                                </Border.Effect>
-                                                <Grid>
-                                                    <ContentPresenter ContentSource="Header" />
-                                                    <Popup
-                                                        AllowsTransparency="True"
-                                                        IsOpen="{TemplateBinding IsSubmenuOpen}"
-                                                        Placement="Bottom">
-                                                        <Border
-                                                            MinWidth="240"
-                                                            Margin="0,6,0,0"
-                                                            Padding="6"
-                                                            Background="White"
-                                                            BorderBrush="{StaticResource BorderColor}"
-                                                            BorderThickness="1"
-                                                            CornerRadius="10">
-                                                            <Border.Effect>
-                                                                <DropShadowEffect
-                                                                    BlurRadius="20"
-                                                                    Opacity="0.12"
-                                                                    ShadowDepth="4" />
-                                                            </Border.Effect>
-                                                            <StackPanel>
-                                                                <MenuItem
-                                                                    Click="AtivarMFASelecionados_Click"
-                                                                    Header="Ativar MFA Selecionados"
-                                                                    Style="{StaticResource SubMenuItemStyle}" />
-                                                                <MenuItem
-                                                                    Click="AtivarMFATodos_Click"
-                                                                    Header="Ativar MFA para TODOS não configurados"
-                                                                    Style="{StaticResource SubMenuItemStyle}" />
-                                                                <Separator />
-                                                                <MenuItem
-                                                                    Click="ResetarMFASelecionados_Click"
-                                                                    Header="Resetar MFA Selecionados"
-                                                                    Style="{StaticResource SubMenuItemStyle}" />
-                                                                <MenuItem
-                                                                    Click="ResetarMFATodos_Click"
-                                                                    Header="Resetar MFA para TODOS"
-                                                                    Style="{StaticResource SubMenuItemStyle}" />
-                                                                <Separator />
-                                                                <MenuItem
-                                                                    Click="RemoverMFASelecionados_Click"
-                                                                    Header="Remover MFA Selecionados"
-                                                                    Style="{StaticResource SubMenuItemStyle}" />
-                                                                <MenuItem
-                                                                    Click="RemoverMFATodos_Click"
-                                                                    Header="Remover MFA de TODOS"
-                                                                    Style="{StaticResource SubMenuItemStyle}" />
-                                                            </StackPanel>
-                                                        </Border>
-                                                    </Popup>
-                                                </Grid>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="MfaBtn" Property="Background" Value="#1D4ED8" />
-                                                </Trigger>
-                                                <Trigger Property="IsSubmenuOpen" Value="True">
-                                                    <Setter TargetName="MfaBtn" Property="Background" Value="#1E40AF" />
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </MenuItem.Template>
-                                </MenuItem>
-                            </Menu>
+                                Click="BtnFuncoes_Click"
+                                Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border
+                                            x:Name="FuncoesBtn"
+                                            Padding="16,9"
+                                            Background="#2563EB"
+                                            CornerRadius="8">
+                                            <Border.Effect>
+                                                <DropShadowEffect
+                                                    BlurRadius="12"
+                                                    Opacity="0.30"
+                                                    ShadowDepth="2"
+                                                    Color="#2563EB" />
+                                            </Border.Effect>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    FontSize="13"
+                                                    Foreground="White"
+                                                    Text="⚙" />
+                                                <TextBlock
+                                                    VerticalAlignment="Center"
+                                                    FontSize="13"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="White"
+                                                    Text="Funções" />
+                                                <TextBlock
+                                                    VerticalAlignment="Center"
+                                                    FontSize="11"
+                                                    Foreground="#BFD4FF"
+                                                    Text=" ▾" />
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="FuncoesBtn" Property="Background" Value="#1D4ED8" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="FuncoesBtn" Property="Background" Value="#1E40AF" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+
+                                <!--  ContextMenu — abre abaixo do botão via BtnFuncoes_Click  -->
+                                <Button.ContextMenu>
+                                    <ContextMenu
+                                        x:Name="ctxFuncoes"
+                                        Padding="6"
+                                        Background="White"
+                                        BorderBrush="{StaticResource BorderColor}"
+                                        BorderThickness="1">
+                                        <ContextMenu.Template>
+                                            <ControlTemplate TargetType="ContextMenu">
+                                                <Border
+                                                    MinWidth="280"
+                                                    Padding="6"
+                                                    Background="White"
+                                                    BorderBrush="{StaticResource BorderColor}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="10">
+                                                    <Border.Effect>
+                                                        <DropShadowEffect
+                                                            BlurRadius="20"
+                                                            Opacity="0.13"
+                                                            ShadowDepth="4" />
+                                                    </Border.Effect>
+                                                    <ItemsPresenter />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </ContextMenu.Template>
+
+                                        <!--  ── SEÇÃO MFA ──  -->
+                                        <MenuItem IsHitTestVisible="False" Style="{StaticResource SubMenuItemStyle}">
+                                            <MenuItem.Header>
+                                                <TextBlock
+                                                    FontSize="10"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextMuted}"
+                                                    Text="MFA" />
+                                            </MenuItem.Header>
+                                        </MenuItem>
+
+                                        <MenuItem
+                                            Click="AtivarMFASelecionados_Click"
+                                            Header="✅  Ativar MFA — Selecionados"
+                                            Style="{StaticResource SubMenuItemStyle}" />
+                                        <MenuItem
+                                            Click="AtivarMFATodos_Click"
+                                            Header="✅  Ativar MFA — TODOS não configurados"
+                                            Style="{StaticResource SubMenuItemStyle}" />
+
+                                        <Separator />
+
+                                        <MenuItem
+                                            Click="ResetarMFASelecionados_Click"
+                                            Header="🔄  Resetar MFA — Selecionados"
+                                            Style="{StaticResource SubMenuItemStyle}" />
+                                        <MenuItem
+                                            Click="ResetarMFATodos_Click"
+                                            Header="🔄  Resetar MFA — TODOS"
+                                            Style="{StaticResource SubMenuItemStyle}" />
+
+                                        <Separator />
+
+                                        <MenuItem
+                                            Click="RemoverMFASelecionados_Click"
+                                            Header="❌  Remover MFA — Selecionados"
+                                            Style="{StaticResource SubMenuItemStyle}" />
+                                        <MenuItem
+                                            Click="RemoverMFATodos_Click"
+                                            Header="❌  Remover MFA — TODOS"
+                                            Style="{StaticResource SubMenuItemStyle}" />
+
+                                        <Separator />
+
+                                        <!--  ── SEÇÃO SENHA ──  -->
+                                        <MenuItem IsHitTestVisible="False" Style="{StaticResource SubMenuItemStyle}">
+                                            <MenuItem.Header>
+                                                <TextBlock
+                                                    FontSize="10"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextMuted}"
+                                                    Text="SENHA" />
+                                            </MenuItem.Header>
+                                        </MenuItem>
+
+                                        <MenuItem
+                                            Click="TrocarSenhaProximoLoginSelecionados_Click"
+                                            Header="🔑  Trocar senha no próximo login — Selecionados"
+                                            Style="{StaticResource SubMenuItemAccentStyle}" />
+                                        <MenuItem
+                                            Click="TrocarSenhaProximoLoginTodos_Click"
+                                            Header="🔑  Trocar senha no próximo login — TODOS"
+                                            Style="{StaticResource SubMenuItemAccentStyle}" />
+
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <TextBlock
+                                                    Margin="0,0,0,4"
+                                                    FontSize="11"
+                                                    Foreground="{StaticResource TextMuted}"
+                                                    Text="Força o fluxo de primeiro acesso" />
+                                            </MenuItem.Header>
+                                        </MenuItem>
+
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
+
                         </StackPanel>
                     </Grid>
 
-                    <!--  ── FILTROS CARD ──  -->
+                    <!--  FILTROS CARD  -->
                     <Border
                         Grid.Row="2"
                         Padding="20,16"
@@ -883,7 +851,6 @@
                                 Opacity="0.05"
                                 ShadowDepth="1" />
                         </Border.Effect>
-
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -893,7 +860,6 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <!--  Filtrar por  -->
                             <StackPanel Grid.Column="0" Width="150">
                                 <TextBlock
                                     Margin="0,0,0,5"
@@ -911,7 +877,6 @@
                                 </ComboBox>
                             </StackPanel>
 
-                            <!--  Pesquisar  -->
                             <StackPanel Grid.Column="2">
                                 <TextBlock
                                     Margin="0,0,0,5"
@@ -926,7 +891,6 @@
                                     TextChanged="FiltroAlterado" />
                             </StackPanel>
 
-                            <!--  Toggles  -->
                             <StackPanel
                                 Grid.Column="4"
                                 Margin="0,4,0,0"
@@ -949,7 +913,7 @@
                         </Grid>
                     </Border>
 
-                    <!--  ── TABELA ──  -->
+                    <!--  TABELA  -->
                     <Border
                         Grid.Row="4"
                         Background="White"
@@ -986,6 +950,33 @@
 
                             <DataGrid.Columns>
 
+                                <!--  ══ COLUNA CHECKBOX "SELECIONAR TODOS" ══  -->
+                                <DataGridTemplateColumn
+                                    Width="44"
+                                    CanUserResize="False"
+                                    CanUserSort="False">
+                                    <DataGridTemplateColumn.HeaderTemplate>
+                                        <DataTemplate>
+                                            <!--  Checkbox no cabeçalho = selecionar/desselecionar todos  -->
+                                            <CheckBox
+                                                x:Name="chkSelectAll"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Click="ChkSelectAll_Click"
+                                                ToolTip="Selecionar / Desselecionar todos" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.HeaderTemplate>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=DataGridRow}}"
+                                                IsHitTestVisible="False" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
                                 <!--  DATA DE CADASTRO  -->
                                 <DataGridTextColumn
                                     Width="155"
@@ -1002,7 +993,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <!--  TIPO — chip  -->
+                                <!--  TIPO  -->
                                 <DataGridTemplateColumn
                                     Width="105"
                                     Header="TIPO"
@@ -1059,9 +1050,9 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <!--  MFA Badge  -->
+                                <!--  MFA BADGE  -->
                                 <DataGridTemplateColumn
-                                    Width="140"
+                                    Width="145"
                                     Header="MFA"
                                     SortMemberPath="MFAStatus">
                                     <DataGridTemplateColumn.CellTemplate>
@@ -1116,7 +1107,7 @@
                         </DataGrid>
                     </Border>
 
-                    <!--  ── PAGINAÇÃO ──  -->
+                    <!--  PAGINAÇÃO  -->
                     <Grid Grid.Row="6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -1133,17 +1124,14 @@
 
                         <StackPanel
                             Grid.Column="1"
-                            HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Orientation="Horizontal">
-
                             <Button
                                 x:Name="btnAnterior"
                                 Margin="0,0,6,0"
                                 Click="PaginaAnterior_Click"
                                 Content="‹"
                                 Style="{StaticResource PagBtnStyle}" />
-
                             <Border
                                 Margin="0,0,6,0"
                                 Padding="12,0"
@@ -1153,14 +1141,11 @@
                                 CornerRadius="6">
                                 <TextBlock
                                     x:Name="lblPagina"
-                                    HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     FontFamily="Segoe UI"
                                     FontSize="13"
-                                    Foreground="{StaticResource TextPrimary}"
-                                    TextAlignment="Center" />
+                                    Foreground="{StaticResource TextPrimary}" />
                             </Border>
-
                             <Button
                                 x:Name="btnProxima"
                                 Click="ProximaPagina_Click"
@@ -1172,11 +1157,7 @@
                 </Grid>
             </ScrollViewer>
 
-            <!--
-                ══════════════════════════════════
-                RODAPÉ
-                ══════════════════════════════════
-            -->
+            <!--  RODAPÉ  -->
             <Border
                 Grid.Row="2"
                 Padding="32,12"
@@ -1189,7 +1170,6 @@
                     Foreground="{StaticResource TextMuted}"
                     Text="© 2026 Credential Provider System · Todos os direitos reservados." />
             </Border>
-
         </Grid>
     </Border>
 
