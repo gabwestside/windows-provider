@@ -72,13 +72,34 @@ public partial class NovaSenhaWindow : Window
         int specialCount = senha.Count(c => allowedChars.Contains(c));
         bool specialOK = specialCount >= minSpecial;
 
+        string? forbiddenWord = null;
+        bool blacklistOK = true;
+
         bool match = txtConfirmar.Password == senha && senha.Length > 0;
+
+        if (match)
+        {
+            forbiddenWord = PasswordBlacklist.GetForbiddenWord(senha);
+            blacklistOK = forbiddenWord == null;
+        }
 
         SetRule(ruleLength, lengthOK, $"Mínimo {minLength} caracteres");
         SetRule(ruleUpper, upperOK, "Letra maiúscula");
         SetRule(ruleLower, lowerOK, "Letra minúscula");
         SetRule(ruleNumber, numberOK, "Número");
         SetRule(ruleSpecial, specialOK, $"Especial ({minSpecial})");
+
+        if (match)
+        {
+            if (blacklistOK)
+                SetRule(ruleBlacklist, true, "Não contém palavras proibidas");
+            else
+                SetRule(ruleBlacklist, false, $"Contém palavra proibida: {forbiddenWord}");
+        }
+        else
+        {
+            ruleBlacklist.Text = "";
+        }
 
         if (txtConfirmar.Password.Length > 0)
             SetRule(ruleMatch, match, "Senhas coincidem");
@@ -91,6 +112,7 @@ public partial class NovaSenhaWindow : Window
             lowerOK &&
             numberOK &&
             specialOK &&
+            blacklistOK &&
             match;
 
         btnSalvar.IsEnabled = allValid;
@@ -131,11 +153,11 @@ public partial class NovaSenhaWindow : Window
         out int parm_err
     );
 
-[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-struct USER_INFO_1003
-{
-    public string usri1003_password;
-}
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct USER_INFO_1003
+    {
+        public string usri1003_password;
+    }
 
     private void Salvar_Click(object sender, RoutedEventArgs e)
     {
@@ -145,6 +167,14 @@ struct USER_INFO_1003
         if (!ValidatePassword(senha))
         {
             MessageBox.Show("Senha não atende à política.");
+            return;
+        }
+
+        string? forbidden = PasswordBlacklist.GetForbiddenWord(senha);
+
+        if (forbidden != null)
+        {
+            MessageBox.Show($"A senha contém a palavra proibida: {forbidden}");
             return;
         }
 
@@ -170,17 +200,17 @@ struct USER_INFO_1003
         else
         {
             if (result == 2245)
-{
-    MessageBox.Show("A senha não atende à política do Windows.");
-}
-else if (result == 5)
-{
-    MessageBox.Show("Permissão negada. Execute como administrador.");
-}
-else
-{
-    MessageBox.Show($"Erro ao alterar senha. Código: {result}");
-}
+            {
+                MessageBox.Show("A senha não atende à política do Windows.");
+            }
+            else if (result == 5)
+            {
+                MessageBox.Show("Permissão negada. Execute como administrador.");
+            }
+            else
+            {
+                MessageBox.Show($"Erro ao alterar senha. Código: {result}");
+            }
         }
     }
 }

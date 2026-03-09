@@ -30,46 +30,47 @@
             <StackPanel>
 
                 <TextBlock
-                    Text="Definir nova senha"
-                    FontSize="24"
-                    FontWeight="SemiBold"
-                    Margin="0,0,0,25"
-                    TextAlignment="Center"/>
+    Text="Definir nova senha"
+    FontSize="24"
+    FontWeight="SemiBold"
+    Margin="0,0,0,25"
+    TextAlignment="Center"/>
 
-                <PasswordBox
-                    x:Name="txtSenha"
-                    Height="38"
-                    Margin="0,0,0,15"
-                    PasswordChanged="SenhaChanged"/>
+<TextBlock
+    Text="Digite a nova senha:"
+    FontSize="13"
+    Margin="0,0,0,5"/>
 
-                <PasswordBox
-                    x:Name="txtConfirmar"
-                    Height="38"
-                    Margin="0,0,0,25"
-                    PasswordChanged="SenhaChanged"/>
+<PasswordBox
+    x:Name="txtSenha"
+    Height="38"
+    Margin="0,0,0,15"
+    PasswordChanged="SenhaChanged"/>
 
+<TextBlock
+    Text="Confirmação da nova senha:"
+    FontSize="13"
+    Margin="0,0,0,5"/>
+
+<PasswordBox
+    x:Name="txtConfirmar"
+    Height="38"
+    Margin="0,0,0,25"
+    PasswordChanged="SenhaChanged"/>
                 <!-- REGRAS -->
-                <StackPanel Margin="0,0,0,20">
+<StackPanel Margin="0,0,0,20">
 
-<TextBlock
-    x:Name="ruleLength"
-    FontSize="13"/>
+<TextBlock x:Name="ruleLength" FontSize="13"/>
 
-<TextBlock
-    x:Name="ruleUpper"
-    FontSize="13"/>
+<TextBlock x:Name="ruleUpper" FontSize="13"/>
 
-<TextBlock
-    x:Name="ruleLower"
-    FontSize="13"/>
+<TextBlock x:Name="ruleLower" FontSize="13"/>
 
-<TextBlock
-    x:Name="ruleNumber"
-    FontSize="13"/>
+<TextBlock x:Name="ruleNumber" FontSize="13"/>
 
-<TextBlock
-    x:Name="ruleSpecial"
-    FontSize="13"/>
+<TextBlock x:Name="ruleSpecial" FontSize="13"/>
+
+<TextBlock x:Name="ruleBlacklist" FontSize="13"/>
 
 <TextBlock
     x:Name="ruleMatch"
@@ -77,7 +78,7 @@
     FontWeight="SemiBold"
     Margin="0,8,0,0"/>
 
-                </StackPanel>
+</StackPanel>
 
                 <Button
                     x:Name="btnSalvar"

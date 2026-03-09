@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using System;
 using System.IO;
 
 namespace CredentialProviderAPP.Config;
@@ -26,8 +27,20 @@ public static class AppConfig
             if (!string.IsNullOrWhiteSpace(configPath))
                 return configPath;
 
-            // fallback: banco ao lado do exe
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mfa.db");
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mfa");
+        }
+    }
+
+    public static string PasswordBlacklistPath
+    {
+        get
+        {
+            var configPath = Configuration["PasswordPolicy:BlacklistPath"];
+
+            if (!string.IsNullOrWhiteSpace(configPath))
+                return configPath;
+
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "palavrasproibidas.txt");
         }
     }
 }
