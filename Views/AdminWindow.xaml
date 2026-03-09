@@ -16,12 +16,6 @@
 
     <Window.Resources>
 
-        <!--
-            ══════════════════════════════════════
-            CORES / VARIÁVEIS
-            ══════════════════════════════════════
-        -->
-
         <SolidColorBrush x:Key="BgPage" Color="#F5F7FA" />
         <SolidColorBrush x:Key="BgSurface" Color="#FFFFFF" />
         <SolidColorBrush x:Key="BgNav" Color="#FFFFFF" />
@@ -48,16 +42,19 @@
 
         <!--
             ══════════════════════════════════════
-            TOGGLE SWITCH (Usuários AD / Locais)
+            TOGGLE SWITCH
             ══════════════════════════════════════
         -->
         <Style x:Key="ToggleSwitchStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
                         <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
 
-                            <!--  Track  -->
                             <Border
                                 x:Name="Track"
                                 Width="40"
@@ -65,33 +62,28 @@
                                 VerticalAlignment="Center"
                                 Background="#D1D5DB"
                                 CornerRadius="11">
-                                <Grid>
-                                    <!--  Thumb  -->
-                                    <Ellipse
-                                        x:Name="Thumb"
-                                        Width="16"
-                                        Height="16"
-                                        Margin="3,0,0,0"
-                                        HorizontalAlignment="Left"
-                                        VerticalAlignment="Center"
-                                        Fill="White">
-                                        <Ellipse.Effect>
-                                            <DropShadowEffect
-                                                BlurRadius="4"
-                                                Opacity="0.15"
-                                                ShadowDepth="1"
-                                                Color="#000000" />
-                                        </Ellipse.Effect>
-                                    </Ellipse>
-                                </Grid>
+                                <Ellipse
+                                    x:Name="Thumb"
+                                    Width="16"
+                                    Height="16"
+                                    Margin="3,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Fill="White">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect
+                                            BlurRadius="4"
+                                            Opacity="0.15"
+                                            ShadowDepth="1"
+                                            Color="#000000" />
+                                    </Ellipse.Effect>
+                                </Ellipse>
                             </Border>
 
-                            <!--  Label  -->
                             <ContentPresenter
                                 Margin="8,0,0,0"
                                 VerticalAlignment="Center"
                                 RecognizesAccessKey="True" />
-
                         </StackPanel>
 
                         <ControlTemplate.Triggers>
@@ -101,19 +93,14 @@
                                 <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0" />
                             </Trigger>
                         </ControlTemplate.Triggers>
-
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
-            <Setter Property="Cursor" Value="Hand" />
         </Style>
 
         <!--
             ══════════════════════════════════════
-            BOTÃO GHOST (Atualizar)
+            BOTÃO GHOST
             ══════════════════════════════════════
         -->
         <Style x:Key="BtnGhostStyle" TargetType="Button">
@@ -153,7 +140,7 @@
 
         <!--
             ══════════════════════════════════════
-            BOTÃO PRIMARY (Funções MFA)
+            BOTÃO PRIMARY
             ══════════════════════════════════════
         -->
         <Style x:Key="BtnPrimaryStyle" TargetType="Button">
@@ -274,7 +261,7 @@
 
         <!--
             ══════════════════════════════════════
-            TEXTBOX MODERNO (Search)
+            TEXTBOX / SEARCH
             ══════════════════════════════════════
         -->
         <Style x:Key="SearchBoxStyle" TargetType="TextBox">
@@ -300,7 +287,6 @@
                                     <ColumnDefinition Width="32" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <!--  Ícone lupa  -->
                                 <TextBlock
                                     Grid.Column="0"
                                     HorizontalAlignment="Center"
@@ -445,14 +431,11 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="16" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock
+                                <!--  Texto em maiúsculo definido diretamente no Header  -->
+                                <ContentPresenter
                                     Grid.Column="0"
                                     VerticalAlignment="Center"
-                                    FontFamily="Segoe UI"
-                                    FontSize="11"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextMuted}"
-                                    Text="{TemplateBinding Content}" />
+                                    Content="{TemplateBinding Content}" />
                                 <TextBlock
                                     x:Name="SortArrow"
                                     Grid.Column="1"
@@ -540,7 +523,7 @@
 
         <!--
             ══════════════════════════════════════
-            BOTÃO DE PAGINAÇÃO
+            BOTÃO PAGINAÇÃO
             ══════════════════════════════════════
         -->
         <Style x:Key="PagBtnStyle" TargetType="Button">
@@ -577,7 +560,6 @@
             </Setter>
         </Style>
 
-        <!--  Separador de menu  -->
         <Style TargetType="Separator">
             <Setter Property="Background" Value="{StaticResource BorderColor}" />
             <Setter Property="Height" Value="1" />
@@ -587,9 +569,9 @@
     </Window.Resources>
 
     <!--
-        ══════════════════════════════════════════════════════════
-        LAYOUT RAIZ — borda arredondada (AllowsTransparency=True)
-        ══════════════════════════════════════════════════════════
+        ══════════════════════════════════════════════
+        LAYOUT RAIZ
+        ══════════════════════════════════════════════
     -->
     <Border
         Background="{StaticResource BgPage}"
@@ -606,8 +588,6 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <!--  Barra de título customizada  -->
-                <RowDefinition Height="Auto" />
                 <!--  Nav  -->
                 <RowDefinition Height="*" />
                 <!--  Conteúdo  -->
@@ -617,29 +597,15 @@
 
             <!--
                 ══════════════════════════════════
-                BARRA DE TÍTULO CUSTOMIZADA
+                NAV BAR (também serve como título — drag)
                 ══════════════════════════════════
             -->
             <Border
                 Grid.Row="0"
-                Height="0"
-                Background="White"
-                BorderBrush="{StaticResource BorderColor}"
-                BorderThickness="0,0,0,0"
-                CornerRadius="12,12,0,0"
-                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" />
-            <!--  (altura 0 — a nav já age como título)  -->
-
-            <!--
-                ══════════════════════════════════
-                NAV BAR
-                ══════════════════════════════════
-            -->
-            <Border
-                Grid.Row="1"
                 Background="{StaticResource BgNav}"
                 BorderBrush="{StaticResource BorderColor}"
                 BorderThickness="0,0,0,1"
+                CornerRadius="12,12,0,0"
                 MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
 
                 <Grid Height="56" Margin="24,0">
@@ -698,7 +664,6 @@
                             VerticalAlignment="Center"
                             Header="Configurações"
                             Style="{StaticResource NavMenuItemStyle}" />
-
                     </StackPanel>
 
                     <!--  Avatar + Fechar  -->
@@ -707,10 +672,10 @@
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
 
-                        <!--  Avatar  -->
                         <Border
                             Width="34"
                             Height="34"
+                            Margin="0,0,8,0"
                             Background="{StaticResource TagBg}"
                             BorderBrush="{StaticResource BorderColor}"
                             BorderThickness="1"
@@ -723,11 +688,9 @@
                                 Text="👤" />
                         </Border>
 
-                        <!--  Botão fechar  -->
                         <Button
                             Width="28"
                             Height="28"
-                            Margin="4,0,0,0"
                             VerticalAlignment="Center"
                             Background="Transparent"
                             BorderThickness="0"
@@ -736,7 +699,6 @@
                             Cursor="Hand"
                             FontSize="12"
                             Foreground="{StaticResource TextMuted}" />
-
                     </StackPanel>
                 </Grid>
             </Border>
@@ -747,7 +709,7 @@
                 ══════════════════════════════════
             -->
             <ScrollViewer
-                Grid.Row="2"
+                Grid.Row="1"
                 HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
 
@@ -785,9 +747,13 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
 
                             <!--  Atualizar  -->
-                            <Button Click="Atualizar_Click" Style="{StaticResource BtnGhostStyle}">
+                            <Button
+                                Margin="0,0,10,0"
+                                Click="Atualizar_Click"
+                                Style="{StaticResource BtnGhostStyle}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock
+                                        Margin="0,0,6,0"
                                         VerticalAlignment="Center"
                                         FontSize="14"
                                         Text="↺" />
@@ -809,6 +775,7 @@
                                     <MenuItem.Header>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock
+                                                Margin="0,0,6,0"
                                                 VerticalAlignment="Center"
                                                 FontSize="13"
                                                 Text="🔒" />
@@ -856,7 +823,6 @@
                                                                     ShadowDepth="4" />
                                                             </Border.Effect>
                                                             <StackPanel>
-
                                                                 <MenuItem
                                                                     Click="AtivarMFASelecionados_Click"
                                                                     Header="Ativar MFA Selecionados"
@@ -865,9 +831,7 @@
                                                                     Click="AtivarMFATodos_Click"
                                                                     Header="Ativar MFA para TODOS não configurados"
                                                                     Style="{StaticResource SubMenuItemStyle}" />
-
                                                                 <Separator />
-
                                                                 <MenuItem
                                                                     Click="ResetarMFASelecionados_Click"
                                                                     Header="Resetar MFA Selecionados"
@@ -876,9 +840,7 @@
                                                                     Click="ResetarMFATodos_Click"
                                                                     Header="Resetar MFA para TODOS"
                                                                     Style="{StaticResource SubMenuItemStyle}" />
-
                                                                 <Separator />
-
                                                                 <MenuItem
                                                                     Click="RemoverMFASelecionados_Click"
                                                                     Header="Remover MFA Selecionados"
@@ -887,7 +849,6 @@
                                                                     Click="RemoverMFATodos_Click"
                                                                     Header="Remover MFA de TODOS"
                                                                     Style="{StaticResource SubMenuItemStyle}" />
-
                                                             </StackPanel>
                                                         </Border>
                                                     </Popup>
@@ -905,7 +866,6 @@
                                     </MenuItem.Template>
                                 </MenuItem>
                             </Menu>
-
                         </StackPanel>
                     </Grid>
 
@@ -936,11 +896,12 @@
                             <!--  Filtrar por  -->
                             <StackPanel Grid.Column="0" Width="150">
                                 <TextBlock
+                                    Margin="0,0,0,5"
                                     FontFamily="Segoe UI"
-                                    FontSize="11.5"
+                                    FontSize="11"
                                     FontWeight="SemiBold"
                                     Foreground="{StaticResource TextMuted}"
-                                    Text="Filtrar por" />
+                                    Text="FILTRAR POR" />
                                 <ComboBox
                                     x:Name="cmbFiltro"
                                     SelectedIndex="0"
@@ -953,11 +914,12 @@
                             <!--  Pesquisar  -->
                             <StackPanel Grid.Column="2">
                                 <TextBlock
+                                    Margin="0,0,0,5"
                                     FontFamily="Segoe UI"
-                                    FontSize="11.5"
+                                    FontSize="11"
                                     FontWeight="SemiBold"
                                     Foreground="{StaticResource TextMuted}"
-                                    Text="Pesquisar" />
+                                    Text="PESQUISAR" />
                                 <TextBox
                                     x:Name="txtPesquisa"
                                     Style="{StaticResource SearchBoxStyle}"
@@ -969,22 +931,20 @@
                                 Grid.Column="4"
                                 Margin="0,4,0,0"
                                 VerticalAlignment="Center">
-
                                 <CheckBox
                                     x:Name="chkUsuariosAD"
+                                    Margin="0,0,0,10"
                                     Checked="FiltroAlterado"
                                     Content="Usuários AD"
                                     IsChecked="True"
                                     Style="{StaticResource ToggleSwitchStyle}"
                                     Unchecked="FiltroAlterado" />
-
                                 <CheckBox
                                     x:Name="chkUsuariosLocais"
                                     Checked="FiltroAlterado"
                                     Content="Usuários Locais"
                                     Style="{StaticResource ToggleSwitchStyle}"
                                     Unchecked="FiltroAlterado" />
-
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -1005,6 +965,7 @@
 
                         <DataGrid
                             x:Name="dgUsuarios"
+                            Height="300"
                             Margin="20,8,20,0"
                             AlternationCount="2"
                             AutoGenerateColumns="False"
@@ -1025,10 +986,11 @@
 
                             <DataGrid.Columns>
 
+                                <!--  DATA DE CADASTRO  -->
                                 <DataGridTextColumn
-                                    Width="140"
+                                    Width="155"
                                     Binding="{Binding DataCadastro}"
-                                    Header="Data de Cadastro"
+                                    Header="DATA DE CADASTRO"
                                     SortMemberPath="DataCadastro">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
@@ -1040,10 +1002,10 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <!--  Tipo — chip/badge  -->
+                                <!--  TIPO — chip  -->
                                 <DataGridTemplateColumn
-                                    Width="100"
-                                    Header="Tipo"
+                                    Width="105"
+                                    Header="TIPO"
                                     SortMemberPath="Tipo">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
@@ -1064,10 +1026,11 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
+                                <!--  LOGIN  -->
                                 <DataGridTextColumn
                                     Width="160"
                                     Binding="{Binding Login}"
-                                    Header="Login"
+                                    Header="LOGIN"
                                     SortMemberPath="Login">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
@@ -1080,10 +1043,11 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
+                                <!--  NOME COMPLETO  -->
                                 <DataGridTextColumn
                                     Width="*"
                                     Binding="{Binding NomeCompleto}"
-                                    Header="Nome Completo"
+                                    Header="NOME COMPLETO"
                                     SortMemberPath="NomeCompleto">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
@@ -1103,21 +1067,11 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border
-                                                x:Name="MfaBadge"
                                                 Padding="10,4"
                                                 HorizontalAlignment="Left"
                                                 VerticalAlignment="Center"
-                                                Background="{StaticResource BadgeBg}"
-                                                BorderBrush="{StaticResource BadgeBorder}"
                                                 BorderThickness="1"
                                                 CornerRadius="6">
-                                                <TextBlock
-                                                    x:Name="MfaText"
-                                                    FontFamily="Segoe UI"
-                                                    FontSize="12"
-                                                    FontWeight="Medium"
-                                                    Foreground="{StaticResource BadgeText}"
-                                                    Text="{Binding MFAStatus}" />
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Background" Value="{StaticResource BadgeBg}" />
@@ -1134,6 +1088,25 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
+                                                <TextBlock
+                                                    FontFamily="Segoe UI"
+                                                    FontSize="12"
+                                                    FontWeight="Medium"
+                                                    Text="{Binding MFAStatus}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource BadgeText}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding MFAStatus}" Value="Ativo">
+                                                                    <Setter Property="Foreground" Value="{StaticResource BadgeGreenText}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding MFAStatus}" Value="Pendente">
+                                                                    <Setter Property="Foreground" Value="{StaticResource BadgeYellowText}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
                                             </Border>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
@@ -1150,7 +1123,6 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!--  Total  -->
                         <TextBlock
                             x:Name="lblTotal"
                             Grid.Column="0"
@@ -1159,19 +1131,21 @@
                             FontSize="13"
                             Foreground="{StaticResource TextSecondary}" />
 
-                        <!--  Controles de página  -->
                         <StackPanel
                             Grid.Column="1"
+                            HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Orientation="Horizontal">
 
                             <Button
                                 x:Name="btnAnterior"
+                                Margin="0,0,6,0"
                                 Click="PaginaAnterior_Click"
                                 Content="‹"
                                 Style="{StaticResource PagBtnStyle}" />
 
                             <Border
+                                Margin="0,0,6,0"
                                 Padding="12,0"
                                 Background="White"
                                 BorderBrush="{StaticResource BorderColor}"
@@ -1179,11 +1153,12 @@
                                 CornerRadius="6">
                                 <TextBlock
                                     x:Name="lblPagina"
-                                    Height="32"
+                                    HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     FontFamily="Segoe UI"
                                     FontSize="13"
-                                    Foreground="{StaticResource TextPrimary}" />
+                                    Foreground="{StaticResource TextPrimary}"
+                                    TextAlignment="Center" />
                             </Border>
 
                             <Button
@@ -1191,7 +1166,6 @@
                                 Click="ProximaPagina_Click"
                                 Content="›"
                                 Style="{StaticResource PagBtnStyle}" />
-
                         </StackPanel>
                     </Grid>
 
@@ -1204,7 +1178,7 @@
                 ══════════════════════════════════
             -->
             <Border
-                Grid.Row="3"
+                Grid.Row="2"
                 Padding="32,12"
                 BorderBrush="{StaticResource BorderColor}"
                 BorderThickness="0,1,0,0">
@@ -1213,7 +1187,7 @@
                     FontFamily="Segoe UI"
                     FontSize="11"
                     Foreground="{StaticResource TextMuted}"
-                    Text="© 2023 CredentialProvider System · Todos os direitos reservados." />
+                    Text="© 2026 Credential Provider System · Todos os direitos reservados." />
             </Border>
 
         </Grid>
