@@ -2,98 +2,385 @@
     x:Class="CredentialProviderAPP.Views.NovaSenhaWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-
     Title="Nova senha"
-    Width="420"
-    Height="520"
-
+    Width="680"
+    Height="780"
+    AllowsTransparency="True"
+    Background="#EEF0F4"
     ResizeMode="NoResize"
-    WindowStartupLocation="CenterScreen"
     ShowInTaskbar="False"
-    WindowStyle="SingleBorderWindow"
     Topmost="True"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None">
 
-    Background="#F5F7FA">
+    <Window.Resources>
 
-    <Grid>
+        <SolidColorBrush x:Key="BgPage" Color="#EEF0F4" />
+        <SolidColorBrush x:Key="BgCard" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="BorderColor" Color="#E8ECF0" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#1A1D23" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#6B7280" />
+        <SolidColorBrush x:Key="TextMuted" Color="#9CA3AF" />
+        <SolidColorBrush x:Key="AccentBlue" Color="#7B93D1" />
+        <SolidColorBrush x:Key="RuleNeutral" Color="#C4C9D4" />
+        <SolidColorBrush x:Key="RuleOk" Color="#22C55E" />
+        <SolidColorBrush x:Key="RuleFail" Color="#EF4444" />
 
+        <!--  ══ PASSWORDBOX MODERNO ══  -->
+        <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#1A1D23" />
+            <Setter Property="BorderBrush" Value="#E8ECF0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border
+                            x:Name="Brd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10">
+                            <ScrollViewer
+                                x:Name="PART_ContentHost"
+                                Margin="{TemplateBinding Padding}"
+                                VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Brd" Property="BorderBrush" Value="#7B93D1" />
+                                <Setter TargetName="Brd" Property="BorderThickness" Value="1.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--  ══ BOTÃO PRIMÁRIO ══  -->
+        <Style x:Key="BtnPrimary" TargetType="Button">
+            <Setter Property="Background" Value="#7B93D1" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="Brd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Brd" Property="Background" Value="#B8C4E0" />
+                                <Setter TargetName="Brd" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Brd" Property="Background" Value="#5F7DC4" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Brd" Property="Background" Value="#4A6AB5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </Window.Resources>
+
+    <!--  Fundo clicável para arrastar  -->
+    <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+
+        <!--  ══ FUNDO ══  -->
         <Border
-            Width="340"
-            Padding="30"
-            Background="White"
-            CornerRadius="8"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            BorderBrush="#D6D6D6"
-            BorderThickness="1">
-
-            <StackPanel>
-
-                <TextBlock
-    Text="Definir nova senha"
-    FontSize="24"
-    FontWeight="SemiBold"
-    Margin="0,0,0,25"
-    TextAlignment="Center"/>
-
-<TextBlock
-    Text="Digite a nova senha:"
-    FontSize="13"
-    Margin="0,0,0,5"/>
-
-<PasswordBox
-    x:Name="txtSenha"
-    Height="38"
-    Margin="0,0,0,15"
-    PasswordChanged="SenhaChanged"/>
-
-<TextBlock
-    Text="Confirmação da nova senha:"
-    FontSize="13"
-    Margin="0,0,0,5"/>
-
-<PasswordBox
-    x:Name="txtConfirmar"
-    Height="38"
-    Margin="0,0,0,25"
-    PasswordChanged="SenhaChanged"/>
-                <!-- REGRAS -->
-<StackPanel Margin="0,0,0,20">
-
-<TextBlock x:Name="ruleLength" FontSize="13"/>
-
-<TextBlock x:Name="ruleUpper" FontSize="13"/>
-
-<TextBlock x:Name="ruleLower" FontSize="13"/>
-
-<TextBlock x:Name="ruleNumber" FontSize="13"/>
-
-<TextBlock x:Name="ruleSpecial" FontSize="13"/>
-
-<TextBlock x:Name="ruleBlacklist" FontSize="13"/>
-
-<TextBlock
-    x:Name="ruleMatch"
-    FontSize="13"
-    FontWeight="SemiBold"
-    Margin="0,8,0,0"/>
-
-</StackPanel>
-
-                <Button
-                    x:Name="btnSalvar"
-                    Height="40"
-                    Background="#2D89EF"
-                    Foreground="White"
-                    BorderThickness="0"
-                    FontWeight="SemiBold"
-                    Click="Salvar_Click"
-                    Content="Alterar senha"/>
-
-            </StackPanel>
-
+            Background="{StaticResource BgPage}"
+            BorderBrush="{StaticResource BorderColor}"
+            BorderThickness="1"
+            CornerRadius="14">
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="32"
+                    Opacity="0.10"
+                    ShadowDepth="8" />
+            </Border.Effect>
         </Border>
 
-    </Grid>
+        <!--  ══ CONTEÚDO CENTRAL ══  -->
+        <Grid VerticalAlignment="Center">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <!--  Logo/título da app  -->
+                <RowDefinition Height="32" />
+                <RowDefinition Height="Auto" />
+                <!--  Card  -->
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
+                <!--  Rodapé  -->
+            </Grid.RowDefinitions>
 
+            <!--  ── LOGO DA APP ──  -->
+            <StackPanel Grid.Row="0" HorizontalAlignment="Center">
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontFamily="Segoe UI"
+                    FontSize="22"
+                    FontWeight="Bold"
+                    Foreground="{StaticResource TextPrimary}"
+                    Text="CredentialProviderAPP" />
+                <TextBlock
+                    Margin="0,4,0,0"
+                    HorizontalAlignment="Center"
+                    FontFamily="Segoe UI"
+                    FontSize="13"
+                    Foreground="{StaticResource TextMuted}"
+                    Text="Sistema de Gestão de Credenciais" />
+            </StackPanel>
+
+            <!--  ── CARD ──  -->
+            <Border
+                Grid.Row="2"
+                Width="400"
+                Padding="36,32"
+                HorizontalAlignment="Center"
+                Background="{StaticResource BgCard}"
+                BorderBrush="{StaticResource BorderColor}"
+                BorderThickness="1"
+                CornerRadius="14">
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="20"
+                        Opacity="0.07"
+                        ShadowDepth="2" />
+                </Border.Effect>
+
+                <StackPanel>
+
+                    <!--  Título do card  -->
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI"
+                        FontSize="20"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimary}"
+                        Text="Definir nova senha" />
+
+                    <TextBlock
+                        Margin="0,0,0,26"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI"
+                        FontSize="13"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Crie uma senha forte para proteger sua conta."
+                        TextAlignment="Center" />
+
+                    <!--  Campo senha  -->
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontFamily="Segoe UI"
+                        FontSize="13"
+                        FontWeight="Medium"
+                        Foreground="{StaticResource TextSecondary}"
+                        Text="Digite a nova senha:" />
+                    <PasswordBox
+                        x:Name="txtSenha"
+                        Margin="0,0,0,18"
+                        PasswordChanged="SenhaChanged"
+                        Style="{StaticResource ModernPasswordBox}" />
+
+                    <!--  Campo confirmar  -->
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontFamily="Segoe UI"
+                        FontSize="13"
+                        FontWeight="Medium"
+                        Foreground="{StaticResource TextSecondary}"
+                        Text="Confirmação da nova senha:" />
+                    <PasswordBox
+                        x:Name="txtConfirmar"
+                        Margin="0,0,0,24"
+                        PasswordChanged="SenhaChanged"
+                        Style="{StaticResource ModernPasswordBox}" />
+
+                    <!--  ── REQUISITOS ──  -->
+                    <Border
+                        Margin="0,0,0,22"
+                        Padding="16,14"
+                        Background="#F8FAFC"
+                        BorderBrush="{StaticResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                        <StackPanel>
+
+                            <TextBlock
+                                Margin="0,0,0,10"
+                                FontFamily="Segoe UI"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="REQUISITOS DA SENHA" />
+
+                            <!--  ruleLength  -->
+                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                <Ellipse
+                                    x:Name="dotLength"
+                                    Width="16"
+                                    Height="16"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Fill="{StaticResource RuleNeutral}" />
+                                <TextBlock
+                                    x:Name="ruleLength"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}" />
+                            </StackPanel>
+
+                            <!--  ruleUpper  -->
+                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                <Ellipse
+                                    x:Name="dotUpper"
+                                    Width="16"
+                                    Height="16"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Fill="{StaticResource RuleNeutral}" />
+                                <TextBlock
+                                    x:Name="ruleUpper"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}" />
+                            </StackPanel>
+
+                            <!--  ruleLower  -->
+                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                <Ellipse
+                                    x:Name="dotLower"
+                                    Width="16"
+                                    Height="16"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Fill="{StaticResource RuleNeutral}" />
+                                <TextBlock
+                                    x:Name="ruleLower"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}" />
+                            </StackPanel>
+
+                            <!--  ruleNumber  -->
+                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                <Ellipse
+                                    x:Name="dotNumber"
+                                    Width="16"
+                                    Height="16"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Fill="{StaticResource RuleNeutral}" />
+                                <TextBlock
+                                    x:Name="ruleNumber"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}" />
+                            </StackPanel>
+
+                            <!--  ruleSpecial  -->
+                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                <Ellipse
+                                    x:Name="dotSpecial"
+                                    Width="16"
+                                    Height="16"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Fill="{StaticResource RuleNeutral}" />
+                                <TextBlock
+                                    x:Name="ruleSpecial"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}" />
+                            </StackPanel>
+
+                            <!--  ruleBlacklist  -->
+                            <StackPanel
+                                x:Name="panelBlacklist"
+                                Margin="0,0,0,6"
+                                Orientation="Horizontal"
+                                Visibility="Collapsed">
+                                <Ellipse
+                                    x:Name="dotBlacklist"
+                                    Width="16"
+                                    Height="16"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Fill="{StaticResource RuleNeutral}" />
+                                <TextBlock
+                                    x:Name="ruleBlacklist"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}" />
+                            </StackPanel>
+
+                            <!--  ruleMatch  -->
+                            <StackPanel
+                                x:Name="panelMatch"
+                                Orientation="Horizontal"
+                                Visibility="Collapsed">
+                                <Ellipse
+                                    x:Name="dotMatch"
+                                    Width="16"
+                                    Height="16"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Fill="{StaticResource RuleNeutral}" />
+                                <TextBlock
+                                    x:Name="ruleMatch"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    FontWeight="Medium"
+                                    Foreground="{StaticResource TextSecondary}" />
+                            </StackPanel>
+
+                        </StackPanel>
+                    </Border>
+
+                    <!--  Botão salvar  -->
+                    <Button
+                        x:Name="btnSalvar"
+                        Click="Salvar_Click"
+                        Content="Alterar senha"
+                        Style="{StaticResource BtnPrimary}" />
+
+                </StackPanel>
+            </Border>
+
+            <!--  ── RODAPÉ ──  -->
+            <TextBlock
+                Grid.Row="4"
+                HorizontalAlignment="Center"
+                FontFamily="Segoe UI"
+                FontSize="11"
+                Foreground="{StaticResource TextMuted}"
+                Text="© 2023 CredentialProvider System - Todos os direitos reservados." />
+        </Grid>
+
+    </Grid>
 </Window>
