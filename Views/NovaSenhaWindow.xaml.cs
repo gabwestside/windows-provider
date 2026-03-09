@@ -94,7 +94,7 @@ public partial class NovaSenhaWindow : Window
             if (blacklistOK)
                 SetRule(ruleBlacklist, true, "Não contém palavras proibidas");
             else
-                SetRule(ruleBlacklist, false, $"Contém palavra proibida: {forbiddenWord}");
+                SetRule(ruleBlacklist, false, $"Palavra não pode ser usada: {forbiddenWord}");
         }
         else
         {

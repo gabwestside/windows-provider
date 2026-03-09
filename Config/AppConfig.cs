@@ -27,7 +27,18 @@ public static class AppConfig
             if (!string.IsNullOrWhiteSpace(configPath))
                 return configPath;
 
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mfa");
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+
+            var db1 = Path.Combine(baseDir, "mfa.db");
+            var db2 = Path.Combine(baseDir, "mfa");
+
+            if (File.Exists(db1))
+                return db1;
+
+            if (File.Exists(db2))
+                return db2;
+
+            throw new Exception("Banco de dados MFA não encontrado.");
         }
     }
 
