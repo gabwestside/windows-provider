@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CredentialProviderAPP.Config;
+using CredentialProviderAPP.Data;
+using CredentialProviderAPP.Models;
+using System.DirectoryServices;
 using System.DirectoryServices.AccountManagement;
 using System.DirectoryServices.ActiveDirectory;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using CredentialProviderAPP.Models;
-using System.Linq;
-using Microsoft.Data.Sqlite;
-using System.IO;
-using System.DirectoryServices;
-using CredentialProviderAPP.Data;
-using CredentialProviderAPP.Config;
+using System.Windows.Input;
 
 namespace CredentialProviderAPP.Views
 {
@@ -38,6 +33,19 @@ namespace CredentialProviderAPP.Views
         {
             InitializeComponent();
             this.Loaded += AdminWindow_Loaded;
+        }
+
+        // ── NOVO: permite arrastar a janela pela NavBar (WindowStyle="None") ──
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ButtonState == MouseButtonState.Pressed)
+                this.DragMove();
+        }
+
+        // ── NOVO: botão ✕ no canto da NavBar ──
+        private void BtnFechar_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
         }
 
         private async void AdminWindow_Loaded(object sender, RoutedEventArgs e)
@@ -414,6 +422,7 @@ namespace CredentialProviderAPP.Views
                     MessageBox.Show("Exclusão simulada.");
             }
         }
+
         private string ObterStatusMFA(string login)
         {
             if (string.IsNullOrWhiteSpace(login))
@@ -481,19 +490,19 @@ namespace CredentialProviderAPP.Views
 
                     var cmd = conn.CreateCommand();
                     cmd.CommandText = @"
-INSERT INTO users (username, mfaenabled, configured, createdat)
-SELECT username, 1, 0, datetime('now')
-FROM (
-    SELECT @username AS username
-)
-WHERE NOT EXISTS (
-    SELECT 1 FROM users WHERE LOWER(username) = LOWER(@username)
-);
+                        INSERT INTO users (username, mfaenabled, configured, createdat)
+                        SELECT username, 1, 0, datetime('now')
+                        FROM (
+                            SELECT @username AS username
+                        )
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM users WHERE LOWER(username) = LOWER(@username)
+                        );
 
-UPDATE users
-SET mfaenabled = 1
-WHERE LOWER(username) = LOWER(@username);
-";
+                        UPDATE users
+                        SET mfaenabled = 1
+                        WHERE LOWER(username) = LOWER(@username);
+                        ";
 
                     cmd.Parameters.AddWithValue("@username", login);
                     cmd.ExecuteNonQuery();
@@ -530,10 +539,10 @@ WHERE LOWER(username) = LOWER(@username);
 
                     var cmd = conn.CreateCommand();
                     cmd.CommandText = @"
-INSERT INTO users (username, mfaenabled, configured, createdat)
-VALUES (@username, 1, 0, datetime('now'))
-ON CONFLICT(username)
-DO UPDATE SET mfaenabled = 1";
+                        INSERT INTO users (username, mfaenabled, configured, createdat)
+                        VALUES (@username, 1, 0, datetime('now'))
+                        ON CONFLICT(username)
+                        DO UPDATE SET mfaenabled = 1";
 
                     cmd.Parameters.AddWithValue("@username", login);
                     cmd.ExecuteNonQuery();
@@ -546,6 +555,7 @@ DO UPDATE SET mfaenabled = 1";
                 MessageBox.Show("Erro ao provisionar MFA: " + ex.Message);
             }
         }
+
         private void AtivarMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var usuarios = dgUsuarios.SelectedItems
@@ -681,11 +691,11 @@ DO UPDATE SET mfaenabled = 1";
 
                     var cmd = conn.CreateCommand();
                     cmd.CommandText = @"
-UPDATE users
-SET configured = 0,
-    totpsecret = NULL,
-    mfaenabled = 1
-WHERE LOWER(username) = LOWER(@username)";
+                        UPDATE users
+                        SET configured = 0,
+                            totpsecret = NULL,
+                            mfaenabled = 1
+                        WHERE LOWER(username) = LOWER(@username)";
 
                     cmd.Parameters.AddWithValue("@username", login);
                     cmd.ExecuteNonQuery();
@@ -786,6 +796,7 @@ WHERE LOWER(username) = LOWER(@username)";
             _usuariosMFA = CarregarMFA();
             AtualizarGrid();
         }
+
         private void RemoverMFA(List<UsuarioViewModel> usuarios)
         {
             try
@@ -804,12 +815,12 @@ WHERE LOWER(username) = LOWER(@username)";
 
                     var cmd = conn.CreateCommand();
                     cmd.CommandText = @"
-UPDATE users
-SET 
-    mfaenabled = 0,
-    configured = 0,
-    totpsecret = NULL
-WHERE LOWER(username) = LOWER(@username)";
+                        UPDATE users
+                        SET 
+                            mfaenabled = 0,
+                            configured = 0,
+                            totpsecret = NULL
+                        WHERE LOWER(username) = LOWER(@username)";
 
                     cmd.Parameters.AddWithValue("@username", login);
                     cmd.ExecuteNonQuery();
