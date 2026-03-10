@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Microsoft.Data.Sqlite;
 
 namespace CredentialProviderAPP.Views;
 
@@ -118,6 +119,40 @@ public partial class NovaSenhaWindow : Window
         btnSalvar.IsEnabled = allValid;
     }
 
+    void EnableMFA()
+    {
+        try
+        {
+            string dbPath =
+                System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(
+                        System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName
+                    ),
+                    "mfa.db"
+                );
+
+            using var conn = new SqliteConnection($"Data Source={dbPath}");
+            conn.Open();
+
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+            UPDATE users
+            SET mfaenabled  = 1,
+                configured   = 0,
+                totpsecret   = NULL
+            WHERE lower(username) = lower($user)
+              AND configured = 0
+        ";
+
+            cmd.Parameters.AddWithValue("$user", login);
+            cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Erro ao atualizar MFA: " + ex.Message);
+        }
+    }
+
     void SetRule(TextBlock rule, bool ok, string text)
     {
         rule.Text = (ok ? "✔ " : "✖ ") + text;
@@ -194,7 +229,10 @@ public partial class NovaSenhaWindow : Window
 
         if (result == 0)
         {
+            EnableMFA();
+
             MessageBox.Show("Senha alterada com sucesso!");
+
             Application.Current.Shutdown();
         }
         else

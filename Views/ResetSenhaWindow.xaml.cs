@@ -16,11 +16,33 @@ public partial class ResetSenhaWindow : Window
     {
         InitializeComponent();
         txtLogin.Text = login;
+
+        // ✅ Checa MFA antes de mostrar a janela
+        var user = Database.GetUser(login);
+        var (mfaenabled, configured, secret) = user;
+
+        if (!configured || string.IsNullOrEmpty(secret))
+        {
+            autenticado = true;
+
+            Loaded += (s, e) =>
+            {
+                Hide();
+
+                NovaSenhaWindow win = new NovaSenhaWindow(login);
+                win.Topmost = true;
+                win.ShowDialog();
+
+                Close();
+            };
+        }
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        txtCode.Focus();
+        // só foca o campo se a janela realmente vai ser usada
+        if (!autenticado)
+            txtCode.Focus();
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
@@ -43,24 +65,30 @@ public partial class ResetSenhaWindow : Window
         string login = txtLogin.Text.Trim();
         string code = txtCode.Text.Trim();
 
+        var user = Database.GetUser(login);
+        var (mfaenabled, configured, secret) = user;
+
+        // ✅ Sem MFA configurado → vai direto para nova senha sem validar TOTP
+        if (!configured || string.IsNullOrEmpty(secret))
+        {
+            autenticado = true;
+            Hide();
+
+            NovaSenhaWindow win = new NovaSenhaWindow(login);
+            win.Topmost = true;
+            win.ShowDialog();
+
+            Close();
+            return;
+        }
+
+        // ✅ Com MFA configurado → exige código antes
         if (code.Length != 6)
         {
             mostrandoDialog = true;
             MessageBox.Show("Digite o código de 6 dígitos.");
             mostrandoDialog = false;
-
             txtCode.Focus();
-            return;
-        }
-
-        var user = Database.GetUser(login);
-        var (mfaenabled, configured, secret) = user;
-
-        if (!configured || secret == null)
-        {
-            mostrandoDialog = true;
-            MessageBox.Show("Usuário não configurado para MFA.");
-            mostrandoDialog = false;
             return;
         }
 
@@ -78,24 +106,19 @@ public partial class ResetSenhaWindow : Window
             mostrandoDialog = true;
             MessageBox.Show("Código inválido.");
             mostrandoDialog = false;
-
             txtCode.Clear();
             txtCode.Focus();
             return;
         }
 
-        // MFA OK
+        // ✅ MFA validado → abre nova senha
         autenticado = true;
-
-        // esconder janela MFA
         Hide();
 
-        // abrir nova senha
-        NovaSenhaWindow win = new NovaSenhaWindow(login);
-        win.Topmost = true;
-        win.ShowDialog();
+        NovaSenhaWindow novaSenha = new NovaSenhaWindow(login);
+        novaSenha.Topmost = true;
+        novaSenha.ShowDialog();
 
-        // fechar MFA depois
         Close();
     }
 
