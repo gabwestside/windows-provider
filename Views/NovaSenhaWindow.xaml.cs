@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -12,19 +13,20 @@ public partial class NovaSenhaWindow : Window
 {
     private string login;
 
-    int minLength;
-    int minSpecial;
-    string allowedChars;
-    bool needUpper;
-    bool needLower;
-    bool needNumber;
+    private int minLength;
+    private int minSpecial;
+    private string allowedChars;
+    private bool needUpper;
+    private bool needLower;
+    private bool needNumber;
 
     // Cores dos indicadores
     private static readonly SolidColorBrush _neutral = new(Color.FromRgb(0xC4, 0xC9, 0xD4)); // cinza
+
     private static readonly SolidColorBrush _ok = new(Color.FromRgb(0x22, 0xC5, 0x5E)); // verde
     private static readonly SolidColorBrush _fail = new(Color.FromRgb(0xEF, 0x44, 0x44)); // vermelho
 
-    string policyPath =
+    private string policyPath =
         System.IO.Path.Combine(
             System.IO.Path.GetDirectoryName(
                 System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName
@@ -50,7 +52,7 @@ public partial class NovaSenhaWindow : Window
             this.DragMove();
     }
 
-    void LoadPolicy()
+    private void LoadPolicy()
     {
         if (!File.Exists(policyPath))
         {
@@ -69,12 +71,12 @@ public partial class NovaSenhaWindow : Window
         needNumber = bool.Parse(lines[5]);
     }
 
-    void SenhaChanged(object sender, RoutedEventArgs e)
+    private void SenhaChanged(object sender, RoutedEventArgs e)
     {
         UpdateRules(txtSenha.Password);
     }
 
-    void UpdateRules(string senha)
+    private void UpdateRules(string senha)
     {
         bool lengthOK = senha.Length >= minLength;
         bool upperOK = !needUpper || senha.Any(char.IsUpper);
@@ -140,11 +142,45 @@ public partial class NovaSenhaWindow : Window
         btnSalvar.IsEnabled = allValid;
     }
 
+    private void EnableMFA()
+    {
+        try
+        {
+            string dbPath =
+                System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(
+                        System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName
+                    ),
+                    "mfa.db"
+                );
+
+            using var conn = new SqliteConnection($"Data Source={dbPath}");
+            conn.Open();
+
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                UPDATE users
+                SET mfaenabled  = 1,
+                    configured   = 0,
+                    totpsecret   = NULL
+                WHERE lower(username) = lower($user)
+                  AND configured = 0
+            ";
+
+            cmd.Parameters.AddWithValue("$user", login);
+            cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Erro ao atualizar MFA: " + ex.Message);
+        }
+    }
+
     /// <summary>
     /// Define o estado visual de um indicador (dot + label).
     /// Se <paramref name="active"/> for false, mantém o dot neutro (cinza).
     /// </summary>
-    void SetRule(Ellipse dot, TextBlock label, bool ok, string text, bool active)
+    private void SetRule(Ellipse dot, TextBlock label, bool ok, string text, bool active)
     {
         label.Text = text;
 
@@ -165,7 +201,7 @@ public partial class NovaSenhaWindow : Window
         }
     }
 
-    bool ValidatePassword(string senha)
+    private bool ValidatePassword(string senha)
     {
         if (senha.Length < minLength)
             return false;
@@ -186,7 +222,7 @@ public partial class NovaSenhaWindow : Window
     }
 
     [DllImport("Netapi32.dll", CharSet = CharSet.Unicode)]
-    static extern int NetUserSetInfo(
+    private static extern int NetUserSetInfo(
         string servername,
         string username,
         int level,
@@ -195,7 +231,7 @@ public partial class NovaSenhaWindow : Window
     );
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    struct USER_INFO_1003
+    private struct USER_INFO_1003
     {
         public string usri1003_password;
     }
@@ -233,7 +269,10 @@ public partial class NovaSenhaWindow : Window
 
         if (result == 0)
         {
+            EnableMFA();
+
             MessageBox.Show("Senha alterada com sucesso!");
+
             Application.Current.Shutdown();
         }
         else

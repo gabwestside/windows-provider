@@ -39,7 +39,19 @@ public partial class MainWindow : Window
         txtUser.IsReadOnly = true;
         btnBuscar.Visibility = Visibility.Collapsed;
 
-        if (!user.configured && user.mfaenabled)
+        //
+        // 🚨 MFA DESATIVADO → NÃO FAZ NADA
+        //
+        if (!user.mfaenabled)
+        {
+            Environment.Exit(0);
+            return;
+        }
+
+        //
+        // 🔐 MFA habilitado mas NÃO configurado → gerar QR
+        //
+        if (user.mfaenabled && !user.configured)
         {
             lblMensagem.Text =
 $@"Bem-vindo {login}
@@ -52,11 +64,15 @@ a autenticação em dois fatores.";
             return;
         }
 
-        if (user.configured && !string.IsNullOrEmpty(user.secret))
+        //
+        // 🔐 MFA habilitado e configurado → validar código
+        //
+        if (user.mfaenabled && user.configured && !string.IsNullOrEmpty(user.secret))
         {
             VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
             win.ShowDialog();
-            Environment.Exit(1);
+            Environment.Exit(0);
+            return;
         }
 
         Environment.Exit(1);
@@ -77,13 +93,28 @@ a autenticação em dois fatores.";
         txtUser.IsReadOnly = true;
         btnBuscar.Visibility = Visibility.Collapsed;
 
-        if (user.configured && !string.IsNullOrEmpty(user.secret))
+        //
+        // MFA DESATIVADO
+        //
+        if (!user.mfaenabled)
+        {
+            Environment.Exit(0);
+            return;
+        }
+
+        //
+        // MFA CONFIGURADO
+        //
+        if (user.mfaenabled && user.configured && !string.IsNullOrEmpty(user.secret))
         {
             VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
             win.ShowDialog();
             return;
         }
 
+        //
+        // MFA NÃO CONFIGURADO
+        //
         lblMensagem.Text =
 $@"Bem-vindo {username}
 
