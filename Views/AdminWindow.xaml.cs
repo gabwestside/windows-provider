@@ -31,6 +31,16 @@ namespace CredentialProviderAPP.Views
             this.Loaded += AdminWindow_Loaded;
         }
 
+        private void MostrarLoading()
+        {
+            LoadingOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void OcultarLoading()
+        {
+            LoadingOverlay.Visibility = Visibility.Collapsed;
+        }
+
         // ── Arrastar janela ──
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -162,16 +172,18 @@ namespace CredentialProviderAPP.Views
         private List<UsuarioViewModel> BuscarUsuariosAD(string filtro)
         {
             var usuarios = new List<UsuarioViewModel>();
+
             try
             {
-                using var entry = new DirectoryEntry("LDAP://RootDSE");
-                string domain = entry.Properties["defaultNamingContext"].Value.ToString();
-                using var root = new DirectoryEntry($"LDAP://{domain}");
+                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+
+                using var root = new DirectoryEntry(ldap);
                 using var search = new DirectorySearcher(root)
                 {
                     Filter = "(&(objectCategory=person)(objectClass=user))",
                     PageSize = 1000
                 };
+
                 search.PropertiesToLoad.Add("samAccountName");
                 search.PropertiesToLoad.Add("displayName");
                 search.PropertiesToLoad.Add("lastLogonTimestamp");
@@ -179,15 +191,20 @@ namespace CredentialProviderAPP.Views
                 foreach (SearchResult r in search.FindAll())
                 {
                     string login = r.Properties["samAccountname"].Count > 0
-                        ? r.Properties["samAccountname"][0].ToString() : "";
+                        ? r.Properties["samAccountname"][0].ToString()
+                        : "";
+
                     string nome = r.Properties["displayname"].Count > 0
-                        ? r.Properties["displayname"][0].ToString() : login;
+                        ? r.Properties["displayname"][0].ToString()
+                        : login;
+
                     string data = "-";
 
-                    if (r.Properties["lastLogontimestamp"].Count > 0)
+                    if (r.Properties["lastlogontimestamp"].Count > 0)
                     {
                         long ticks = (long)r.Properties["lastlogontimestamp"][0];
-                        data = DateTime.FromFileTimeUtc(ticks).ToString("dd/MM/yyyy HH:mm");
+                        data = DateTime.FromFileTimeUtc(ticks)
+                            .ToString("dd/MM/yyyy HH:mm");
                     }
 
                     if (!string.IsNullOrWhiteSpace(filtro) &&
@@ -204,7 +221,11 @@ namespace CredentialProviderAPP.Views
                     });
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao consultar Active Directory:\n" + ex.Message);
+            }
+
             return usuarios;
         }
 
@@ -541,70 +562,77 @@ namespace CredentialProviderAPP.Views
 
         // ══════════════════════════════════════════════════════════════
         //  TROCAR SENHA NO PRÓXIMO LOGIN (AD — pwdLastSet = 0)
-        // ══════════════════════════════════════════════════════════════
+
         private void ForcarTrocaSenha(List<UsuarioViewModel> usuarios)
         {
             int ok = 0, fail = 0;
-            try
-            {
-                using var rootEntry = new DirectoryEntry("LDAP://RootDSE");
-                string domain = rootEntry.Properties["defaultNamingContext"].Value.ToString();
 
-                foreach (var user in usuarios)
+            foreach (var user in usuarios)
+            {
+                try
                 {
+                    // ───────────── LOCAL ─────────────
                     if (user.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) == true)
-                        continue;
-                    try
                     {
-                        using var searcher = new DirectorySearcher(
-                            new DirectoryEntry($"LDAP://{domain}"))
-                        { Filter = $"(&(objectClass=user)(samAccountName={user.Login}))" };
+                        using var ctx = new PrincipalContext(ContextType.Machine);
+                        var u = UserPrincipal.FindByIdentity(ctx, user.Login);
+
+                        if (u == null)
+                        {
+                            fail++;
+                            continue;
+                        }
+
+                        u.ExpirePasswordNow();
+                        u.Save();
+
+                        ok++;
+                    }
+                    else
+                    {
+                        // ───────────── AD ─────────────
+                        string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+
+                        using var searcher = new DirectorySearcher(new DirectoryEntry(ldap))
+                        {
+                            Filter = $"(&(objectClass=user)(samAccountName={user.Login}))"
+                        };
 
                         searcher.PropertiesToLoad.Add("distinguishedName");
+
                         var result = searcher.FindOne();
-                        if (result == null) { fail++; continue; }
+
+                        if (result == null)
+                        {
+                            fail++;
+                            continue;
+                        }
 
                         using var entry = result.GetDirectoryEntry();
                         entry.Properties["pwdLastSet"].Value = 0;
                         entry.CommitChanges();
+
                         ok++;
                     }
-                    catch { fail++; }
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Erro ao acessar o Active Directory:\n" + ex.Message);
-                return;
+                catch
+                {
+                    fail++;
+                }
             }
 
             string msg = $"✅ {ok} usuário(s) marcados para trocar senha no próximo login.";
+
             if (fail > 0)
                 msg += $"\n⚠️ {fail} usuário(s) não puderam ser processados.";
 
-            MessageBox.Show(msg, "Trocar Senha no Próximo Login",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(msg,
+                "Trocar Senha no Próximo Login",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
-        private void TrocarSenhaProximoLoginSelecionados_Click(object sender, RoutedEventArgs e)
-        {
-            var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
-            if (!sel.Any())
-            {
-                MessageBox.Show("Selecione pelo menos um usuário.", "Atenção",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (MessageBox.Show(
-                $"Forçar troca de senha no próximo login para {sel.Count} usuário(s)?",
-                "Confirmar", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-                return;
-
-            ForcarTrocaSenha(sel);
-        }
-
-        private void TrocarSenhaProximoLoginTodos_Click(object sender, RoutedEventArgs e)
+        private async void TrocarSenhaProximoLoginTodos_Click(object sender, RoutedEventArgs e)
         {
             var adUsers = _usuariosAD.Where(u =>
                 !u.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) ?? false).ToList();
@@ -618,10 +646,19 @@ namespace CredentialProviderAPP.Views
 
             if (MessageBox.Show(
                 $"Forçar troca de senha no próximo login para TODOS os {adUsers.Count} usuários de domínio?",
-                "Confirmar", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                "Confirmar",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 return;
 
-            ForcarTrocaSenha(adUsers);
+            MostrarLoading();
+
+            await Task.Run(() =>
+            {
+                ForcarTrocaSenha(adUsers);
+            });
+
+            OcultarLoading();
         }
 
         // ══════════════════════════════════════════════════════════════
@@ -642,6 +679,38 @@ namespace CredentialProviderAPP.Views
         {
             login = Database.Normalize(login);
             return login.Contains('\\') ? login.Split('\\')[1] : login;
+        }
+        private async void TrocarSenhaProximoLoginSelecionados_Click(object sender, RoutedEventArgs e)
+        {
+            var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
+
+            if (!sel.Any())
+            {
+                MessageBox.Show("Selecione pelo menos um usuário.", "Atenção",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (MessageBox.Show(
+                $"Forçar troca de senha no próximo login para {sel.Count} usuário(s)?",
+                "Confirmar",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            MostrarLoading();
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    ForcarTrocaSenha(sel);
+                });
+            }
+            finally
+            {
+                OcultarLoading();
+            }
         }
     }
 }

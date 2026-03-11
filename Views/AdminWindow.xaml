@@ -1170,6 +1170,40 @@
                     Foreground="{StaticResource TextMuted}"
                     Text="© 2026 Credential Provider System · Todos os direitos reservados." />
             </Border>
+            <!-- ═════════ LOADING OVERLAY ═════════ -->
+<Grid x:Name="LoadingOverlay"
+      Background="#80000000"
+      Visibility="Collapsed"
+      Grid.RowSpan="3"
+      Panel.ZIndex="999">
+
+    <Border Width="260"
+            Height="140"
+            Background="White"
+            CornerRadius="12"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+
+        <StackPanel VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+
+            <TextBlock
+                Text="Processando..."
+                FontSize="15"
+                FontWeight="SemiBold"
+                Margin="0,15,0,10"
+                HorizontalAlignment="Center"/>
+
+            <ProgressBar
+                Width="180"
+                Height="16"
+                IsIndeterminate="True"/>
+
+        </StackPanel>
+
+    </Border>
+
+</Grid>
         </Grid>
     </Border>
 
