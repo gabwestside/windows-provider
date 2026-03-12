@@ -28,9 +28,9 @@ public static class Database
 
         var cmd = conn.CreateCommand();
         cmd.CommandText =
-        @"SELECT mfaenabled, configured, totpsecret
-          FROM users
-          WHERE lower(username) = lower($user)";
+            @"SELECT mfaenabled, configured, totpsecret
+            FROM users
+            WHERE lower(username) = lower($user)";
 
         cmd.Parameters.AddWithValue("$user", username);
 
@@ -70,7 +70,7 @@ public static class Database
 
         if (rows == 0)
         {
-            throw new Exception("Usuário não encontrado ao salvar MFA.");
+            throw new Exception("Usu�rio n�o encontrado ao salvar MFA.");
         }
     }
 
@@ -84,6 +84,6 @@ public static class Database
         if (user.Contains("@"))
             user = user.Split('@')[0];
 
-        return user; // NÃO altera maiúsculo/minúsculo
+        return user; // N�O altera mai�sculo/min�sculo
     }
 }
