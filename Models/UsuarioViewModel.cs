@@ -1,12 +1,12 @@
 namespace CredentialProviderAPP.Models
 {
-    public class UsuarioViewModel
+    public partial class UsuarioViewModel
     {
-        public string Tipo { get; set; }
-        public string NomeCompleto { get; set; }
-        public string Login { get; set; }
-        public string DataCadastro { get; set; }
-
-        public string MFAStatus { get; set; }  // ‚Üê ADICIONAR
+        public string Login { get; set; } = "";
+        public string NomeCompleto { get; set; } = "";
+        public string Tipo { get; set; } = "";
+        public string DataCadastro { get; set; } = "";
+        public string MFAStatus { get; set; } = "N„o configurado";
+        public string Email { get; set; } = "";
     }
 }

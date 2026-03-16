@@ -16,14 +16,16 @@ namespace CredentialProviderAPP.Views
     /// Gera senha aleatória respeitando a política, exibe validador em tempo real,
     /// e envia e-mail ao(s) usuário(s) ao confirmar.
     /// </summary>
-    public partial class ConfirmarSenhaView : Window
+    public partial class TrocarSenhaWindow : Window
     {
         // ── resultado público ─────────────────────────────────────────
         public bool Confirmado { get; private set; } = false;
+
         public string SenhaGerada { get; private set; } = "";
 
         // ── política carregada ────────────────────────────────────────
         private int _minLength = 8;
+
         private int _minEspeciais = 1;
         private string _especiaisPermitidos = "!@#$%&*";
         private bool _exigirMaiuscula = true;
@@ -32,6 +34,7 @@ namespace CredentialProviderAPP.Views
 
         // ── estado ────────────────────────────────────────────────────
         private bool _senhaVisivel = false;
+
         private readonly List<UsuarioViewModel> _usuarios;
         private readonly Random _rng = new();
 
@@ -44,7 +47,7 @@ namespace CredentialProviderAPP.Views
         };
 
         // ─────────────────────────────────────────────────────────────
-        public ConfirmarSenhaView(List<UsuarioViewModel> usuarios)
+        public TrocarSenhaWindow(List<UsuarioViewModel> usuarios)
         {
             InitializeComponent();
             _usuarios = usuarios;
@@ -251,12 +254,12 @@ namespace CredentialProviderAPP.Views
             SetBar(barForca4, c4);
 
             lblForca.Text = label;
-            lblForca.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFrom(cor));
+            lblForca.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(cor));
         }
 
         private static void SetBar(Border bar, string hex)
         {
-            bar.Background = new SolidColorBrush((Color)ColorConverter.ConvertFrom(hex));
+            bar.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
         }
 
         // ══════════════════════════════════════════════════════════════
@@ -372,38 +375,38 @@ namespace CredentialProviderAPP.Views
 
             string assunto = "Sua senha temporária — CredentialProviderAPP";
             string corpo = $@"
-<html>
-<body style='font-family:Segoe UI,Arial,sans-serif;color:#1A1D23;max-width:560px;margin:auto'>
-  <div style='background:#2563EB;padding:28px 32px;border-radius:12px 12px 0 0'>
-    <h2 style='color:white;margin:0;font-size:20px'>CredentialProviderAPP</h2>
-    <p style='color:#BFD4FF;margin:6px 0 0;font-size:13px'>Sistema de Gestão de Credenciais</p>
-  </div>
-  <div style='background:white;padding:32px;border:1px solid #E8ECF0;border-top:none;border-radius:0 0 12px 12px'>
-    <h3 style='margin:0 0 16px;font-size:17px'>Senha temporária definida</h3>
-    <p style='color:#6B7280;font-size:13px;line-height:1.6'>
-      O administrador do sistema definiu uma senha temporária para o{plural} usuário{plural}
-      <strong>{logins}</strong>. Use-a no próximo acesso e altere imediatamente.
-    </p>
+                <html>
+                <body style='font-family:Segoe UI,Arial,sans-serif;color:#1A1D23;max-width:560px;margin:auto'>
+                  <div style='background:#2563EB;padding:28px 32px;border-radius:12px 12px 0 0'>
+                    <h2 style='color:white;margin:0;font-size:20px'>CredentialProviderAPP</h2>
+                    <p style='color:#BFD4FF;margin:6px 0 0;font-size:13px'>Sistema de Gestão de Credenciais</p>
+                  </div>
+                  <div style='background:white;padding:32px;border:1px solid #E8ECF0;border-top:none;border-radius:0 0 12px 12px'>
+                    <h3 style='margin:0 0 16px;font-size:17px'>Senha temporária definida</h3>
+                    <p style='color:#6B7280;font-size:13px;line-height:1.6'>
+                      O administrador do sistema definiu uma senha temporária para o{plural} usuário{plural}
+                      <strong>{logins}</strong>. Use-a no próximo acesso e altere imediatamente.
+                    </p>
 
-    <div style='background:#F8FAFC;border:1px solid #E8ECF0;border-radius:8px;
-                padding:16px 20px;margin:20px 0;text-align:center'>
-      <p style='margin:0 0 4px;font-size:11px;color:#9CA3AF;letter-spacing:1px'>SENHA TEMPORÁRIA</p>
-      <p style='margin:0;font-size:22px;font-weight:bold;font-family:Consolas,monospace;
-                letter-spacing:4px;color:#1A1D23'>{senha}</p>
-    </div>
+                    <div style='background:#F8FAFC;border:1px solid #E8ECF0;border-radius:8px;
+                                padding:16px 20px;margin:20px 0;text-align:center'>
+                      <p style='margin:0 0 4px;font-size:11px;color:#9CA3AF;letter-spacing:1px'>SENHA TEMPORÁRIA</p>
+                      <p style='margin:0;font-size:22px;font-weight:bold;font-family:Consolas,monospace;
+                                letter-spacing:4px;color:#1A1D23'>{senha}</p>
+                    </div>
 
-    <p style='color:#EF4444;font-size:12px'>
-      ⚠️ Por segurança, você <strong>deve alterar esta senha</strong> imediatamente após o login.
-    </p>
+                    <p style='color:#EF4444;font-size:12px'>
+                      ⚠️ Por segurança, você <strong>deve alterar esta senha</strong> imediatamente após o login.
+                    </p>
 
-    <hr style='border:none;border-top:1px solid #E8ECF0;margin:24px 0'/>
-    <p style='color:#9CA3AF;font-size:11px;margin:0'>
-      Este é um e-mail automático gerado pelo CredentialProviderAPP.<br/>
-      Não responda a este e-mail.
-    </p>
-  </div>
-</body>
-</html>";
+                    <hr style='border:none;border-top:1px solid #E8ECF0;margin:24px 0'/>
+                    <p style='color:#9CA3AF;font-size:11px;margin:0'>
+                      Este é um e-mail automático gerado pelo CredentialProviderAPP.<br/>
+                      Não responda a este e-mail.
+                    </p>
+                  </div>
+                </body>
+                </html>";
 
             using var smtp = new SmtpClient(SmtpHost, SmtpPort);
             smtp.EnableSsl = EnableSsl;

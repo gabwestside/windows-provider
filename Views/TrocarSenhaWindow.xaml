@@ -1,5 +1,5 @@
 ﻿<Window
-    x:Class="CredentialProviderAPP.Views.ConfirmarSenhaView"
+    x:Class="CredentialProviderAPP.Views.TrocarSenhaWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Trocar Senha no Próximo Login"
