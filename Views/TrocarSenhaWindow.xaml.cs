@@ -20,12 +20,10 @@ namespace CredentialProviderAPP.Views
     {
         // ── resultado público ─────────────────────────────────────────
         public bool Confirmado { get; private set; } = false;
-
         public string SenhaGerada { get; private set; } = "";
 
         // ── política carregada ────────────────────────────────────────
         private int _minLength = 8;
-
         private int _minEspeciais = 1;
         private string _especiaisPermitidos = "!@#$%&*";
         private bool _exigirMaiuscula = true;
@@ -34,7 +32,6 @@ namespace CredentialProviderAPP.Views
 
         // ── estado ────────────────────────────────────────────────────
         private bool _senhaVisivel = false;
-
         private readonly List<UsuarioViewModel> _usuarios;
         private readonly Random _rng = new();
 
@@ -356,18 +353,27 @@ namespace CredentialProviderAPP.Views
 
         // ══════════════════════════════════════════════════════════════
         //  ENVIO DE E-MAIL (SMTP)
-        //  Configure SmtpHost / Port / credenciais conforme seu ambiente.
-        //  Você pode mover essas configurações para um app.config / appsettings.
+        //  Configurações lidas de appsettings.json → seção "Email"
         // ══════════════════════════════════════════════════════════════
         private void EnviarEmails(string emailDestino, string senha)
         {
-            // ── Configurações SMTP ── ajuste conforme seu servidor ───
-            const string SmtpHost = "smtp.seuprovedor.com";
-            const int SmtpPort = 587;
-            const bool EnableSsl = true;
-            const string SmtpUser = "noreply@suaempresa.com.br";
-            const string SmtpPassword = "SUA_SENHA_SMTP";
-            const string RemetenteName = "CredentialProviderAPP";
+            // ── Lê configurações do appsettings.json ─────────────────
+            string smtpHost = ConfigHelper.Get("Email:SmtpHost");
+            int smtpPort = int.TryParse(ConfigHelper.Get("Email:SmtpPort"), out int p) ? p : 587;
+            bool enableSsl = !string.Equals(ConfigHelper.Get("Email:EnableSsl"), "false", StringComparison.OrdinalIgnoreCase);
+            string smtpUser = ConfigHelper.Get("Email:Usuario");
+            string smtpPassword = ConfigHelper.Get("Email:Senha");
+            string remetenteName = ConfigHelper.Get("Email:NomeRemetente");
+
+            // Valida se as configurações foram preenchidas
+            if (string.IsNullOrWhiteSpace(smtpHost) || smtpHost == "smtp.seuprovedor.com")
+                throw new InvalidOperationException(
+                    "Configure a seção \"Email\" no appsettings.json antes de enviar e-mails.\n" +
+                    "Preencha: SmtpHost, SmtpPort, EnableSsl, Usuario, Senha, NomeRemetente.");
+
+            if (string.IsNullOrWhiteSpace(smtpUser) || string.IsNullOrWhiteSpace(smtpPassword))
+                throw new InvalidOperationException(
+                    "As credenciais de e-mail (Email:Usuario e Email:Senha) não estão configuradas no appsettings.json.");
             // ─────────────────────────────────────────────────────────
 
             string logins = string.Join(", ", _usuarios.Select(u => u.Login));
@@ -408,12 +414,12 @@ namespace CredentialProviderAPP.Views
                 </body>
                 </html>";
 
-            using var smtp = new SmtpClient(SmtpHost, SmtpPort);
-            smtp.EnableSsl = EnableSsl;
-            smtp.Credentials = new NetworkCredential(SmtpUser, SmtpPassword);
+            using var smtp = new SmtpClient(smtpHost, smtpPort);
+            smtp.EnableSsl = enableSsl;
+            smtp.Credentials = new NetworkCredential(smtpUser, smtpPassword);
 
             using var msg = new MailMessage();
-            msg.From = new MailAddress(SmtpUser, RemetenteName);
+            msg.From = new MailAddress(smtpUser, remetenteName);
             msg.Subject = assunto;
             msg.Body = corpo;
             msg.IsBodyHtml = true;
