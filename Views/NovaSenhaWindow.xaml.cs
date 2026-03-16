@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.DirectoryServices.AccountManagement;
 
 namespace CredentialProviderAPP.Views;
 
@@ -261,13 +262,83 @@ public partial class NovaSenhaWindow : Window
             return;
         }
 
-        USER_INFO_1003 info = new();
-        info.usri1003_password = senha;
+        string normalizedUser = login;
 
-        int err;
-        int result = NetUserSetInfo(null, login, 1003, ref info, out err);
+        // remove DOMAIN\
+        if (normalizedUser.Contains("\\"))
+            normalizedUser = normalizedUser.Split('\\')[1];
 
-        if (result == 0)
+        // remove @domain
+        if (normalizedUser.Contains("@"))
+            normalizedUser = normalizedUser.Split('@')[0];
+
+        bool senhaAlterada = false;
+
+        // ─────────────────────────────────────────
+        // 1️⃣ TENTAR ALTERAR SENHA NO ACTIVE DIRECTORY
+        // ─────────────────────────────────────────
+        try
+        {
+            using var ctx = new PrincipalContext(ContextType.Domain);
+            var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, normalizedUser);
+
+            if (user != null)
+            {
+                user.SetPassword(senha);
+                user.Save();
+
+                senhaAlterada = true;
+            }
+        }
+        catch (Exception)
+        {
+            // se falhar no AD tenta local
+        }
+
+        // ─────────────────────────────────────────
+        // 2️⃣ SE NÃO FOR AD → TENTA USUÁRIO LOCAL
+        // ─────────────────────────────────────────
+        if (!senhaAlterada)
+        {
+            try
+            {
+                USER_INFO_1003 info = new();
+                info.usri1003_password = senha;
+
+                int err;
+                int result = NetUserSetInfo(".", normalizedUser, 1003, ref info, out err);
+
+                if (result == 0)
+                    senhaAlterada = true;
+                else
+                {
+                    if (result == 2245)
+                    {
+                        MessageBox.Show("A senha não atende à política do Windows.");
+                        return;
+                    }
+
+                    if (result == 5)
+                    {
+                        MessageBox.Show("Permissão negada. Execute como administrador.");
+                        return;
+                    }
+
+                    MessageBox.Show($"Erro ao alterar senha. Código: {result}");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao alterar senha: " + ex.Message);
+                return;
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // 3️⃣ SUCESSO
+        // ─────────────────────────────────────────
+        if (senhaAlterada)
         {
             EnableMFA();
 
@@ -275,14 +346,20 @@ public partial class NovaSenhaWindow : Window
 
             Application.Current.Shutdown();
         }
-        else
+    }
+    private void Close_Click(object sender, RoutedEventArgs e)
+    {
+        var result = MessageBox.Show(
+            "Deseja cancelar a alteração de senha?",
+            "Cancelar",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Yes)
         {
-            if (result == 2245)
-                MessageBox.Show("A senha não atende à política do Windows.");
-            else if (result == 5)
-                MessageBox.Show("Permissão negada. Execute como administrador.");
-            else
-                MessageBox.Show($"Erro ao alterar senha. Código: {result}");
+            MessageBox.Show("Alteração de senha cancelada.");
+
+            Application.Current.Shutdown();
         }
     }
 }

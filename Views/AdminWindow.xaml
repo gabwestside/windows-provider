@@ -532,96 +532,122 @@
             </Grid.RowDefinitions>
 
             <!--  ══ NAV BAR ══  -->
+        <Border
+    Grid.Row="0"
+    Background="{StaticResource BgNav}"
+    BorderBrush="{StaticResource BorderColor}"
+    BorderThickness="0,0,0,1"
+    CornerRadius="12,12,0,0"
+    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+
+    <Grid Height="56" Margin="24,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- LOGO -->
+        <TextBlock
+            Grid.Column="0"
+            Margin="0,0,24,0"
+            VerticalAlignment="Center"
+            FontFamily="Segoe UI"
+            FontSize="14"
+            FontWeight="Bold"
+            Foreground="{StaticResource TextPrimary}"
+            Text="CredentialProviderAPP"/>
+
+        <!-- MENU PRINCIPAL -->
+        <Menu Grid.Column="1"
+              Background="Transparent"
+              BorderThickness="0"
+              VerticalAlignment="Stretch">
+
+            <Menu.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </Menu.ItemsPanel>
+
+            <!-- USUÁRIOS -->
             <Border
-                Grid.Row="0"
-                Background="{StaticResource BgNav}"
-                BorderBrush="{StaticResource BorderColor}"
-                BorderThickness="0,0,0,1"
-                CornerRadius="12,12,0,0"
-                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid Height="56" Margin="24,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                x:Name="NavUsuariosBorder"
+                Margin="0,0,4,0"
+                VerticalAlignment="Stretch"
+                BorderBrush="#2563EB"
+                BorderThickness="0,0,0,2">
 
-                    <TextBlock
-                        Grid.Column="0"
-                        Margin="0,0,24,0"
-                        VerticalAlignment="Center"
-                        FontFamily="Segoe UI"
-                        FontSize="14"
-                        FontWeight="Bold"
-                        Foreground="{StaticResource TextPrimary}"
-                        Text="CredentialProviderAPP" />
-
-                    <StackPanel
-                        Grid.Column="1"
-                        VerticalAlignment="Stretch"
-                        Orientation="Horizontal">
-                        <Border
-                            x:Name="NavUsuariosBorder"
-                            Margin="0,0,4,0"
-                            VerticalAlignment="Stretch"
-                            BorderBrush="#2563EB"
-                            BorderThickness="0,0,0,2">
-                            <MenuItem
-                                VerticalAlignment="Center"
-                                FontWeight="SemiBold"
-                                Foreground="#2563EB"
-                                Header="Usuários"
-                                Style="{StaticResource NavMenuItemStyle}" />
-                        </Border>
-                        <MenuItem
-                            Margin="0,0,4,0"
-                            VerticalAlignment="Center"
-                            Style="{StaticResource NavMenuItemStyle}">
-                            <MenuItem.Header>Segurança</MenuItem.Header>
-                            <MenuItem
-                                Click="MenuRegraSenha_Click"
-                                Header="Regra de Senha"
-                                Style="{StaticResource SubMenuItemStyle}" />
-                        </MenuItem>
-                        <MenuItem
-                            VerticalAlignment="Center"
-                            Header="Configurações"
-                            Style="{StaticResource NavMenuItemStyle}" />
-                    </StackPanel>
-
-                    <StackPanel
-                        Grid.Column="2"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal">
-                        <Border
-                            Width="34"
-                            Height="34"
-                            Margin="0,0,8,0"
-                            Background="{StaticResource TagBg}"
-                            BorderBrush="{StaticResource BorderColor}"
-                            BorderThickness="1"
-                            CornerRadius="17"
-                            Cursor="Hand">
-                            <TextBlock
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                FontSize="14"
-                                Text="👤" />
-                        </Border>
-                        <Button
-                            Width="28"
-                            Height="28"
-                            VerticalAlignment="Center"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Click="BtnFechar_Click"
-                            Content="✕"
-                            Cursor="Hand"
-                            FontSize="12"
-                            Foreground="{StaticResource TextMuted}" />
-                    </StackPanel>
-                </Grid>
+                <MenuItem
+                    VerticalAlignment="Center"
+                    FontWeight="SemiBold"
+                    Foreground="#2563EB"
+                    Header="Usuários"
+                    Style="{StaticResource NavMenuItemStyle}"/>
             </Border>
+
+            <!-- SEGURANÇA -->
+            <MenuItem
+                Margin="0,0,4,0"
+                VerticalAlignment="Center"
+                Header="Segurança"
+                Style="{StaticResource NavMenuItemStyle}">
+
+                <!-- SUBMENU -->
+                <MenuItem
+                    Header="Regra de Senha"
+                    Click="MenuRegraSenha_Click"
+                    Style="{StaticResource SubMenuItemStyle}"/>
+
+            </MenuItem>
+
+            <!-- CONFIGURAÇÕES -->
+            <MenuItem
+                VerticalAlignment="Center"
+                Header="Configurações"
+                Style="{StaticResource NavMenuItemStyle}"/>
+
+        </Menu>
+
+        <!-- PERFIL + FECHAR -->
+        <StackPanel
+            Grid.Column="2"
+            VerticalAlignment="Center"
+            Orientation="Horizontal">
+
+            <Border
+                Width="34"
+                Height="34"
+                Margin="0,0,8,0"
+                Background="{StaticResource TagBg}"
+                BorderBrush="{StaticResource BorderColor}"
+                BorderThickness="1"
+                CornerRadius="17"
+                Cursor="Hand">
+
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontSize="14"
+                    Text="👤"/>
+            </Border>
+
+            <Button
+                Width="28"
+                Height="28"
+                VerticalAlignment="Center"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="BtnFechar_Click"
+                Content="✕"
+                Cursor="Hand"
+                FontSize="12"
+                Foreground="{StaticResource TextMuted}"/>
+
+        </StackPanel>
+
+    </Grid>
+</Border>
 
             <!--  ══ CONTEÚDO ══  -->
             <ScrollViewer

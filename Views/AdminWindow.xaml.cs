@@ -361,10 +361,25 @@ namespace CredentialProviderAPP.Views
             else AtualizarGrid();
         }
 
-        private void MenuRegraSenha_Click(object sender, RoutedEventArgs e)
+private void MenuRegraSenha_Click(object sender, RoutedEventArgs e)
+{
+    foreach (Window w in Application.Current.Windows)
+    {
+        if (w is RegraSenhaWindow)
         {
-            new RegraSenhaWindow().ShowDialog();
+            w.Activate();
+            return;
         }
+    }
+
+    var win = new RegraSenhaWindow
+    {
+        Owner = this,
+        WindowStartupLocation = WindowStartupLocation.CenterOwner
+    };
+
+    win.ShowDialog();
+}
 
         // ══════════════════════════════════════════════════════════════
         //  MFA — STATUS
