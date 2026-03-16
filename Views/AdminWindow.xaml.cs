@@ -370,7 +370,22 @@ namespace CredentialProviderAPP.Views
 
         private void MenuRegraSenha_Click(object sender, RoutedEventArgs e)
         {
-            new RegraSenhaWindow().ShowDialog();
+            foreach (Window w in Application.Current.Windows)
+            {
+                if (w is RegraSenhaWindow)
+                {
+                    w.Activate();
+                    return;
+                }
+            }
+
+            var win = new RegraSenhaWindow
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            win.ShowDialog();
         }
 
         // ══════════════════════════════════════════════════════════════

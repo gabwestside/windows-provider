@@ -121,16 +121,13 @@
         <Grid VerticalAlignment="Center">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <!--  Logo/título da app  -->
                 <RowDefinition Height="32" />
                 <RowDefinition Height="Auto" />
-                <!--  Card  -->
                 <RowDefinition Height="24" />
                 <RowDefinition Height="Auto" />
-                <!--  Rodapé  -->
             </Grid.RowDefinitions>
 
-            <!--  ── LOGO DA APP ──  -->
+            <!--  LOGO  -->
             <StackPanel Grid.Row="0" HorizontalAlignment="Center">
                 <TextBlock
                     HorizontalAlignment="Center"
@@ -139,6 +136,7 @@
                     FontWeight="Bold"
                     Foreground="{StaticResource TextPrimary}"
                     Text="CredentialProviderAPP" />
+
                 <TextBlock
                     Margin="0,4,0,0"
                     HorizontalAlignment="Center"
@@ -148,7 +146,7 @@
                     Text="Sistema de Gestão de Credenciais" />
             </StackPanel>
 
-            <!--  ── CARD ──  -->
+            <!--  CARD  -->
             <Border
                 Grid.Row="2"
                 Width="400"
@@ -158,6 +156,7 @@
                 BorderBrush="{StaticResource BorderColor}"
                 BorderThickness="1"
                 CornerRadius="14">
+
                 <Border.Effect>
                     <DropShadowEffect
                         BlurRadius="20"
@@ -167,7 +166,6 @@
 
                 <StackPanel>
 
-                    <!--  Título do card  -->
                     <TextBlock
                         Margin="0,0,0,6"
                         HorizontalAlignment="Center"
@@ -186,7 +184,7 @@
                         Text="Crie uma senha forte para proteger sua conta."
                         TextAlignment="Center" />
 
-                    <!--  Campo senha  -->
+                    <!--  Senha  -->
                     <TextBlock
                         Margin="0,0,0,6"
                         FontFamily="Segoe UI"
@@ -194,13 +192,14 @@
                         FontWeight="Medium"
                         Foreground="{StaticResource TextSecondary}"
                         Text="Digite a nova senha:" />
+
                     <PasswordBox
                         x:Name="txtSenha"
                         Margin="0,0,0,18"
                         PasswordChanged="SenhaChanged"
                         Style="{StaticResource ModernPasswordBox}" />
 
-                    <!--  Campo confirmar  -->
+                    <!--  Confirmar  -->
                     <TextBlock
                         Margin="0,0,0,6"
                         FontFamily="Segoe UI"
@@ -208,13 +207,16 @@
                         FontWeight="Medium"
                         Foreground="{StaticResource TextSecondary}"
                         Text="Confirmação da nova senha:" />
+
                     <PasswordBox
                         x:Name="txtConfirmar"
                         Margin="0,0,0,24"
                         PasswordChanged="SenhaChanged"
                         Style="{StaticResource ModernPasswordBox}" />
 
-                    <!--  ── REQUISITOS ──  -->
+                    <!--  REGRAS  -->
+                    <!--  (mantive exatamente seu bloco original)  -->
+
                     <Border
                         Margin="0,0,0,22"
                         Padding="16,14"
@@ -222,6 +224,7 @@
                         BorderBrush="{StaticResource BorderColor}"
                         BorderThickness="1"
                         CornerRadius="10">
+
                         <StackPanel>
 
                             <TextBlock
@@ -231,6 +234,7 @@
                                 FontWeight="SemiBold"
                                 Foreground="{StaticResource TextMuted}"
                                 Text="REQUISITOS DA SENHA" />
+
 
                             <!--  ruleLength  -->
                             <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
@@ -381,6 +385,27 @@
                 Foreground="{StaticResource TextMuted}"
                 Text="© 2023 CredentialProvider System - Todos os direitos reservados." />
         </Grid>
+
+        <!--  ═════════ BOTÃO X ═════════  -->
+        <Button
+            Width="34"
+            Height="34"
+            Margin="0,10,10,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Close_Click"
+            Cursor="Hand">
+
+            <TextBlock
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="16"
+                FontWeight="Bold"
+                Foreground="#6B7280"
+                Text="✕" />
+        </Button>
 
     </Grid>
 </Window>

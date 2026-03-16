@@ -1,8 +1,7 @@
+using CredentialProviderAPP.Data;
 using OtpNet;
-using System;
 using System.ComponentModel;
 using System.Windows;
-using CredentialProviderAPP.Data;
 
 namespace CredentialProviderAPP.Views;
 
@@ -17,30 +16,32 @@ public partial class ResetSenhaWindow : Window
         InitializeComponent();
         txtLogin.Text = login;
 
-        // ✅ Checa MFA antes de mostrar a janela
         var user = Database.GetUser(login);
         var (mfaenabled, configured, secret) = user;
 
+        // 🔒 BLOQUEIA reset se não tiver MFA configurado
         if (!configured || string.IsNullOrEmpty(secret))
         {
-            autenticado = true;
-
             Loaded += (s, e) =>
             {
-                Hide();
-
-                NovaSenhaWindow win = new NovaSenhaWindow(login);
-                win.Topmost = true;
-                win.ShowDialog();
+                MessageBox.Show(
+                    "Este usuário não possui MFA configurado.\n\n" +
+                    "Por segurança a redefinição de senha só é permitida para contas com MFA ativo.\n\n" +
+                    "Entre em contato com o suporte de TI.",
+                    "Segurança",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
 
                 Close();
             };
+
+            return;
         }
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        // só foca o campo se a janela realmente vai ser usada
         if (!autenticado)
             txtCode.Focus();
     }
@@ -68,26 +69,26 @@ public partial class ResetSenhaWindow : Window
         var user = Database.GetUser(login);
         var (mfaenabled, configured, secret) = user;
 
-        // ✅ Sem MFA configurado → vai direto para nova senha sem validar TOTP
+        // 🔒 segurança extra
         if (!configured || string.IsNullOrEmpty(secret))
         {
-            autenticado = true;
-            Hide();
-
-            NovaSenhaWindow win = new NovaSenhaWindow(login);
-            win.Topmost = true;
-            win.ShowDialog();
+            MessageBox.Show(
+                "Reset de senha só é permitido para contas com MFA ativo.",
+                "Segurança",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
 
             Close();
             return;
         }
 
-        // ✅ Com MFA configurado → exige código antes
         if (code.Length != 6)
         {
             mostrandoDialog = true;
             MessageBox.Show("Digite o código de 6 dígitos.");
             mostrandoDialog = false;
+
             txtCode.Focus();
             return;
         }
@@ -106,13 +107,15 @@ public partial class ResetSenhaWindow : Window
             mostrandoDialog = true;
             MessageBox.Show("Código inválido.");
             mostrandoDialog = false;
+
             txtCode.Clear();
             txtCode.Focus();
             return;
         }
 
-        // ✅ MFA validado → abre nova senha
+        // ✅ MFA validado
         autenticado = true;
+
         Hide();
 
         NovaSenhaWindow novaSenha = new NovaSenhaWindow(login);
