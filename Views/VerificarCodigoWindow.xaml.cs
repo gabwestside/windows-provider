@@ -22,6 +22,13 @@ public partial class VerificarCodigoWindow : Window
         Topmost = true;
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
+
+        // 🔒 bloqueia minimizar
+        this.StateChanged += (s, e) =>
+        {
+            if (this.WindowState == WindowState.Minimized)
+                this.WindowState = WindowState.Normal;
+        };
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -34,18 +41,18 @@ public partial class VerificarCodigoWindow : Window
         if (mostrandoDialog)
             return;
 
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            ForcarFoco();
-        }));
+        ForcarFoco();
     }
 
     private void ForcarFoco()
     {
-        Topmost = true;
-        Activate();
-        Focus();
-        Keyboard.Focus(txtCode);
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            Topmost = true;
+            Activate();
+            Focus();
+            Keyboard.Focus(txtCode);
+        }));
     }
 
     private void Verificar_Click(object sender, RoutedEventArgs e)
