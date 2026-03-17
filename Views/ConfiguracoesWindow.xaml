@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Configurações"
     Width="480"
-    Height="560"
+    Height="360"
     AllowsTransparency="True"
     Background="Transparent"
     ResizeMode="NoResize"
@@ -12,7 +12,6 @@
     WindowStyle="None">
 
     <Window.Resources>
-
         <!--  INPUT NORMAL  -->
         <Style x:Key="ModernInput" TargetType="TextBox">
             <Setter Property="Background" Value="#F8FAFC" />
@@ -211,14 +210,11 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <!--  Header  -->
                 <RowDefinition Height="*" />
-                <!--  Corpo  -->
                 <RowDefinition Height="Auto" />
-                <!--  Rodapé  -->
             </Grid.RowDefinitions>
 
-            <!--  ═══ HEADER ═══  -->
+            <!--  HEADER  -->
             <Border
                 Grid.Row="0"
                 BorderBrush="#E8ECF0"
@@ -233,7 +229,6 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!--  Ícone  -->
                     <Border
                         Grid.Column="0"
                         Width="38"
@@ -248,7 +243,6 @@
                             Text="⚙" />
                     </Border>
 
-                    <!--  Título  -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock
                             FontFamily="Segoe UI"
@@ -264,7 +258,6 @@
                             Text="Administrador do sistema" />
                     </StackPanel>
 
-                    <!--  Fechar  -->
                     <Button
                         Grid.Column="2"
                         Width="28"
@@ -280,45 +273,9 @@
                 </Grid>
             </Border>
 
-            <!--  ═══ CORPO ═══  -->
+            <!--  BODY  -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="28,24,28,8">
-
-                    <!--  SEÇÃO: CREDENCIAIS DO ADMIN  -->
-                    <TextBlock
-                        Margin="0,0,0,16"
-                        FontFamily="Segoe UI"
-                        FontSize="10"
-                        FontWeight="SemiBold"
-                        Foreground="#9CA3AF"
-                        Text="CREDENCIAIS DO ADMINISTRADOR" />
-
-                    <!--  Banner info  -->
-                    <Border
-                        Margin="0,0,0,20"
-                        Padding="14,10"
-                        Background="#EFF6FF"
-                        BorderBrush="#BFDBFE"
-                        BorderThickness="1"
-                        CornerRadius="8">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                Margin="0,1,10,0"
-                                VerticalAlignment="Top"
-                                FontSize="14"
-                                Foreground="#2563EB"
-                                Text="ℹ" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontFamily="Segoe UI"
-                                FontSize="12"
-                                Foreground="#1D4ED8"
-                                TextWrapping="Wrap">
-                                Estas credenciais são usadas no fluxo de<Bold>esqueci minha senha</Bold>
-                                ,
-                                onde o usuário comum se autentica para solicitar a troca de senha no AD.</TextBlock>
-                        </StackPanel>
-                    </Border>
 
                     <!--  Login  -->
                     <TextBlock
@@ -331,164 +288,35 @@
                     <TextBox
                         x:Name="txtLogin"
                         Margin="0,0,0,18"
-                        Style="{StaticResource ModernInput}" />
+                        Style="{StaticResource ModernInput}"
+                        TextChanged="TxtLogin_TextChanged" />
 
-                    <!--  Nova senha  -->
+                    <!--  Password  -->
                     <TextBlock
                         Margin="0,0,0,6"
                         FontFamily="Segoe UI"
                         FontSize="12"
                         FontWeight="SemiBold"
                         Foreground="#6B7280"
-                        Text="Nova senha" />
-                    <Grid Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="44" />
-                        </Grid.ColumnDefinitions>
-                        <PasswordBox
-                            x:Name="pwdNovaSenha"
-                            Grid.Column="0"
-                            PasswordChanged="Pwd_Changed"
-                            Style="{StaticResource ModernPasswordBox}" />
-                        <TextBox
-                            x:Name="txtNovaSenhaVisivel"
-                            Grid.Column="0"
-                            Style="{StaticResource ModernInput}"
-                            TextChanged="TxtSenha_Changed"
-                            Visibility="Collapsed" />
-                        <Button
-                            x:Name="btnMostrarNova"
-                            Grid.Column="1"
-                            Margin="4,0,0,0"
-                            Click="BtnMostrarNova_Click"
-                            Style="{StaticResource BtnIcon}">
-                            <TextBlock
-                                x:Name="lblOlhoNova"
-                                FontSize="13"
-                                Foreground="#9CA3AF"
-                                Text="👁" />
-                        </Button>
-                    </Grid>
-
-                    <!--  Confirmar senha  -->
-                    <TextBlock
+                        Text="Senha do administrador" />
+                    <PasswordBox
+                        x:Name="pwdSenha"
                         Margin="0,0,0,6"
+                        Style="{StaticResource ModernPasswordBox}" />
+
+                    <!--  Hint: optional, unobtrusive  -->
+                    <TextBlock
+                        Margin="0,6,0,0"
                         FontFamily="Segoe UI"
-                        FontSize="12"
-                        FontWeight="SemiBold"
-                        Foreground="#6B7280"
-                        Text="Confirmar nova senha" />
-                    <Grid Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="44" />
-                        </Grid.ColumnDefinitions>
-                        <PasswordBox
-                            x:Name="pwdConfirmarSenha"
-                            Grid.Column="0"
-                            PasswordChanged="Pwd_Changed"
-                            Style="{StaticResource ModernPasswordBox}" />
-                        <TextBox
-                            x:Name="txtConfirmarVisivel"
-                            Grid.Column="0"
-                            Style="{StaticResource ModernInput}"
-                            TextChanged="TxtSenha_Changed"
-                            Visibility="Collapsed" />
-                        <Button
-                            x:Name="btnMostrarConfirmar"
-                            Grid.Column="1"
-                            Margin="4,0,0,0"
-                            Click="BtnMostrarConfirmar_Click"
-                            Style="{StaticResource BtnIcon}">
-                            <TextBlock
-                                x:Name="lblOlhoConfirmar"
-                                FontSize="13"
-                                Foreground="#9CA3AF"
-                                Text="👁" />
-                        </Button>
-                    </Grid>
-
-                    <!--  Feedback senhas não conferem  -->
-                    <Border
-                        x:Name="panelSenhasNaoConferem"
-                        Margin="0,4,0,0"
-                        Padding="12,8"
-                        Background="#FEF2F2"
-                        BorderBrush="#FECACA"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Visibility="Collapsed">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                Margin="0,0,8,0"
-                                VerticalAlignment="Center"
-                                FontSize="12"
-                                Foreground="#DC2626"
-                                Text="⚠" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontFamily="Segoe UI"
-                                FontSize="12"
-                                Foreground="#DC2626"
-                                Text="As senhas não conferem." />
-                        </StackPanel>
-                    </Border>
-
-                    <!--  Feedback campo senha vazio  -->
-                    <Border
-                        x:Name="panelSenhaVazia"
-                        Margin="0,4,0,0"
-                        Padding="12,8"
-                        Background="#FFFBEB"
-                        BorderBrush="#FDE68A"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Visibility="Collapsed">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                Margin="0,0,8,0"
-                                VerticalAlignment="Center"
-                                FontSize="12"
-                                Foreground="#D97706"
-                                Text="ℹ" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontFamily="Segoe UI"
-                                FontSize="12"
-                                Foreground="#D97706"
-                                Text="Deixe as senhas em branco para manter a senha atual."
-                                TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
-
-                    <!--  Status do registro  -->
-                    <Border
-                        x:Name="panelStatus"
-                        Margin="0,16,0,0"
-                        Padding="14,10"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Visibility="Collapsed">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                x:Name="lblStatusIcon"
-                                Margin="0,0,10,0"
-                                VerticalAlignment="Center"
-                                FontSize="14" />
-                            <TextBlock
-                                x:Name="lblStatusMsg"
-                                VerticalAlignment="Center"
-                                FontFamily="Segoe UI"
-                                FontSize="12"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
+                        FontSize="11"
+                        Foreground="#9CA3AF"
+                        Text="Deixe a senha em branco para manter a senha atual."
+                        TextWrapping="Wrap" />
 
                 </StackPanel>
             </ScrollViewer>
 
-            <!--  ═══ RODAPÉ ═══  -->
+            <!--  FOOTER  -->
             <Border
                 Grid.Row="2"
                 Padding="28,16"
@@ -506,7 +334,6 @@
                         Click="BtnCancelar_Click"
                         Content="Cancelar"
                         Style="{StaticResource BtnGhost}" />
-
                     <Button
                         x:Name="btnSalvar"
                         Grid.Column="2"
@@ -519,7 +346,6 @@
                     </Button>
                 </Grid>
             </Border>
-
         </Grid>
     </Border>
 </Window>
