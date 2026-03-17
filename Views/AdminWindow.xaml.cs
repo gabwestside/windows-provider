@@ -84,7 +84,6 @@ namespace CredentialProviderAPP.Views
         {
             try
             {
-                _usuariosMFA = CarregarMFA();
                 _computadorEmDominio = VerificarDominio();
 
                 if (_computadorEmDominio)
@@ -156,7 +155,7 @@ namespace CredentialProviderAPP.Views
         }
 
         // ══════════════════════════════════════════════════════════════
-        //  BUSCA AD
+        //  BUSCA AD — MFA lido diretamente do extensionAttribute1
         // ══════════════════════════════════════════════════════════════
         private async Task BuscarUsuariosAsync(string filtro)
         {
@@ -187,7 +186,8 @@ namespace CredentialProviderAPP.Views
                 search.PropertiesToLoad.Add("samAccountName");
                 search.PropertiesToLoad.Add("displayName");
                 search.PropertiesToLoad.Add("lastLogonTimestamp");
-                search.PropertiesToLoad.Add("mail"); // ← e-mail do AD para pré-preencher modal
+                search.PropertiesToLoad.Add("mail");
+                search.PropertiesToLoad.Add("extensionAttribute1"); // 👈 MFA
 
                 foreach (SearchResult r in search.FindAll())
                 {
@@ -199,18 +199,21 @@ namespace CredentialProviderAPP.Views
                         ? r.Properties["displayname"][0].ToString()
                         : login;
 
-                    // Captura e-mail do atributo "mail" do Active Directory
                     string email = r.Properties["mail"].Count > 0
                         ? r.Properties["mail"][0].ToString()
                         : "";
 
                     string data = "-";
-
                     if (r.Properties["lastlogontimestamp"].Count > 0)
                     {
                         long ticks = (long)r.Properties["lastlogontimestamp"][0];
                         data = DateTime.FromFileTimeUtc(ticks).ToString("dd/MM/yyyy HH:mm");
                     }
+
+                    // 🔐 MFA vindo direto do AD
+                    string mfaRaw = r.Properties["extensionattribute1"].Count > 0
+                        ? r.Properties["extensionattribute1"][0].ToString()
+                        : "";
 
                     if (!string.IsNullOrWhiteSpace(filtro) &&
                         !login.Contains(filtro, StringComparison.OrdinalIgnoreCase) &&
@@ -223,7 +226,8 @@ namespace CredentialProviderAPP.Views
                         Login = login,
                         NomeCompleto = nome,
                         DataCadastro = data,
-                        Email = email
+                        Email = email,
+                        MFAStatus = ObterStatusMFA(mfaRaw)
                     });
                 }
             }
@@ -251,7 +255,8 @@ namespace CredentialProviderAPP.Views
                             NomeCompleto = u.DisplayName ?? u.Name,
                             Login = u.SamAccountName,
                             DataCadastro = u.LastLogon?.ToString("dd/MM/yyyy HH:mm") ?? "-",
-                            Email = "" // usuários locais não têm e-mail no AD
+                            Email = "",
+                            MFAStatus = "Não configurado"
                         });
                 }
             }
@@ -261,7 +266,8 @@ namespace CredentialProviderAPP.Views
         }
 
         // ══════════════════════════════════════════════════════════════
-        //  ATUALIZAR GRID (paginação + ordenação + MFA)
+        //  ATUALIZAR GRID (paginação + ordenação)
+        //  MFAStatus já vem preenchido pelo BuscarUsuariosAD / ObterUsuariosLocais
         // ══════════════════════════════════════════════════════════════
         private void AtualizarGrid()
         {
@@ -291,8 +297,7 @@ namespace CredentialProviderAPP.Views
                 todos.AddRange(lista);
             }
 
-            foreach (var u in todos)
-                u.MFAStatus = ObterStatusMFA(u.Login);
+            // MFAStatus já vem preenchido — não precisa recalcular aqui
 
             IEnumerable<UsuarioViewModel> ordenado = _colunaOrdenacao switch
             {
@@ -342,7 +347,6 @@ namespace CredentialProviderAPP.Views
         {
             _usuariosLocais.Clear();
             _usuariosAD.Clear();
-            _usuariosMFA = CarregarMFA();
 
             if (_computadorEmDominio) await BuscarUsuariosAsync(txtPesquisa.Text);
             else AtualizarGrid();
@@ -409,39 +413,24 @@ namespace CredentialProviderAPP.Views
         }
 
         // ══════════════════════════════════════════════════════════════
-        //  MFA — STATUS
+        //  MFA — STATUS (lido do extensionAttribute1 do AD)
+        //  Vazio          → "Não configurado"
+        //  "setup"        → "Pendente"
+        //  qualquer outro → "Ativo"
         // ══════════════════════════════════════════════════════════════
-        private string ObterStatusMFA(string login)
+        private string ObterStatusMFA(string valorAD)
         {
-            if (string.IsNullOrWhiteSpace(login)) return "Não configurado";
-            login = Database.Normalize(login);
-            if (_usuariosMFA.TryGetValue(login, out var d))
-            {
-                if (d.mfaenabled == 1 && d.configured == 1) return "Ativo";
-                if (d.mfaenabled == 1 && d.configured == 0) return "Pendente";
-            }
-            return "Não configurado";
-        }
+            if (string.IsNullOrWhiteSpace(valorAD))
+                return "Não configurado";
 
-        private Dictionary<string, (int mfaenabled, int configured)> CarregarMFA()
-        {
-            var resultado = new Dictionary<string, (int, int)>(StringComparer.OrdinalIgnoreCase);
-            try
-            {
-                using var conn = Database.GetConnection();
-                conn.Open();
-                var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT username, mfaenabled, configured FROM users";
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                    resultado[reader.GetString(0).Trim()] = (reader.GetInt32(1), reader.GetInt32(2));
-            }
-            catch (Exception ex) { MessageBox.Show("Erro carregando MFA:\n" + ex.Message); }
-            return resultado;
+            if (valorAD.Equals("setup", StringComparison.OrdinalIgnoreCase))
+                return "Pendente";
+
+            return "Ativo";
         }
 
         // ══════════════════════════════════════════════════════════════
-        //  MFA — ATIVAR
+        //  MFA — ATIVAR (grava no banco local — mantido para compatibilidade)
         // ══════════════════════════════════════════════════════════════
         private void AtivarMFAEmMassa(List<UsuarioViewModel> usuarios)
         {
@@ -477,14 +466,13 @@ namespace CredentialProviderAPP.Views
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
             if (!sel.Any()) { MessageBox.Show("Selecione pelo menos um usuário."); return; }
             AtivarMFAEmMassa(sel);
-            _usuariosMFA = CarregarMFA();
             AtualizarGrid();
         }
 
         private void AtivarMFATodos_Click(object sender, RoutedEventArgs e)
         {
             var todos = CombinarUsuarios()
-                .Where(u => ObterStatusMFA(u.Login) == "Não configurado").ToList();
+                .Where(u => ObterStatusMFA(u.MFAStatus) == "Não configurado").ToList();
 
             if (!todos.Any()) { MessageBox.Show("Nenhum usuário precisa de MFA."); return; }
 
@@ -492,7 +480,6 @@ namespace CredentialProviderAPP.Views
                 MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
 
             AtivarMFAEmMassa(todos);
-            _usuariosMFA = CarregarMFA();
             AtualizarGrid();
         }
 
@@ -532,14 +519,13 @@ namespace CredentialProviderAPP.Views
                 MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
 
             ResetarMFA(sel);
-            _usuariosMFA = CarregarMFA();
             AtualizarGrid();
         }
 
         private void ResetarMFATodos_Click(object sender, RoutedEventArgs e)
         {
             var todos = CombinarUsuarios()
-                .Where(u => ObterStatusMFA(u.Login) != "Não configurado").ToList();
+                .Where(u => u.MFAStatus != "Não configurado").ToList();
 
             if (!todos.Any()) { MessageBox.Show("Nenhum usuário possui MFA."); return; }
 
@@ -547,7 +533,6 @@ namespace CredentialProviderAPP.Views
                 MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
 
             ResetarMFA(todos);
-            _usuariosMFA = CarregarMFA();
             AtualizarGrid();
         }
 
@@ -583,14 +568,13 @@ namespace CredentialProviderAPP.Views
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
             if (!sel.Any()) { MessageBox.Show("Selecione pelo menos um usuário."); return; }
             RemoverMFA(sel);
-            _usuariosMFA = CarregarMFA();
             AtualizarGrid();
         }
 
         private void RemoverMFATodos_Click(object sender, RoutedEventArgs e)
         {
             var todos = CombinarUsuarios()
-                .Where(u => ObterStatusMFA(u.Login) != "Não configurado").ToList();
+                .Where(u => u.MFAStatus != "Não configurado").ToList();
 
             if (!todos.Any()) { MessageBox.Show("Nenhum usuário possui MFA."); return; }
 
@@ -598,19 +582,12 @@ namespace CredentialProviderAPP.Views
                 MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
 
             RemoverMFA(todos);
-            _usuariosMFA = CarregarMFA();
             AtualizarGrid();
         }
 
         // ══════════════════════════════════════════════════════════════
         //  TROCAR SENHA NO PRÓXIMO LOGIN
-        //  Fluxo:
-        //    1. Abre TrocarSenhaWindow (gera senha, valida, coleta e-mail)
-        //    2. Ao confirmar: envia e-mail (dentro do modal) →
-        //       chama ForcarTrocaSenha que aplica pwdLastSet=0 (AD)
-        //       ou ExpirePasswordNow (local)
         // ══════════════════════════════════════════════════════════════
-
         private void TrocarSenhaProximoLoginSelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
@@ -648,7 +625,6 @@ namespace CredentialProviderAPP.Views
 
             if (!modal.Confirmado) return;
 
-            // Aplica a flag no AD / conta local após confirmação do modal
             MostrarLoading();
             try
             {
@@ -668,7 +644,6 @@ namespace CredentialProviderAPP.Views
             {
                 try
                 {
-                    // ── LOCAL ──────────────────────────────────────────────
                     if (user.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) == true)
                     {
                         using var ctx = new PrincipalContext(ContextType.Machine);
@@ -682,7 +657,6 @@ namespace CredentialProviderAPP.Views
                     }
                     else
                     {
-                        // ── AD ─────────────────────────────────────────────
                         string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
 
                         using var searcher = new DirectorySearcher(new DirectoryEntry(ldap))
@@ -714,8 +688,6 @@ namespace CredentialProviderAPP.Views
         // ══════════════════════════════════════════════════════════════
         //  HELPERS INTERNOS
         // ══════════════════════════════════════════════════════════════
-
-        /// <summary>Combina as listas AD + Local conforme toggles ativos.</summary>
         private List<UsuarioViewModel> CombinarUsuarios()
         {
             var lista = new List<UsuarioViewModel>();
@@ -724,7 +696,6 @@ namespace CredentialProviderAPP.Views
             return lista;
         }
 
-        /// <summary>Remove prefixo DOMAIN\ do login se presente.</summary>
         private static string NormalizarLogin(string login)
         {
             login = Database.Normalize(login);
