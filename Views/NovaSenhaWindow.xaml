@@ -11,7 +11,9 @@
     ShowInTaskbar="False"
     Topmost="True"
     WindowStartupLocation="CenterScreen"
-    WindowStyle="None">
+    WindowStyle="None"
+    Loaded="Window_Loaded"
+    Deactivated="Window_Deactivated">
 
     <Window.Resources>
 

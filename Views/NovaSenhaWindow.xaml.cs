@@ -20,6 +20,7 @@ public partial class NovaSenhaWindow : Window
     private bool needUpper;
     private bool needLower;
     private bool needNumber;
+    private bool mostrandoDialog = false;
 
     // Cores dos indicadores
     private static readonly SolidColorBrush _neutral = new(Color.FromRgb(0xC4, 0xC9, 0xD4)); // cinza
@@ -57,7 +58,7 @@ public partial class NovaSenhaWindow : Window
     {
         if (!File.Exists(policyPath))
         {
-            MessageBox.Show("Política de senha não encontrada.");
+            MostrarMensagem("Política de senha não encontrada.");
             Close();
             return;
         }
@@ -173,7 +174,7 @@ public partial class NovaSenhaWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Erro ao atualizar MFA: " + ex.Message);
+            MostrarMensagem("Erro ao atualizar MFA: " + ex.Message);
         }
     }
 
@@ -244,7 +245,7 @@ public partial class NovaSenhaWindow : Window
 
         if (!ValidatePassword(senha))
         {
-            MessageBox.Show("Senha não atende à política.");
+            MostrarMensagem("Senha não atende à política.");
             return;
         }
 
@@ -252,13 +253,13 @@ public partial class NovaSenhaWindow : Window
 
         if (forbidden != null)
         {
-            MessageBox.Show($"A senha contém a palavra proibida: {forbidden}");
+            MostrarMensagem($"A senha contém a palavra proibida: {forbidden}");
             return;
         }
 
         if (senha != confirmar)
         {
-            MessageBox.Show("Senhas não conferem.");
+            MostrarMensagem("Senhas não conferem.");
             return;
         }
 
@@ -290,7 +291,7 @@ public partial class NovaSenhaWindow : Window
                 senhaAlterada = true;
             }
         }
-        catch (Exception)
+        catch
         {
             // se falhar no AD tenta local
         }
@@ -314,23 +315,23 @@ public partial class NovaSenhaWindow : Window
                 {
                     if (result == 2245)
                     {
-                        MessageBox.Show("A senha não atende à política do Windows.");
+                        MostrarMensagem("A senha não atende à política do Windows.");
                         return;
                     }
 
                     if (result == 5)
                     {
-                        MessageBox.Show("Permissão negada. Execute como administrador.");
+                        MostrarMensagem("Permissão negada. Execute como administrador.");
                         return;
                     }
 
-                    MessageBox.Show($"Erro ao alterar senha. Código: {result}");
+                    MostrarMensagem($"Erro ao alterar senha. Código: {result}");
                     return;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao alterar senha: " + ex.Message);
+                MostrarMensagem("Erro ao alterar senha: " + ex.Message);
                 return;
             }
         }
@@ -342,15 +343,26 @@ public partial class NovaSenhaWindow : Window
         {
             EnableMFA();
 
-            MessageBox.Show("Senha alterada com sucesso!");
+            MostrarMensagem("Senha alterada com sucesso!");
 
-            Application.Current.Shutdown();
+            DialogResult = true; // ✅ sucesso
+            Close();
         }
     }
 
+    private void ForcarFoco()
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            Topmost = true;
+            Activate();
+            Focus();
+            Keyboard.Focus(txtSenha);
+        }));
+    }
     private void Close_Click(object sender, RoutedEventArgs e)
     {
-        var result = MessageBox.Show(
+        var result = MostrarMensagem(
             "Deseja cancelar a alteração de senha?",
             "Cancelar",
             MessageBoxButton.YesNo,
@@ -358,9 +370,34 @@ public partial class NovaSenhaWindow : Window
 
         if (result == MessageBoxResult.Yes)
         {
-            MessageBox.Show("Alteração de senha cancelada.");
-
-            Application.Current.Shutdown();
+            DialogResult = false;
+            Close();
         }
+    }
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        ForcarFoco();
+    }
+
+    private void Window_Deactivated(object sender, EventArgs e)
+    {
+        if (mostrandoDialog)
+            return;
+
+        ForcarFoco();
+    }
+    private MessageBoxResult MostrarMensagem(string msg,
+        string titulo = "Aviso",
+        MessageBoxButton buttons = MessageBoxButton.OK,
+        MessageBoxImage icon = MessageBoxImage.Information)
+    {
+        mostrandoDialog = true;
+
+        var result = MessageBox.Show(msg, titulo, buttons, icon);
+
+        mostrandoDialog = false;
+
+        return result;
     }
 }
