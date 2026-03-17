@@ -1,35 +1,19 @@
-﻿using System.IO;
-using System.Security.Cryptography;
-using System.Text;
+﻿using CredentialProviderAPP.Config;
+using CredentialProviderAPP.Utils;
 using Microsoft.Data.Sqlite;
 
 namespace CredentialProviderAPP.Services
 {
     /// <summary>
     /// Gerencia as credenciais do administrador do sistema (tabela admin_credentials).
-    /// A senha é armazenada criptografada com AES-256-GCM.
+    /// Usa o mesmo banco MFA do projeto via AppConfig.DatabasePath.
+    /// A criptografia é delegada ao CryptoHelper (AES-256-GCM).
     /// </summary>
     public static class AdminCredentialService
     {
-        // ── chave derivada de uma frase fixa + entropia da máquina ────────────
-        // Em produção, considere armazenar a chave no Windows DPAPI ou KeyVault.
-        private static readonly byte[] _aesKey = DeriveKey();
-
-        private static byte[] DeriveKey()
-        {
-            // Usa o SID da conta de serviço + frase como fonte de entropia.
-            // Isso garante que o banco descriptografado só funcione na mesma máquina.
-            string entropy = Environment.MachineName + "CredentialProviderAPP_v1_AdminKey";
-            using var sha = SHA256.Create();
-            return sha.ComputeHash(Encoding.UTF8.GetBytes(entropy)); // 32 bytes → AES-256
-        }
-
-        // ── caminho do banco (mesmo diretório do executável) ──────────────────
-        private static string DbPath =>
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "credentials.db");
-
+        // ── usa o mesmo banco MFA configurado no AppConfig ────────────────────
         private static string ConnectionString =>
-            $"Data Source={DbPath};";
+            $"Data Source={AppConfig.DatabasePath};";
 
         // ══════════════════════════════════════════════════════════════════════
         //  INICIALIZAÇÃO — cria tabela se não existir
@@ -76,7 +60,7 @@ namespace CredentialProviderAPP.Services
 
             string senha = string.IsNullOrWhiteSpace(senhaEnc)
                 ? ""
-                : Descriptografar(senhaEnc);
+                : CryptoHelper.Descriptografar(senhaEnc);
 
             return (login, senha);
         }
@@ -106,7 +90,7 @@ namespace CredentialProviderAPP.Services
             }
             else
             {
-                senhaEnc = Criptografar(novaSenha);
+                senhaEnc = CryptoHelper.Criptografar(novaSenha);
             }
 
             var cmd = conn.CreateCommand();
@@ -130,52 +114,6 @@ namespace CredentialProviderAPP.Services
             var (loginSalvo, senhaSalva) = Carregar();
             return string.Equals(loginSalvo, login, StringComparison.OrdinalIgnoreCase)
                 && senhaSalva == senha;
-        }
-
-        // ══════════════════════════════════════════════════════════════════════
-        //  CRIPTOGRAFIA — AES-256-GCM
-        //  Formato armazenado: Base64(nonce[12] + ciphertext + tag[16])
-        // ══════════════════════════════════════════════════════════════════════
-        private static string Criptografar(string texto)
-        {
-            byte[] plaintext = Encoding.UTF8.GetBytes(texto);
-            byte[] nonce = new byte[AesGcm.NonceByteSizes.MaxSize]; // 12 bytes
-            byte[] tag = new byte[AesGcm.TagByteSizes.MaxSize];   // 16 bytes
-            byte[] cipher = new byte[plaintext.Length];
-
-            RandomNumberGenerator.Fill(nonce);
-
-            using var aes = new AesGcm(_aesKey, AesGcm.TagByteSizes.MaxSize);
-            aes.Encrypt(nonce, plaintext, cipher, tag);
-
-            // Concatena nonce + ciphertext + tag e converte para Base64
-            byte[] resultado = new byte[nonce.Length + cipher.Length + tag.Length];
-            Buffer.BlockCopy(nonce, 0, resultado, 0, nonce.Length);
-            Buffer.BlockCopy(cipher, 0, resultado, nonce.Length, cipher.Length);
-            Buffer.BlockCopy(tag, 0, resultado, nonce.Length + cipher.Length, tag.Length);
-
-            return Convert.ToBase64String(resultado);
-        }
-
-        private static string Descriptografar(string base64)
-        {
-            byte[] dados = Convert.FromBase64String(base64);
-            int nonceLen = AesGcm.NonceByteSizes.MaxSize; // 12
-            int tagLen = AesGcm.TagByteSizes.MaxSize;   // 16
-            int cipherLen = dados.Length - nonceLen - tagLen;
-
-            if (cipherLen < 0)
-                throw new CryptographicException("Dados criptografados inválidos.");
-
-            byte[] nonce = dados[..nonceLen];
-            byte[] cipher = dados[nonceLen..(nonceLen + cipherLen)];
-            byte[] tag = dados[(nonceLen + cipherLen)..];
-            byte[] plain = new byte[cipherLen];
-
-            using var aes = new AesGcm(_aesKey, AesGcm.TagByteSizes.MaxSize);
-            aes.Decrypt(nonce, cipher, tag, plain);
-
-            return Encoding.UTF8.GetString(plain);
         }
     }
 }
