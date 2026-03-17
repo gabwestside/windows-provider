@@ -388,6 +388,26 @@ namespace CredentialProviderAPP.Views
             win.ShowDialog();
         }
 
+        private void MenuConfiguracoes_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (Window w in Application.Current.Windows)
+            {
+                if (w is ConfiguracoesWindow)
+                {
+                    w.Activate();
+                    return;
+                }
+            }
+
+            var win = new ConfiguracoesWindow
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            win.ShowDialog();
+        }
+
         // ══════════════════════════════════════════════════════════════
         //  MFA — STATUS
         // ══════════════════════════════════════════════════════════════

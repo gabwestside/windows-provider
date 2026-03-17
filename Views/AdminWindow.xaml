@@ -605,6 +605,7 @@
                         <!--  CONFIGURAÇÕES  -->
                         <MenuItem
                             VerticalAlignment="Center"
+                            Click="MenuConfiguracoes_Click"
                             Header="Configurações"
                             Style="{StaticResource NavMenuItemStyle}" />
 
