@@ -103,137 +103,137 @@
     <!--  Fundo clicável para arrastar  -->
     <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
 
-    <!-- ══ FUNDO ══ -->
-    <Border
-        Background="{StaticResource BgPage}"
-        BorderBrush="{StaticResource BorderColor}"
-        BorderThickness="1"
-        CornerRadius="14">
-        <Border.Effect>
-            <DropShadowEffect
-                BlurRadius="32"
-                Opacity="0.10"
-                ShadowDepth="8" />
-        </Border.Effect>
-    </Border>
-
-    <!-- ══ CONTEÚDO CENTRAL ══ -->
-    <Grid VerticalAlignment="Center">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="32"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="24"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-
-        <!-- LOGO -->
-        <StackPanel Grid.Row="0" HorizontalAlignment="Center">
-            <TextBlock
-                HorizontalAlignment="Center"
-                FontFamily="Segoe UI"
-                FontSize="22"
-                FontWeight="Bold"
-                Foreground="{StaticResource TextPrimary}"
-                Text="CredentialProviderAPP"/>
-
-            <TextBlock
-                Margin="0,4,0,0"
-                HorizontalAlignment="Center"
-                FontFamily="Segoe UI"
-                FontSize="13"
-                Foreground="{StaticResource TextMuted}"
-                Text="Sistema de Gestão de Credenciais"/>
-        </StackPanel>
-
-        <!-- CARD -->
+        <!--  ══ FUNDO ══  -->
         <Border
-            Grid.Row="2"
-            Width="400"
-            Padding="36,32"
-            HorizontalAlignment="Center"
-            Background="{StaticResource BgCard}"
+            Background="{StaticResource BgPage}"
             BorderBrush="{StaticResource BorderColor}"
             BorderThickness="1"
             CornerRadius="14">
-
             <Border.Effect>
                 <DropShadowEffect
-                    BlurRadius="20"
-                    Opacity="0.07"
-                    ShadowDepth="2"/>
+                    BlurRadius="32"
+                    Opacity="0.10"
+                    ShadowDepth="8" />
             </Border.Effect>
+        </Border>
 
-            <StackPanel>
+        <!--  ══ CONTEÚDO CENTRAL ══  -->
+        <Grid VerticalAlignment="Center">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="32" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
+            <!--  LOGO  -->
+            <StackPanel Grid.Row="0" HorizontalAlignment="Center">
                 <TextBlock
-                    Margin="0,0,0,6"
                     HorizontalAlignment="Center"
                     FontFamily="Segoe UI"
-                    FontSize="20"
-                    FontWeight="SemiBold"
+                    FontSize="22"
+                    FontWeight="Bold"
                     Foreground="{StaticResource TextPrimary}"
-                    Text="Definir nova senha"/>
+                    Text="CredentialProviderAPP" />
 
                 <TextBlock
-                    Margin="0,0,0,26"
+                    Margin="0,4,0,0"
                     HorizontalAlignment="Center"
                     FontFamily="Segoe UI"
                     FontSize="13"
                     Foreground="{StaticResource TextMuted}"
-                    Text="Crie uma senha forte para proteger sua conta."
-                    TextAlignment="Center"/>
+                    Text="Sistema de Gestão de Credenciais" />
+            </StackPanel>
 
-                <!-- Senha -->
-                <TextBlock
-                    Margin="0,0,0,6"
-                    FontFamily="Segoe UI"
-                    FontSize="13"
-                    FontWeight="Medium"
-                    Foreground="{StaticResource TextSecondary}"
-                    Text="Digite a nova senha:"/>
+            <!--  CARD  -->
+            <Border
+                Grid.Row="2"
+                Width="400"
+                Padding="36,32"
+                HorizontalAlignment="Center"
+                Background="{StaticResource BgCard}"
+                BorderBrush="{StaticResource BorderColor}"
+                BorderThickness="1"
+                CornerRadius="14">
 
-                <PasswordBox
-                    x:Name="txtSenha"
-                    Margin="0,0,0,18"
-                    PasswordChanged="SenhaChanged"
-                    Style="{StaticResource ModernPasswordBox}"/>
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="20"
+                        Opacity="0.07"
+                        ShadowDepth="2" />
+                </Border.Effect>
 
-                <!-- Confirmar -->
-                <TextBlock
-                    Margin="0,0,0,6"
-                    FontFamily="Segoe UI"
-                    FontSize="13"
-                    FontWeight="Medium"
-                    Foreground="{StaticResource TextSecondary}"
-                    Text="Confirmação da nova senha:"/>
+                <StackPanel>
 
-                <PasswordBox
-                    x:Name="txtConfirmar"
-                    Margin="0,0,0,24"
-                    PasswordChanged="SenhaChanged"
-                    Style="{StaticResource ModernPasswordBox}"/>
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI"
+                        FontSize="20"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimary}"
+                        Text="Definir nova senha" />
 
-                <!-- REGRAS -->
-                <!-- (mantive exatamente seu bloco original) -->
+                    <TextBlock
+                        Margin="0,0,0,26"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI"
+                        FontSize="13"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Crie uma senha forte para proteger sua conta."
+                        TextAlignment="Center" />
 
-                <Border
-                    Margin="0,0,0,22"
-                    Padding="16,14"
-                    Background="#F8FAFC"
-                    BorderBrush="{StaticResource BorderColor}"
-                    BorderThickness="1"
-                    CornerRadius="10">
+                    <!--  Senha  -->
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontFamily="Segoe UI"
+                        FontSize="13"
+                        FontWeight="Medium"
+                        Foreground="{StaticResource TextSecondary}"
+                        Text="Digite a nova senha:" />
 
-                    <StackPanel>
+                    <PasswordBox
+                        x:Name="txtSenha"
+                        Margin="0,0,0,18"
+                        PasswordChanged="SenhaChanged"
+                        Style="{StaticResource ModernPasswordBox}" />
 
-                        <TextBlock
-                            Margin="0,0,0,10"
-                            FontFamily="Segoe UI"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextMuted}"
-                            Text="REQUISITOS DA SENHA"/>
+                    <!--  Confirmar  -->
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontFamily="Segoe UI"
+                        FontSize="13"
+                        FontWeight="Medium"
+                        Foreground="{StaticResource TextSecondary}"
+                        Text="Confirmação da nova senha:" />
+
+                    <PasswordBox
+                        x:Name="txtConfirmar"
+                        Margin="0,0,0,24"
+                        PasswordChanged="SenhaChanged"
+                        Style="{StaticResource ModernPasswordBox}" />
+
+                    <!--  REGRAS  -->
+                    <!--  (mantive exatamente seu bloco original)  -->
+
+                    <Border
+                        Margin="0,0,0,22"
+                        Padding="16,14"
+                        Background="#F8FAFC"
+                        BorderBrush="{StaticResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                Margin="0,0,0,10"
+                                FontFamily="Segoe UI"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="REQUISITOS DA SENHA" />
 
 
                             <!--  ruleLength  -->
@@ -386,26 +386,26 @@
                 Text="© 2023 CredentialProvider System - Todos os direitos reservados." />
         </Grid>
 
-    <!-- ═════════ BOTÃO X ═════════ -->
-    <Button
-        Width="34"
-        Height="34"
-        HorizontalAlignment="Right"
-        VerticalAlignment="Top"
-        Margin="0,10,10,0"
-        Background="Transparent"
-        BorderThickness="0"
-        Cursor="Hand"
-        Click="Close_Click">
+        <!--  ═════════ BOTÃO X ═════════  -->
+        <Button
+            Width="34"
+            Height="34"
+            Margin="0,10,10,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Close_Click"
+            Cursor="Hand">
 
-        <TextBlock
-            Text="✕"
-            FontSize="16"
-            FontWeight="Bold"
-            Foreground="#6B7280"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"/>
-    </Button>
+            <TextBlock
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="16"
+                FontWeight="Bold"
+                Foreground="#6B7280"
+                Text="✕" />
+        </Button>
 
-</Grid>
+    </Grid>
 </Window>

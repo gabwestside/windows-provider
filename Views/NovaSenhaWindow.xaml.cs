@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using System.DirectoryServices.AccountManagement;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -6,7 +7,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using System.DirectoryServices.AccountManagement;
 
 namespace CredentialProviderAPP.Views;
 
@@ -347,6 +347,7 @@ public partial class NovaSenhaWindow : Window
             Application.Current.Shutdown();
         }
     }
+
     private void Close_Click(object sender, RoutedEventArgs e)
     {
         var result = MessageBox.Show(

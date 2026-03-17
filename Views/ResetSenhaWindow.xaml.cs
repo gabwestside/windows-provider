@@ -1,8 +1,7 @@
+using CredentialProviderAPP.Data;
 using OtpNet;
-using System;
 using System.ComponentModel;
 using System.Windows;
-using CredentialProviderAPP.Data;
 
 namespace CredentialProviderAPP.Views;
 
