@@ -5,96 +5,567 @@
     Title="CredentialProviderAPP"
     Width="1280"
     Height="720"
-    Background="#1E1E1E"
+    AllowsTransparency="True"
+    Background="Transparent"
     Deactivated="Window_Deactivated"
     Icon="Resources/Icon.ico"
     ResizeMode="NoResize"
     ShowInTaskbar="False"
     Topmost="True"
-    WindowStartupLocation="CenterScreen">
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None">
 
-    <Grid>
+    <Window.Resources>
 
-        <StackPanel
-            Width="360"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center">
+        <SolidColorBrush x:Key="TextPrimary" Color="#0F172A" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#64748B" />
+        <SolidColorBrush x:Key="TextMuted" Color="#94A3B8" />
+        <SolidColorBrush x:Key="BorderColor" Color="#E2E8F0" />
 
-            <Image
-                Width="90"
-                Height="90"
-                Margin="0,0,0,10"
-                HorizontalAlignment="Center"
-                Source="Resources/Icon.bmp" />
+        <!--  ══ INPUT USUÁRIO ══  -->
+        <Style x:Key="ModernInput" TargetType="TextBox">
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#E2E8F0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border
+                            x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="44" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontSize="15"
+                                    Foreground="#CBD5E1"
+                                    Text="👤" />
+                                <ScrollViewer
+                                    x:Name="PART_ContentHost"
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center" />
+                                <TextBlock
+                                    x:Name="Ph"
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="14"
+                                    Foreground="#CBD5E1"
+                                    IsHitTestVisible="False"
+                                    Text="Seu nome de usuário" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2563EB" />
+                                <Setter TargetName="Bd" Property="Background" Value="White" />
+                                <Setter TargetName="Bd" Property="BorderThickness" Value="1.5" />
+                            </Trigger>
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="Ph" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-            <TextBlock
-                Margin="0,0,0,20"
-                HorizontalAlignment="Center"
-                FontSize="24"
-                Foreground="White"
-                Text="CredentialProviderAPP" />
+        <!--  ══ INPUT CÓDIGO OTP ══  -->
+        <Style x:Key="OtpInput" TargetType="TextBox">
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#E2E8F0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="30" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Height" Value="64" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border
+                            x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="12">
+                            <ScrollViewer
+                                x:Name="PART_ContentHost"
+                                Margin="12,0"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2563EB" />
+                                <Setter TargetName="Bd" Property="Background" Value="White" />
+                                <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-            <TextBlock
-                x:Name="lblMensagem"
-                Margin="0,0,0,15"
-                Foreground="White"
-                Text="Digite o usuário"
-                TextAlignment="Center"
-                TextWrapping="Wrap" />
+        <!--  ══ BOTÃO PRIMÁRIO ══  -->
+        <Style x:Key="BtnPrimary" TargetType="Button">
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="10">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="14"
+                                    Opacity="0.28"
+                                    ShadowDepth="3"
+                                    Color="#2563EB" />
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1D4ED8" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1E40AF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-            <StackPanel
-                Margin="0,0,0,15"
-                HorizontalAlignment="Center"
-                Orientation="Horizontal">
+        <!--  ══ BOTÃO SECUNDÁRIO ══  -->
+        <Style x:Key="BtnSecondary" TargetType="Button">
+            <Setter Property="Background" Value="#F1F5F9" />
+            <Setter Property="Foreground" Value="#334155" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E2E8F0" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#CBD5E1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <TextBox
-                    x:Name="txtUser"
-                    Width="200"
-                    Height="32"
-                    Margin="0,0,10,0"
-                    FontSize="14" />
+    </Window.Resources>
 
-                <Button
-                    x:Name="btnBuscar"
-                    Width="80"
-                    Height="32"
-                    Click="BuscarUsuario_Click"
-                    Content="Buscar" />
+    <!--
+        ══════════════════════════════════════════════
+        ROOT — gradiente de fundo suave
+        ══════════════════════════════════════════════
+    -->
+    <Border>
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Offset="0" Color="#EEF2FF" />
+                <GradientStop Offset="0.5" Color="#F0F4FF" />
+                <GradientStop Offset="1" Color="#E8EFFE" />
+            </LinearGradientBrush>
+        </Border.Background>
 
-            </StackPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <!--  Lado esquerdo decorativo  -->
+                <ColumnDefinition Width="460" />
+                <!--  Card de login  -->
+            </Grid.ColumnDefinitions>
 
-            <Image
-                x:Name="imgQR"
-                Width="200"
-                Height="200"
-                Margin="0,0,0,15"
-                Visibility="Collapsed" />
+            <!--
+                ══════════════════════════════════════
+                LADO ESQUERDO — branding + decoração
+                ══════════════════════════════════════
+            -->
+            <Grid Grid.Column="0">
 
-            <TextBox
-                x:Name="txtCode"
-                Height="35"
-                Margin="0,0,0,10"
-                HorizontalContentAlignment="Center"
-                FontSize="20"
-                MaxLength="6"
-                Visibility="Collapsed" />
+                <!--  Círculo decorativo superior esquerdo  -->
+                <Ellipse
+                    Width="600"
+                    Height="600"
+                    Margin="-200,-200,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Opacity="0.15">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Offset="0" Color="#2563EB" />
+                            <GradientStop Offset="1" Color="Transparent" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
 
-            <Button
-                x:Name="btnGerarQR"
-                Height="40"
-                Margin="0,0,0,10"
-                Click="GerarQR_Click"
-                Content="Gerar QR Code"
-                Visibility="Collapsed" />
+                <!--  Círculo decorativo inferior direito  -->
+                <Ellipse
+                    Width="400"
+                    Height="400"
+                    Margin="0,0,-80,-80"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Opacity="0.10">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Offset="0" Color="#6366F1" />
+                            <GradientStop Offset="1" Color="Transparent" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
 
-            <Button
-                x:Name="btnValidar"
-                Height="40"
-                Click="ValidarCodigo_Click"
-                Content="Validar Código"
-                Visibility="Collapsed" />
+                <!--  Conteúdo de branding  -->
+                <StackPanel
+                    Margin="80,0,60,0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
 
-        </StackPanel>
+                    <!--  Logo box  -->
+                    <Border
+                        Width="68"
+                        Height="68"
+                        Margin="0,0,0,24"
+                        HorizontalAlignment="Left"
+                        Background="#2563EB"
+                        CornerRadius="16">
+                        <Border.Effect>
+                            <DropShadowEffect
+                                BlurRadius="20"
+                                Opacity="0.32"
+                                ShadowDepth="5"
+                                Color="#2563EB" />
+                        </Border.Effect>
+                        <Image
+                            Width="40"
+                            Height="40"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            RenderOptions.BitmapScalingMode="HighQuality"
+                            Source="Resources/Icon.bmp" />
+                    </Border>
 
-    </Grid>
+                    <!--  Nome do app  -->
+                    <TextBlock
+                        Margin="0,0,0,12"
+                        FontFamily="Segoe UI"
+                        FontSize="34"
+                        FontWeight="Bold"
+                        Foreground="#0F172A"
+                        Text="CredentialProviderAPP" />
+
+                    <!--  Subtítulo  -->
+                    <TextBlock
+                        MaxWidth="380"
+                        Margin="0,0,0,40"
+                        FontFamily="Segoe UI"
+                        FontSize="15"
+                        Foreground="#64748B"
+                        LineHeight="26"
+                        Text="Autenticação segura em dois fatores&#x0a;para o seu ambiente corporativo."
+                        TextWrapping="Wrap" />
+
+                    <!--  Badge TOTP  -->
+                    <StackPanel Margin="0,0,0,12" Orientation="Horizontal">
+                        <Border
+                            Padding="14,7"
+                            Background="#EFF6FF"
+                            BorderBrush="#BFDBFE"
+                            BorderThickness="1"
+                            CornerRadius="20">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,7,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    Text="🔒" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="12"
+                                    FontWeight="Medium"
+                                    Foreground="#1D4ED8"
+                                    Text="TOTP · Google Authenticator" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!--  Badge AD  -->
+                    <StackPanel Orientation="Horizontal">
+                        <Border
+                            Padding="14,7"
+                            Background="#F0FDF4"
+                            BorderBrush="#BBF7D0"
+                            BorderThickness="1"
+                            CornerRadius="20">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,7,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    Text="✅" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="12"
+                                    FontWeight="Medium"
+                                    Foreground="#15803D"
+                                    Text="Integrado ao Active Directory" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                </StackPanel>
+            </Grid>
+
+            <!--
+                ══════════════════════════════════════
+                LADO DIREITO — card de login
+                ══════════════════════════════════════
+            -->
+            <Border
+                Grid.Column="1"
+                Background="White"
+                BorderBrush="#E2E8F0"
+                BorderThickness="1,0,0,0">
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="40"
+                        Direction="180"
+                        Opacity="0.08"
+                        ShadowDepth="0" />
+                </Border.Effect>
+
+                <Grid>
+
+                    <!--  Faixa de cor no topo  -->
+                    <Border Height="5" VerticalAlignment="Top">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Offset="0" Color="#2563EB" />
+                                <GradientStop Offset="1" Color="#6366F1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <!--  Formulário centralizado  -->
+                    <StackPanel
+                        Width="340"
+                        Margin="0,20,0,20"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+
+                        <!--  Título do card  -->
+                        <TextBlock
+                            x:Name="lblTitulo"
+                            Margin="0,0,0,8"
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe UI"
+                            FontSize="24"
+                            FontWeight="Bold"
+                            Foreground="#0F172A"
+                            Text="Bem-vindo de volta" />
+
+                        <!--  Mensagem dinâmica  -->
+                        <TextBlock
+                            x:Name="lblMensagem"
+                            Margin="0,0,0,32"
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe UI"
+                            FontSize="13"
+                            Foreground="#64748B"
+                            Text="Acesse sua conta para gerenciar credenciais"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+
+                        <!--  Label + Input usuário  -->
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontFamily="Segoe UI"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="#475569"
+                            Text="Digite o usuário" />
+
+                        <TextBox
+                            x:Name="txtUser"
+                            Margin="0,0,0,16"
+                            Style="{StaticResource ModernInput}" />
+
+                        <!--  Botão Entrar  -->
+                        <Button
+                            x:Name="btnBuscar"
+                            Margin="0,0,0,12"
+                            Click="BuscarUsuario_Click"
+                            Style="{StaticResource BtnPrimary}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center"
+                                    Text="Entrar" />
+                            </StackPanel>
+                        </Button>
+
+                        <!--  Botão Gerar QR  -->
+                        <Button
+                            x:Name="btnGerarQR"
+                            Margin="0,0,0,12"
+                            Click="GerarQR_Click"
+                            Style="{StaticResource BtnSecondary}"
+                            Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="15"
+                                    Text="⿻" />
+                                <TextBlock VerticalAlignment="Center" Text="Gerar QR Code" />
+                            </StackPanel>
+                        </Button>
+
+                        <!--  Links rodapé  -->
+                        <Border
+                            Height="1"
+                            Margin="0,4,0,14"
+                            Background="#F1F5F9" />
+
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBlock
+                                FontFamily="Segoe UI"
+                                FontSize="12"
+                                Foreground="#94A3B8">
+                                <Hyperlink Foreground="#94A3B8" TextDecorations="None">
+                                    Esqueceu o usuário?
+                                </Hyperlink>
+                            </TextBlock>
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="#CBD5E1"
+                                Text="  ·  " />
+                            <TextBlock
+                                FontFamily="Segoe UI"
+                                FontSize="12"
+                                Foreground="#94A3B8">
+                                <Hyperlink Foreground="#94A3B8" TextDecorations="None">
+                                    Suporte técnico
+                                </Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!--  ── QR CODE ──  -->
+                        <Border
+                            x:Name="painelQR"
+                            Margin="0,16,0,0"
+                            Padding="16"
+                            Background="#F8FAFC"
+                            BorderBrush="#E2E8F0"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock
+                                    Margin="0,0,0,12"
+                                    HorizontalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="#475569"
+                                    Text="Escaneie com o Google Authenticator" />
+                                <Image
+                                    x:Name="imgQR"
+                                    Width="200"
+                                    Height="200"
+                                    HorizontalAlignment="Center"
+                                    RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                            </StackPanel>
+                        </Border>
+
+                        <!--  ── CÓDIGO OTP ──  -->
+                        <StackPanel
+                            x:Name="painelCodigo"
+                            Margin="0,16,0,0"
+                            Visibility="Collapsed">
+
+                            <TextBlock
+                                Margin="0,0,0,8"
+                                FontFamily="Segoe UI"
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Foreground="#475569"
+                                Text="Código de verificação" />
+
+                            <TextBox
+                                x:Name="txtCode"
+                                Margin="0,0,0,14"
+                                MaxLength="6"
+                                Style="{StaticResource OtpInput}" />
+
+                            <Button
+                                x:Name="btnValidar"
+                                Click="ValidarCodigo_Click"
+                                Style="{StaticResource BtnPrimary}">
+                                <TextBlock VerticalAlignment="Center" Text="Verificar código" />
+                            </Button>
+                        </StackPanel>
+
+                    </StackPanel>
+
+                    <!--  Rodapé do card  -->
+                    <TextBlock
+                        Margin="0,0,0,18"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        FontFamily="Segoe UI"
+                        FontSize="11"
+                        Foreground="#CBD5E1">
+                        © 2026 CredentialProvider System
+                    </TextBlock>
+
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Border>
 </Window>
