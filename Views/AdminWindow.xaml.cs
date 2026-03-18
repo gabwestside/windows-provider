@@ -1,5 +1,4 @@
-﻿using CredentialProviderAPP.Data;
-using CredentialProviderAPP.Models;
+﻿using CredentialProviderAPP.Models;
 using System.DirectoryServices;
 using System.DirectoryServices.AccountManagement;
 using System.DirectoryServices.ActiveDirectory;
@@ -429,38 +428,57 @@ namespace CredentialProviderAPP.Views
             return "Ativo";
         }
 
-        // ══════════════════════════════════════════════════════════════
-        //  MFA — ATIVAR (grava no banco local — mantido para compatibilidade)
-        // ══════════════════════════════════════════════════════════════
+
         private void AtivarMFAEmMassa(List<UsuarioViewModel> usuarios)
         {
             try
             {
-                using var conn = Database.GetConnection();
-                conn.Open();
-                using var tx = conn.BeginTransaction();
+                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+
+                using var root = new DirectoryEntry(ldap);
+
                 foreach (var user in usuarios)
                 {
-                    var login = Database.Normalize(user.Login);
-                    var cmd = conn.CreateCommand();
-                    cmd.CommandText = @"
-                        INSERT INTO users (username, mfaenabled, configured, createdat)
-                        SELECT username, 1, 0, datetime('now')
-                        FROM (SELECT @username AS username)
-                        WHERE NOT EXISTS (
-                            SELECT 1 FROM users WHERE LOWER(username) = LOWER(@username)
-                        );
-                        UPDATE users SET mfaenabled = 1
-                        WHERE LOWER(username) = LOWER(@username);";
-                    cmd.Parameters.AddWithValue("@username", login);
-                    cmd.ExecuteNonQuery();
+                    try
+                    {
+                        var login = EscapeLdap(NormalizarLogin(user.Login));
+
+                        using var searcher = new DirectorySearcher(root)
+                        {
+                            Filter = $"(&(objectClass=user)(samAccountName={login}))"
+                        };
+
+                        var result = searcher.FindOne();
+                        if (result == null) continue;
+
+                        using var entry = result.GetDirectoryEntry();
+
+                        entry.Properties["extensionAttribute1"].Value = "setup";
+                        entry.CommitChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(ex.Message);
+                    }
                 }
-                tx.Commit();
+
                 MessageBox.Show($"MFA ativado para {usuarios.Count} usuários.");
             }
-            catch (Exception ex) { MessageBox.Show("Erro ao ativar MFA: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao ativar MFA: " + ex.Message);
+            }
         }
+        private static string EscapeLdap(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "";
 
+            return input
+                .Replace("\\", "\\5c")
+                .Replace("*", "\\2a")
+                .Replace("(", "\\28")
+                .Replace(")", "\\29");
+        }
         private void AtivarMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
@@ -472,7 +490,7 @@ namespace CredentialProviderAPP.Views
         private void AtivarMFATodos_Click(object sender, RoutedEventArgs e)
         {
             var todos = CombinarUsuarios()
-                .Where(u => ObterStatusMFA(u.MFAStatus) == "Não configurado").ToList();
+                .Where(u => u.MFAStatus == "Não configurado").ToList();
 
             if (!todos.Any()) { MessageBox.Show("Nenhum usuário precisa de MFA."); return; }
 
@@ -483,31 +501,45 @@ namespace CredentialProviderAPP.Views
             AtualizarGrid();
         }
 
-        // ══════════════════════════════════════════════════════════════
-        //  MFA — RESETAR
-        // ══════════════════════════════════════════════════════════════
         private void ResetarMFA(List<UsuarioViewModel> usuarios)
         {
             try
             {
-                using var conn = Database.GetConnection();
-                conn.Open();
-                using var tx = conn.BeginTransaction();
+                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+
+                using var root = new DirectoryEntry(ldap);
+
                 foreach (var user in usuarios)
                 {
-                    var login = NormalizarLogin(user.Login);
-                    var cmd = conn.CreateCommand();
-                    cmd.CommandText = @"
-                        UPDATE users
-                        SET configured = 0, totpsecret = NULL, mfaenabled = 1
-                        WHERE LOWER(username) = LOWER(@username)";
-                    cmd.Parameters.AddWithValue("@username", login);
-                    cmd.ExecuteNonQuery();
+                    try
+                    {
+                        var login = EscapeLdap(NormalizarLogin(user.Login));
+
+                        using var searcher = new DirectorySearcher(root)
+                        {
+                            Filter = $"(&(objectClass=user)(samAccountName={login}))"
+                        };
+
+                        var result = searcher.FindOne();
+                        if (result == null) continue;
+
+                        using var entry = result.GetDirectoryEntry();
+
+                        entry.Properties["extensionAttribute1"].Value = "setup";
+                        entry.CommitChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(ex.Message);
+                    }
                 }
-                tx.Commit();
+
                 MessageBox.Show($"MFA resetado para {usuarios.Count} usuários.");
             }
-            catch (Exception ex) { MessageBox.Show("Erro ao resetar MFA: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao resetar MFA: " + ex.Message);
+            }
         }
 
         private void ResetarMFASelecionados_Click(object sender, RoutedEventArgs e)
@@ -536,33 +568,46 @@ namespace CredentialProviderAPP.Views
             AtualizarGrid();
         }
 
-        // ══════════════════════════════════════════════════════════════
-        //  MFA — REMOVER
-        // ══════════════════════════════════════════════════════════════
         private void RemoverMFA(List<UsuarioViewModel> usuarios)
         {
             try
             {
-                using var conn = Database.GetConnection();
-                conn.Open();
-                using var tx = conn.BeginTransaction();
+                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+
+                using var root = new DirectoryEntry(ldap);
+
                 foreach (var user in usuarios)
                 {
-                    var login = NormalizarLogin(user.Login);
-                    var cmd = conn.CreateCommand();
-                    cmd.CommandText = @"
-                        UPDATE users
-                        SET mfaenabled = 0, configured = 0, totpsecret = NULL
-                        WHERE LOWER(username) = LOWER(@username)";
-                    cmd.Parameters.AddWithValue("@username", login);
-                    cmd.ExecuteNonQuery();
+                    try
+                    {
+                        var login = EscapeLdap(NormalizarLogin(user.Login));
+
+                        using var searcher = new DirectorySearcher(root)
+                        {
+                            Filter = $"(&(objectClass=user)(samAccountName={login}))"
+                        };
+
+                        var result = searcher.FindOne();
+                        if (result == null) continue;
+
+                        using var entry = result.GetDirectoryEntry();
+
+                        entry.Properties["extensionAttribute1"].Clear();
+                        entry.CommitChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(ex.Message);
+                    }
                 }
-                tx.Commit();
+
                 MessageBox.Show($"MFA removido de {usuarios.Count} usuários.");
             }
-            catch (Exception ex) { MessageBox.Show("Erro ao remover MFA: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao remover MFA: " + ex.Message);
+            }
         }
-
         private void RemoverMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
@@ -637,54 +682,59 @@ namespace CredentialProviderAPP.Views
         }
 
         private void ForcarTrocaSenha(List<UsuarioViewModel> usuarios)
+{
+    int ok = 0, fail = 0;
+
+    foreach (var user in usuarios)
+    {
+        try
         {
-            int ok = 0, fail = 0;
-
-            foreach (var user in usuarios)
+            if (user.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) == true)
             {
-                try
-                {
-                    if (user.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        using var ctx = new PrincipalContext(ContextType.Machine);
-                        var u = UserPrincipal.FindByIdentity(ctx, user.Login);
+                using var ctx = new PrincipalContext(ContextType.Machine);
+                var u = UserPrincipal.FindByIdentity(ctx, user.Login);
 
-                        if (u == null) { fail++; continue; }
+                if (u == null) { fail++; continue; }
 
-                        u.ExpirePasswordNow();
-                        u.Save();
-                        ok++;
-                    }
-                    else
-                    {
-                        string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-
-                        using var searcher = new DirectorySearcher(new DirectoryEntry(ldap))
-                        {
-                            Filter = $"(&(objectClass=user)(samAccountName={user.Login}))"
-                        };
-                        searcher.PropertiesToLoad.Add("distinguishedName");
-
-                        var result = searcher.FindOne();
-                        if (result == null) { fail++; continue; }
-
-                        using var entry = result.GetDirectoryEntry();
-                        entry.Properties["pwdLastSet"].Value = 0;
-                        entry.CommitChanges();
-                        ok++;
-                    }
-                }
-                catch { fail++; }
+                u.ExpirePasswordNow();
+                u.Save();
+                ok++;
             }
+            else
+            {
+                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
 
-            string msg = $"✅ {ok} usuário(s) configurados para trocar senha no próximo login.";
-            if (fail > 0)
-                msg += $"\n⚠️ {fail} usuário(s) não puderam ser processados.";
+                var login = EscapeLdap(NormalizarLogin(user.Login));
 
-            MessageBox.Show(msg, "Trocar Senha no Próximo Login",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+                using var searcher = new DirectorySearcher(new DirectoryEntry(ldap))
+                {
+                    Filter = $"(&(objectClass=user)(samAccountName={login}))"
+                };
+                searcher.PropertiesToLoad.Add("distinguishedName");
+
+                var result = searcher.FindOne();
+                if (result == null) { fail++; continue; }
+
+                using var entry = result.GetDirectoryEntry();
+                entry.Properties["pwdLastSet"].Value = 0;
+                entry.CommitChanges();
+                ok++;
+            }
         }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex.Message);
+            fail++;
+        }
+    }
 
+    string msg = $"✅ {ok} usuário(s) configurados para trocar senha no próximo login.";
+    if (fail > 0)
+        msg += $"\n⚠️ {fail} usuário(s) não puderam ser processados.";
+
+    MessageBox.Show(msg, "Trocar Senha no Próximo Login",
+        MessageBoxButton.OK, MessageBoxImage.Information);
+}
         // ══════════════════════════════════════════════════════════════
         //  HELPERS INTERNOS
         // ══════════════════════════════════════════════════════════════
@@ -698,8 +748,15 @@ namespace CredentialProviderAPP.Views
 
         private static string NormalizarLogin(string login)
         {
-            login = Database.Normalize(login);
-            return login.Contains('\\') ? login.Split('\\')[1] : login;
+            if (string.IsNullOrWhiteSpace(login)) return "";
+
+            if (login.Contains("\\"))
+                login = login.Split('\\')[1];
+
+            if (login.Contains("@"))
+                login = login.Split('@')[0];
+
+            return login.Trim();
         }
     }
 }
