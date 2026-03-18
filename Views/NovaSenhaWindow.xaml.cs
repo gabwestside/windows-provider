@@ -1,4 +1,3 @@
-using Microsoft.Data.Sqlite;
 using System.DirectoryServices.AccountManagement;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -7,6 +6,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.DirectoryServices;
+using CredentialProviderAPP.Utils;
 
 namespace CredentialProviderAPP.Views;
 
@@ -16,23 +17,21 @@ public partial class NovaSenhaWindow : Window
 
     private int minLength;
     private int minSpecial;
-    private string allowedChars;
+    private string allowedChars = "";
     private bool needUpper;
     private bool needLower;
     private bool needNumber;
     private bool mostrandoDialog = false;
 
-    // Cores dos indicadores
-    private static readonly SolidColorBrush _neutral = new(Color.FromRgb(0xC4, 0xC9, 0xD4)); // cinza
-
-    private static readonly SolidColorBrush _ok = new(Color.FromRgb(0x22, 0xC5, 0x5E)); // verde
-    private static readonly SolidColorBrush _fail = new(Color.FromRgb(0xEF, 0x44, 0x44)); // vermelho
+    private static readonly SolidColorBrush _neutral = new(Color.FromRgb(0xC4, 0xC9, 0xD4));
+    private static readonly SolidColorBrush _ok = new(Color.FromRgb(0x22, 0xC5, 0x5E));
+    private static readonly SolidColorBrush _fail = new(Color.FromRgb(0xEF, 0x44, 0x44));
 
     private string policyPath =
         System.IO.Path.Combine(
             System.IO.Path.GetDirectoryName(
-                System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName
-            ),
+                System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName
+            )!,
             "password_policy.txt"
         );
 
@@ -47,7 +46,6 @@ public partial class NovaSenhaWindow : Window
         btnSalvar.IsEnabled = false;
     }
 
-    // ── Permite arrastar a janela (WindowStyle=None) ──
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed)
@@ -99,14 +97,12 @@ public partial class NovaSenhaWindow : Window
             blacklistOK = forbiddenWord == null;
         }
 
-        // ── Regras principais — sempre visíveis ──
         SetRule(dotLength, ruleLength, lengthOK, $"Mínimo {minLength} caracteres", senha.Length > 0);
         SetRule(dotUpper, ruleUpper, upperOK, "Letra maiúscula", senha.Length > 0);
         SetRule(dotLower, ruleLower, lowerOK, "Letra minúscula", senha.Length > 0);
         SetRule(dotNumber, ruleNumber, numberOK, "Número", senha.Length > 0);
         SetRule(dotSpecial, ruleSpecial, specialOK, $"Especial ({minSpecial})", senha.Length > 0);
 
-        // ── Blacklist — aparece apenas quando senhas coincidem ──
         if (match)
         {
             panelBlacklist.Visibility = Visibility.Visible;
@@ -121,7 +117,6 @@ public partial class NovaSenhaWindow : Window
             panelBlacklist.Visibility = Visibility.Collapsed;
         }
 
-        // ── Confirmação — aparece apenas quando o campo tem texto ──
         if (txtConfirmar.Password.Length > 0)
         {
             panelMatch.Visibility = Visibility.Visible;
@@ -132,56 +127,61 @@ public partial class NovaSenhaWindow : Window
             panelMatch.Visibility = Visibility.Collapsed;
         }
 
-        bool allValid =
-            lengthOK &&
-            upperOK &&
-            lowerOK &&
-            numberOK &&
-            specialOK &&
-            blacklistOK &&
-            match;
-
-        btnSalvar.IsEnabled = allValid;
+        btnSalvar.IsEnabled =
+            lengthOK && upperOK && lowerOK && numberOK &&
+            specialOK && blacklistOK && match;
     }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ENABLE MFA — só marca "setup" se o usuário ainda não tem MFA.
+    //
+    //  extensionAttribute1:
+    //    vazio          → grava "setup"  (habilita enrollment)
+    //    "setup"        → já está pendente, não faz nada
+    //    qualquer outro → é o secret Base32 — MFA já ativo, não toca!
+    // ══════════════════════════════════════════════════════════════
 
     private void EnableMFA()
     {
         try
         {
-            string dbPath =
-                System.IO.Path.Combine(
-                    System.IO.Path.GetDirectoryName(
-                        System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName
-                    ),
-                    "mfa.db"
-                );
+            string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
 
-            using var conn = new SqliteConnection($"Data Source={dbPath}");
-            conn.Open();
+            using var root = new DirectoryEntry(ldap, null, null, AuthenticationTypes.Secure);
 
-            var cmd = conn.CreateCommand();
-            cmd.CommandText = @"
-                UPDATE users
-                SET mfaenabled  = 1,
-                    configured   = 0,
-                    totpsecret   = NULL
-                WHERE lower(username) = lower($user)
-                  AND configured = 0
-            ";
+            var normalizedUser = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
 
-            cmd.Parameters.AddWithValue("$user", login);
-            cmd.ExecuteNonQuery();
+            using var searcher = new DirectorySearcher(root)
+            {
+                Filter = $"(&(objectClass=user)(samAccountName={normalizedUser}))"
+            };
+            searcher.PropertiesToLoad.Add("info"); // ← era extensionAttribute1
+
+            var result = searcher.FindOne();
+
+            if (result == null)
+            {
+                MostrarMensagem("Usuário não encontrado no Active Directory.");
+                return;
+            }
+
+            using var entry = result.GetDirectoryEntry();
+
+            string? valorAtual = entry.Properties["info"]?.Value?.ToString(); // ← era extensionAttribute1
+
+            // se já tem qualquer valor ("setup" ou secret), não sobrescreve
+            if (!string.IsNullOrWhiteSpace(valorAtual))
+                return;
+
+            // atributo vazio → habilita enrollment
+            entry.Properties["info"].Value = "setup"; // ← era extensionAttribute1
+            entry.CommitChanges();
         }
         catch (Exception ex)
         {
-            MostrarMensagem("Erro ao atualizar MFA: " + ex.Message);
+            MostrarMensagem("Erro ao atualizar MFA no AD: " + ex.Message);
         }
     }
-
-    /// <summary>
-    /// Define o estado visual de um indicador (dot + label).
-    /// Se <paramref name="active"/> for false, mantém o dot neutro (cinza).
-    /// </summary>
     private void SetRule(Ellipse dot, TextBlock label, bool ok, string text, bool active)
     {
         label.Text = text;
@@ -189,37 +189,27 @@ public partial class NovaSenhaWindow : Window
         if (!active)
         {
             dot.Fill = _neutral;
-            label.Foreground = new SolidColorBrush(Color.FromRgb(0x9C, 0xA3, 0xAF)); // TextMuted
+            label.Foreground = new SolidColorBrush(Color.FromRgb(0x9C, 0xA3, 0xAF));
         }
         else if (ok)
         {
             dot.Fill = _ok;
-            label.Foreground = new SolidColorBrush(Color.FromRgb(0x16, 0xA3, 0x4A)); // verde
+            label.Foreground = new SolidColorBrush(Color.FromRgb(0x16, 0xA3, 0x4A));
         }
         else
         {
             dot.Fill = _fail;
-            label.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44)); // vermelho
+            label.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
         }
     }
 
     private bool ValidatePassword(string senha)
     {
-        if (senha.Length < minLength)
-            return false;
-
-        if (needUpper && !senha.Any(char.IsUpper))
-            return false;
-
-        if (needLower && !senha.Any(char.IsLower))
-            return false;
-
-        if (needNumber && !senha.Any(char.IsDigit))
-            return false;
-
-        if (senha.Count(c => allowedChars.Contains(c)) < minSpecial)
-            return false;
-
+        if (senha.Length < minLength) return false;
+        if (needUpper && !senha.Any(char.IsUpper)) return false;
+        if (needLower && !senha.Any(char.IsLower)) return false;
+        if (needNumber && !senha.Any(char.IsDigit)) return false;
+        if (senha.Count(c => allowedChars.Contains(c)) < minSpecial) return false;
         return true;
     }
 
@@ -250,7 +240,6 @@ public partial class NovaSenhaWindow : Window
         }
 
         string? forbidden = PasswordBlacklist.GetForbiddenWord(senha);
-
         if (forbidden != null)
         {
             MostrarMensagem($"A senha contém a palavra proibida: {forbidden}");
@@ -263,21 +252,10 @@ public partial class NovaSenhaWindow : Window
             return;
         }
 
-        string normalizedUser = login;
-
-        // remove DOMAIN\
-        if (normalizedUser.Contains("\\"))
-            normalizedUser = normalizedUser.Split('\\')[1];
-
-        // remove @domain
-        if (normalizedUser.Contains("@"))
-            normalizedUser = normalizedUser.Split('@')[0];
-
+        string normalizedUser = LdapHelper.NormalizeLogin(login);
         bool senhaAlterada = false;
 
-        // ─────────────────────────────────────────
-        // 1️⃣ TENTAR ALTERAR SENHA NO ACTIVE DIRECTORY
-        // ─────────────────────────────────────────
+        // 1️⃣ tenta AD
         try
         {
             using var ctx = new PrincipalContext(ContextType.Domain);
@@ -287,45 +265,32 @@ public partial class NovaSenhaWindow : Window
             {
                 user.SetPassword(senha);
                 user.Save();
-
                 senhaAlterada = true;
             }
         }
-        catch
-        {
-            // se falhar no AD tenta local
-        }
+        catch { /* falhou no AD, tenta local */ }
 
-        // ─────────────────────────────────────────
-        // 2️⃣ SE NÃO FOR AD → TENTA USUÁRIO LOCAL
-        // ─────────────────────────────────────────
+        // 2️⃣ tenta local
         if (!senhaAlterada)
         {
             try
             {
-                USER_INFO_1003 info = new();
-                info.usri1003_password = senha;
+                USER_INFO_1003 info = new() { usri1003_password = senha };
 
-                int err;
-                int result = NetUserSetInfo(".", normalizedUser, 1003, ref info, out err);
+                int result = NetUserSetInfo(".", normalizedUser, 1003, ref info, out _);
 
                 if (result == 0)
+                {
                     senhaAlterada = true;
+                }
                 else
                 {
-                    if (result == 2245)
+                    MostrarMensagem(result switch
                     {
-                        MostrarMensagem("A senha não atende à política do Windows.");
-                        return;
-                    }
-
-                    if (result == 5)
-                    {
-                        MostrarMensagem("Permissão negada. Execute como administrador.");
-                        return;
-                    }
-
-                    MostrarMensagem($"Erro ao alterar senha. Código: {result}");
+                        2245 => "A senha não atende à política do Windows.",
+                        5 => "Permissão negada. Execute como administrador.",
+                        _ => $"Erro ao alterar senha. Código: {result}"
+                    });
                     return;
                 }
             }
@@ -336,16 +301,14 @@ public partial class NovaSenhaWindow : Window
             }
         }
 
-        // ─────────────────────────────────────────
-        // 3️⃣ SUCESSO
-        // ─────────────────────────────────────────
+        // 3️⃣ sucesso
         if (senhaAlterada)
         {
             EnableMFA();
 
             MostrarMensagem("Senha alterada com sucesso!");
 
-            DialogResult = true; // ✅ sucesso
+            DialogResult = true;
             Close();
         }
     }
@@ -360,6 +323,7 @@ public partial class NovaSenhaWindow : Window
             Keyboard.Focus(txtSenha);
         }));
     }
+
     private void Close_Click(object sender, RoutedEventArgs e)
     {
         var result = MostrarMensagem(
@@ -375,29 +339,21 @@ public partial class NovaSenhaWindow : Window
         }
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
-    {
-        ForcarFoco();
-    }
-
+    private void Window_Loaded(object sender, RoutedEventArgs e) => ForcarFoco();
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        if (mostrandoDialog)
-            return;
-
-        ForcarFoco();
+        if (!mostrandoDialog) ForcarFoco();
     }
-    private MessageBoxResult MostrarMensagem(string msg,
+
+    private MessageBoxResult MostrarMensagem(
+        string msg,
         string titulo = "Aviso",
         MessageBoxButton buttons = MessageBoxButton.OK,
         MessageBoxImage icon = MessageBoxImage.Information)
     {
         mostrandoDialog = true;
-
         var result = MessageBox.Show(msg, titulo, buttons, icon);
-
         mostrandoDialog = false;
-
         return result;
     }
 }

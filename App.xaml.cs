@@ -27,6 +27,14 @@ namespace CredentialProviderAPP
                         return;
                     }
 
+                    if (mode == "setup")
+                    {
+                        string login = e.Args.Length > 1 ? e.Args[1] : "";
+                        var mainWindow = new MainWindow(login);
+                        mainWindow.Show();
+                        return;
+                    }
+
                     if (mode == "reset")
                     {
                         string login = e.Args.Length > 1 ? e.Args[1] : "";

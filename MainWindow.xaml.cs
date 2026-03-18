@@ -1,11 +1,12 @@
-﻿using CredentialProviderAPP.Data;
-using CredentialProviderAPP.Views;
+﻿using CredentialProviderAPP.Views;
+using CredentialProviderAPP.Utils;
 using OtpNet;
 using QRCoder;
 using System.Drawing;
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.DirectoryServices;
 
 namespace CredentialProviderAPP;
 
@@ -32,26 +33,21 @@ public partial class MainWindow : Window
             return;
 
         loginAtual = login;
-
-        var user = Database.GetUser(login);
-
         txtUser.Text = login;
         txtUser.IsReadOnly = true;
         btnBuscar.Visibility = Visibility.Collapsed;
 
-        //
-        // 🚨 MFA DESATIVADO → NÃO FAZ NADA
-        //
-        if (!user.mfaenabled)
+        string? valorInfo = ObterInfoAD(login);
+
+        // vazio → MFA não habilitado pelo admin → deixa passar
+        if (string.IsNullOrWhiteSpace(valorInfo))
         {
             Environment.Exit(0);
             return;
         }
 
-        //
-        // 🔐 MFA habilitado mas NÃO configurado → gerar QR
-        //
-        if (user.mfaenabled && !user.configured)
+        // "setup" → habilitado mas ainda não configurado → mostrar QR
+        if (valorInfo.Equals("setup", StringComparison.OrdinalIgnoreCase))
         {
             lblMensagem.Text =
 $@"Bem-vindo {login}
@@ -64,19 +60,75 @@ a autenticação em dois fatores.";
             return;
         }
 
-        //
-        // 🔐 MFA habilitado e configurado → validar código
-        //
-        if (user.mfaenabled && user.configured && !string.IsNullOrEmpty(user.secret))
-        {
-            VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
-            win.ShowDialog();
-            Environment.Exit(0);
-            return;
-        }
-
-        Environment.Exit(1);
+        // qualquer outro valor → é o secret → validar código
+        VerificarCodigoWindow win = new VerificarCodigoWindow(valorInfo);
+        win.ShowDialog();
+        Environment.Exit(0);
     }
+
+private string? ObterInfoAD(string login)
+{
+    try
+    {
+        string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+        using var root = CriarDirectoryEntry(ldap);
+
+        var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
+        using var searcher = new DirectorySearcher(root)
+        {
+            Filter = $"(&(objectClass=user)(samAccountName={user}))"
+        };
+        searcher.PropertiesToLoad.Add("info");
+
+        var result = searcher.FindOne();
+        if (result == null) return null;
+
+        return result.Properties["info"].Count > 0
+            ? result.Properties["info"][0].ToString()
+            : null;
+    }
+    catch { return null; }
+}
+
+private void SalvarSecretAD(string login, string secret)
+{
+    string ldap    = ConfigHelper.Get("ActiveDirectory:LDAP");
+    string adUser  = ConfigHelper.Get("ActiveDirectory:Usuario");
+    string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+
+    using var root = CriarDirectoryEntry(ldap);
+
+    var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
+    using var searcher = new DirectorySearcher(root)
+    {
+        Filter = $"(&(objectClass=user)(samAccountName={user}))"
+    };
+
+    var result = searcher.FindOne();
+    if (result == null) throw new Exception("Usuário não encontrado no AD.");
+
+    // ✅ usa credenciais explícitas no entry também
+    using var entry = new DirectoryEntry(result.Path, adUser, adSenha, AuthenticationTypes.Secure);
+    entry.Properties["info"].Value = secret;
+    entry.CommitChanges();
+}
+
+private DirectoryEntry CriarDirectoryEntry(string ldap)
+{
+    // tenta sem credenciais primeiro (funciona quando há contexto de domínio)
+    try
+    {
+        var entry = new DirectoryEntry(ldap, null, null, AuthenticationTypes.Secure);
+        _ = entry.Name; // força a conexão
+        return entry;
+    }
+    catch { }
+
+    // fallback com credenciais explícitas
+    string adUser  = ConfigHelper.Get("ActiveDirectory:Usuario");
+    string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+    return new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
+}
 
     private void BuscarUsuario_Click(object sender, RoutedEventArgs e)
     {
@@ -88,41 +140,33 @@ a autenticação em dois fatores.";
             return;
         }
 
-        var user = Database.GetUser(username);
-
         txtUser.IsReadOnly = true;
         btnBuscar.Visibility = Visibility.Collapsed;
 
-        //
-        // MFA DESATIVADO
-        //
-        if (!user.mfaenabled)
+        string? valorInfo = ObterInfoAD(username);
+
+        if (string.IsNullOrWhiteSpace(valorInfo))
         {
             Environment.Exit(0);
             return;
         }
 
-        //
-        // MFA CONFIGURADO
-        //
-        if (user.mfaenabled && user.configured && !string.IsNullOrEmpty(user.secret))
+        if (valorInfo.Equals("setup", StringComparison.OrdinalIgnoreCase))
         {
-            VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
-            win.ShowDialog();
-            return;
-        }
-
-        //
-        // MFA NÃO CONFIGURADO
-        //
-        lblMensagem.Text =
+            lblMensagem.Text =
 $@"Bem-vindo {username}
 
 Para proteger sua conta,
 gere agora o QR Code para configurar
 a autenticação em dois fatores.";
 
-        btnGerarQR.Visibility = Visibility.Visible;
+            btnGerarQR.Visibility = Visibility.Visible;
+            return;
+        }
+
+        // secret → validar
+        VerificarCodigoWindow win = new VerificarCodigoWindow(valorInfo);
+        win.ShowDialog();
     }
 
     private void GerarQR_Click(object sender, RoutedEventArgs e)
@@ -135,13 +179,10 @@ a autenticação em dois fatores.";
             currentSecret = Base32Encoding.ToString(currentKey);
 
             string issuer = "CredentialProvider";
-
-            string url =
-                $"otpauth://totp/{issuer}:{username}?secret={currentSecret}&issuer={issuer}";
+            string url = $"otpauth://totp/{issuer}:{username}?secret={currentSecret}&issuer={issuer}";
 
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
             QRCodeData qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
-
             QRCode qrCode = new QRCode(qrCodeData);
             Bitmap qrBitmap = qrCode.GetGraphic(20);
 
@@ -156,7 +197,6 @@ para confirmar a configuração.";
 
             txtCode.Visibility = Visibility.Visible;
             btnValidar.Visibility = Visibility.Visible;
-
             btnGerarQR.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex)
@@ -172,16 +212,11 @@ para confirmar a configuração.";
             string username = txtUser.Text.Trim();
             string code = txtCode.Text.Trim();
 
-            if (currentKey == null)
+            if (currentKey == null || currentSecret == null)
                 return;
 
             var totp = new Totp(currentKey);
-
-            bool valid = totp.VerifyTotp(
-                code,
-                out long step,
-                new VerificationWindow(1, 1)
-            );
+            bool valid = totp.VerifyTotp(code, out long _, new VerificationWindow(1, 1));
 
             if (!valid)
             {
@@ -189,15 +224,11 @@ para confirmar a configuração.";
                 return;
             }
 
-            if (currentSecret == null)
-                return;
-
-            Database.SaveSecret(username, currentSecret);
+            // ✅ grava secret no AD em vez do banco
+            SalvarSecretAD(username, currentSecret);
 
             autenticado = true;
-
             MostrarMensagem("MFA configurado com sucesso!");
-
             Environment.Exit(0);
         }
         catch (Exception ex)
@@ -216,17 +247,12 @@ para confirmar a configuração.";
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);
-
-        if (!autenticado)
-        {
-            Environment.Exit(1);
-        }
+        if (!autenticado) Environment.Exit(1);
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        if (mostrandoDialog)
-            return;
+        if (mostrandoDialog) return;
 
         Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -249,4 +275,5 @@ para confirmar a configuração.";
 
         return bitmapImage;
     }
+
 }
