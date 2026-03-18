@@ -1,16 +1,16 @@
-using System;
+using CredentialProviderAPP.Models;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using CredentialProviderAPP.Models;
 
 namespace CredentialProviderAPP.Views
 {
     public partial class RegraSenhaWindow : Window
     {
         private string policyPath =
-            Path.Combine(Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName), "password_policy.txt");
+            Path.Combine(
+                Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty,
+                "password_policy.txt");
 
         private bool policyExists = false;
 

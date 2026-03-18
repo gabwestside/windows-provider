@@ -49,21 +49,20 @@ namespace CredentialProviderAPP
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    "Erro ao iniciar aplicação:\n\n" + ex.ToString(),
+                ModernMessageBox.Show(
+                    "Erro ao iniciar aplicação:\n\n"
+                    + ex.ToString(),
                     "Erro crítico",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    ModernMessageBox.Kind.Error);
             }
         }
 
         private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
-            MessageBox.Show(
+            ModernMessageBox.Show(
                 "Erro não tratado:\n\n" + e.Exception.ToString(),
                 "Erro WPF",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                ModernMessageBox.Kind.Error);
 
             e.Handled = true;
         }
@@ -71,7 +70,7 @@ namespace CredentialProviderAPP
         private bool UsuarioEhAdministrador()
         {
             WindowsIdentity identity = WindowsIdentity.GetCurrent();
-            WindowsPrincipal principal = new WindowsPrincipal(identity);
+            WindowsPrincipal principal = new(identity);
 
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }

@@ -96,9 +96,10 @@ namespace CredentialProviderAPP.Views
                     chkUsuariosAD.IsChecked = false;
                     chkUsuariosLocais.IsChecked = true;
 
-                    MessageBox.Show(
+                    ModernMessageBox.Show(
                         "Este computador não está conectado a um domínio.\nSerão exibidos apenas usuários locais.",
-                        "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                        "Aviso",
+                        ModernMessageBox.Kind.Info);
 
                     _usuariosLocais = ObterUsuariosLocais();
                     AtualizarGrid();
@@ -106,7 +107,7 @@ namespace CredentialProviderAPP.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao iniciar:\n" + ex.Message);
+                ModernMessageBox.Show("Erro ao iniciar:\n" + ex.Message);
             }
         }
 
@@ -190,15 +191,15 @@ namespace CredentialProviderAPP.Views
 
                 foreach (SearchResult r in search.FindAll())
                 {
-                    string login = r.Properties["samAccountname"].Count > 0
+                    string? login = r.Properties["samAccountname"].Count > 0
                         ? r.Properties["samAccountname"][0].ToString()
                         : "";
 
-                    string nome = r.Properties["displayname"].Count > 0
+                    string? nome = r.Properties["displayname"].Count > 0
                         ? r.Properties["displayname"][0].ToString()
                         : login;
 
-                    string email = r.Properties["mail"].Count > 0
+                    string? email = r.Properties["mail"].Count > 0
                         ? r.Properties["mail"][0].ToString()
                         : "";
 
@@ -210,23 +211,23 @@ namespace CredentialProviderAPP.Views
                     }
 
                     // 🔐 MFA vindo direto do AD
-                    string mfaRaw = r.Properties["extensionattribute1"].Count > 0
+                    string? mfaRaw = r.Properties["extensionattribute1"].Count > 0
                         ? r.Properties["extensionattribute1"][0].ToString()
                         : "";
 
                     if (!string.IsNullOrWhiteSpace(filtro) &&
-                        !login.Contains(filtro, StringComparison.OrdinalIgnoreCase) &&
-                        !nome.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+                        !login!.Contains(filtro, StringComparison.OrdinalIgnoreCase) &&
+                        !nome!.Contains(filtro, StringComparison.OrdinalIgnoreCase))
                         continue;
 
                     usuarios.Add(new UsuarioViewModel
                     {
                         Tipo = "Domínio",
-                        Login = login,
-                        NomeCompleto = nome,
+                        Login = login!,
+                        NomeCompleto = nome!,
                         DataCadastro = data,
-                        Email = email,
-                        MFAStatus = ObterStatusMFA(mfaRaw)
+                        Email = email!,
+                        MFAStatus = ObterStatusMFA(mfaRaw!)
                     });
                 }
             }
@@ -273,7 +274,7 @@ namespace CredentialProviderAPP.Views
             if (dgUsuarios == null) return;
 
             var todos = new List<UsuarioViewModel>();
-            string filtro = txtPesquisa.Text?.Trim();
+            string filtro = txtPesquisa.Text?.Trim()!;
 
             if (chkUsuariosAD.IsChecked == true)
             {
