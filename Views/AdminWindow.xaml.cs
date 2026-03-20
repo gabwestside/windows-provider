@@ -429,7 +429,6 @@ namespace CredentialProviderAPP.Views
             return "Ativo";
         }
 
-
         private void AtivarMFAEmMassa(List<UsuarioViewModel> usuarios)
         {
             try
@@ -470,6 +469,7 @@ namespace CredentialProviderAPP.Views
                 ModernMessageBox.Show("Erro ao ativar MFA: " + ex.Message);
             }
         }
+
         private static string EscapeLdap(string input)
         {
             if (string.IsNullOrEmpty(input)) return "";
@@ -480,6 +480,7 @@ namespace CredentialProviderAPP.Views
                 .Replace("(", "\\28")
                 .Replace(")", "\\29");
         }
+
         private void AtivarMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
@@ -606,6 +607,7 @@ namespace CredentialProviderAPP.Views
                 ModernMessageBox.Show("Erro ao remover MFA: " + ex.Message);
             }
         }
+
         private void RemoverMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
@@ -729,6 +731,7 @@ namespace CredentialProviderAPP.Views
 
             ModernMessageBox.Show(msg, "Trocar Senha no Próximo Login", ModernMessageBox.Kind.Info);
         }
+
         // ══════════════════════════════════════════════════════════════
         //  HELPERS INTERNOS
         // ══════════════════════════════════════════════════════════════

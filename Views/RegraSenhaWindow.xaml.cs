@@ -7,7 +7,7 @@ namespace CredentialProviderAPP.Views
 {
     public partial class RegraSenhaWindow : Window
     {
-        private string policyPath =
+        private readonly string policyPath =
             Path.Combine(
                 Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty,
                 "password_policy.txt");
@@ -20,31 +20,38 @@ namespace CredentialProviderAPP.Views
             CheckExistingPolicy();
         }
 
+        // ── Arrastar janela ──
+        private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ButtonState == MouseButtonState.Pressed)
+                DragMove();
+        }
+
         private void CheckExistingPolicy()
         {
             if (File.Exists(policyPath))
             {
                 policyExists = true;
 
-                MessageBox.Show(
-                    "Regra de senha encontrada.\nClique OK para visualizar ou editar.",
+                ModernMessageBox.Show(
+                    "Regra de senha encontrada. Visualize ou edite abaixo.",
                     "Política encontrada",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    ModernMessageBox.Kind.Info,
+                    this);
 
-                btnSalvar.Content = "Atualizar";
+                lblBtnSalvar.Text = "Atualizar";
 
                 LoadPolicy();
             }
             else
             {
-                var r = MessageBox.Show(
-                    "Regra de senha não encontrada.\nCriar agora?",
+                var r = ModernMessageBox.ShowYesNo(
+                    "Nenhuma regra de senha foi encontrada.\nDeseja criar uma agora?",
                     "Política de senha",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                    ModernMessageBox.Kind.Warning,
+                    this);
 
-                if (r == MessageBoxResult.No)
+                if (r != MessageBoxResult.Yes)
                     Close();
             }
         }
@@ -57,7 +64,9 @@ namespace CredentialProviderAPP.Views
 
                 if (lines.Length < 6)
                 {
-                    MessageBox.Show("Arquivo de política inválido.");
+                    ModernMessageBox.Show(
+                        "O arquivo de política está inválido ou corrompido.",
+                        "Erro", ModernMessageBox.Kind.Error, this);
                     return;
                 }
 
@@ -74,14 +83,15 @@ namespace CredentialProviderAPP.Views
                 txtTamanhoSenha.Text = policy.MinLength.ToString();
                 txtQtdEspecial.Text = policy.MinSpecialChars.ToString();
                 txtCaracteres.Text = policy.AllowedSpecialChars;
-
                 chkMaiuscula.IsChecked = policy.RequireUppercase;
                 chkMinuscula.IsChecked = policy.RequireLowercase;
                 chkNumero.IsChecked = policy.RequireNumber;
             }
             catch
             {
-                MessageBox.Show("Erro ao carregar a política.");
+                ModernMessageBox.Show(
+                    "Erro ao carregar a política de senha.",
+                    "Erro", ModernMessageBox.Kind.Error, this);
             }
         }
 
@@ -89,19 +99,26 @@ namespace CredentialProviderAPP.Views
         {
             try
             {
+                // Valida tamanho mínimo
                 if (!int.TryParse(txtTamanhoSenha.Text, out int tamanho) || tamanho <= 0)
                 {
-                    MessageBox.Show("Informe um tamanho mínimo válido.");
+                    ModernMessageBox.Show(
+                        "Informe um tamanho mínimo válido (número maior que zero).",
+                        "Atenção", ModernMessageBox.Kind.Warning, this);
+                    txtTamanhoSenha.Focus();
                     return;
                 }
 
+                // Valida quantidade de especiais
                 int especiais = 0;
-
                 if (!string.IsNullOrWhiteSpace(txtQtdEspecial.Text))
                 {
                     if (!int.TryParse(txtQtdEspecial.Text, out especiais) || especiais < 0)
                     {
-                        MessageBox.Show("Quantidade de caracteres especiais inválida.");
+                        ModernMessageBox.Show(
+                            "Quantidade de caracteres especiais inválida.",
+                            "Atenção", ModernMessageBox.Kind.Warning, this);
+                        txtQtdEspecial.Focus();
                         return;
                     }
                 }
@@ -110,13 +127,19 @@ namespace CredentialProviderAPP.Views
 
                 if (string.IsNullOrWhiteSpace(caracteres) && especiais > 0)
                 {
-                    MessageBox.Show("Informe os caracteres especiais permitidos.");
+                    ModernMessageBox.Show(
+                        "Informe os caracteres especiais permitidos.",
+                        "Atenção", ModernMessageBox.Kind.Warning, this);
+                    txtCaracteres.Focus();
                     return;
                 }
 
                 if (caracteres.Any(char.IsLetterOrDigit))
                 {
-                    MessageBox.Show("Caracteres especiais não podem conter letras ou números.");
+                    ModernMessageBox.Show(
+                        "Caracteres especiais não podem conter letras ou números.",
+                        "Atenção", ModernMessageBox.Kind.Warning, this);
+                    txtCaracteres.Focus();
                     return;
                 }
 
@@ -144,24 +167,21 @@ namespace CredentialProviderAPP.Views
 
                 policyExists = true;
 
-                MessageBox.Show(
+                ModernMessageBox.Show(
                     "Política de senha salva com sucesso.",
-                    "Senha",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    "Sucesso", ModernMessageBox.Kind.Success, this);
 
                 Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao salvar política: " + ex.Message);
+                ModernMessageBox.Show(
+                    "Erro ao salvar política:\n" + ex.Message,
+                    "Erro", ModernMessageBox.Kind.Error, this);
             }
         }
 
-        private void Cancelar_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
+        private void Cancelar_Click(object sender, RoutedEventArgs e) => Close();
 
         private void NumeroOnly(object sender, TextCompositionEventArgs e)
         {
