@@ -66,11 +66,43 @@ a autenticação em dois fatores.";
         Environment.Exit(0);
     }
 
-private string? ObterInfoAD(string login)
-{
-    try
+    private string? ObterInfoAD(string login)
+    {
+        try
+        {
+            string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+            using var root = CriarDirectoryEntry(ldap);
+
+            var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
+            using var searcher = new DirectorySearcher(root)
+            {
+                Filter = $"(&(objectClass=user)(samAccountName={user}))"
+            };
+            searcher.PropertiesToLoad.Add("info");
+
+            var result = searcher.FindOne();
+            if (result == null) return null;
+
+            return result.Properties["info"].Count > 0
+                ? result.Properties["info"][0].ToString()
+                : null;
+        }
+        catch { return null; }
+    }
+    // ✅ direto com credenciais — sem tentativa anônima
+    private DirectoryEntry CriarDirectoryEntry(string ldap)
+    {
+        string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
+        string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+        return new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
+    }
+
+    private void SalvarSecretAD(string login, string secret)
     {
         string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+        string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
+        string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+
         using var root = CriarDirectoryEntry(ldap);
 
         var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
@@ -78,57 +110,15 @@ private string? ObterInfoAD(string login)
         {
             Filter = $"(&(objectClass=user)(samAccountName={user}))"
         };
-        searcher.PropertiesToLoad.Add("info");
 
         var result = searcher.FindOne();
-        if (result == null) return null;
+        if (result == null) throw new Exception("Usuário não encontrado no AD.");
 
-        return result.Properties["info"].Count > 0
-            ? result.Properties["info"][0].ToString()
-            : null;
+        // ✅ entry também com credenciais explícitas
+        using var entry = new DirectoryEntry(result.Path, adUser, adSenha, AuthenticationTypes.Secure);
+        entry.Properties["info"].Value = secret;
+        entry.CommitChanges();
     }
-    catch { return null; }
-}
-
-private void SalvarSecretAD(string login, string secret)
-{
-    string ldap    = ConfigHelper.Get("ActiveDirectory:LDAP");
-    string adUser  = ConfigHelper.Get("ActiveDirectory:Usuario");
-    string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
-
-    using var root = CriarDirectoryEntry(ldap);
-
-    var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
-    using var searcher = new DirectorySearcher(root)
-    {
-        Filter = $"(&(objectClass=user)(samAccountName={user}))"
-    };
-
-    var result = searcher.FindOne();
-    if (result == null) throw new Exception("Usuário não encontrado no AD.");
-
-    // ✅ usa credenciais explícitas no entry também
-    using var entry = new DirectoryEntry(result.Path, adUser, adSenha, AuthenticationTypes.Secure);
-    entry.Properties["info"].Value = secret;
-    entry.CommitChanges();
-}
-
-private DirectoryEntry CriarDirectoryEntry(string ldap)
-{
-    // tenta sem credenciais primeiro (funciona quando há contexto de domínio)
-    try
-    {
-        var entry = new DirectoryEntry(ldap, null, null, AuthenticationTypes.Secure);
-        _ = entry.Name; // força a conexão
-        return entry;
-    }
-    catch { }
-
-    // fallback com credenciais explícitas
-    string adUser  = ConfigHelper.Get("ActiveDirectory:Usuario");
-    string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
-    return new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
-}
 
     private void BuscarUsuario_Click(object sender, RoutedEventArgs e)
     {

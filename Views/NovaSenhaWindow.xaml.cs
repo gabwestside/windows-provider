@@ -23,6 +23,7 @@ public partial class NovaSenhaWindow : Window
     private bool needNumber;
     private bool mostrandoDialog = false;
 
+    // ✅ _forcandoFoco removido — NovaSenhaWindow não sequestra foco
     private static readonly SolidColorBrush _neutral = new(Color.FromRgb(0xC4, 0xC9, 0xD4));
     private static readonly SolidColorBrush _ok = new(Color.FromRgb(0x22, 0xC5, 0x5E));
     private static readonly SolidColorBrush _fail = new(Color.FromRgb(0xEF, 0x44, 0x44));
@@ -132,22 +133,15 @@ public partial class NovaSenhaWindow : Window
             specialOK && blacklistOK && match;
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  ENABLE MFA — só marca "setup" se o usuário ainda não tem MFA.
-    //
-    //  extensionAttribute1:
-    //    vazio          → grava "setup"  (habilita enrollment)
-    //    "setup"        → já está pendente, não faz nada
-    //    qualquer outro → é o secret Base32 — MFA já ativo, não toca!
-    // ══════════════════════════════════════════════════════════════
-
     private void EnableMFA()
     {
         try
         {
-            string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+            string ldap    = ConfigHelper.Get("ActiveDirectory:LDAP");
+            string adUser  = ConfigHelper.Get("ActiveDirectory:Usuario");
+            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
 
-            using var root = new DirectoryEntry(ldap, null, null, AuthenticationTypes.Secure);
+            using var root = new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
 
             var normalizedUser = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
 
@@ -155,26 +149,17 @@ public partial class NovaSenhaWindow : Window
             {
                 Filter = $"(&(objectClass=user)(samAccountName={normalizedUser}))"
             };
-            searcher.PropertiesToLoad.Add("info"); // ← era extensionAttribute1
+            searcher.PropertiesToLoad.Add("info");
 
             var result = searcher.FindOne();
+            if (result == null) { MostrarMensagem("Usuário não encontrado no Active Directory."); return; }
 
-            if (result == null)
-            {
-                MostrarMensagem("Usuário não encontrado no Active Directory.");
-                return;
-            }
+            using var entry = new DirectoryEntry(result.Path, adUser, adSenha, AuthenticationTypes.Secure);
 
-            using var entry = result.GetDirectoryEntry();
+            string? valorAtual = entry.Properties["info"]?.Value?.ToString();
+            if (!string.IsNullOrWhiteSpace(valorAtual)) return;
 
-            string? valorAtual = entry.Properties["info"]?.Value?.ToString(); // ← era extensionAttribute1
-
-            // se já tem qualquer valor ("setup" ou secret), não sobrescreve
-            if (!string.IsNullOrWhiteSpace(valorAtual))
-                return;
-
-            // atributo vazio → habilita enrollment
-            entry.Properties["info"].Value = "setup"; // ← era extensionAttribute1
+            entry.Properties["info"].Value = "setup";
             entry.CommitChanges();
         }
         catch (Exception ex)
@@ -182,6 +167,7 @@ public partial class NovaSenhaWindow : Window
             MostrarMensagem("Erro ao atualizar MFA no AD: " + ex.Message);
         }
     }
+
     private void SetRule(Ellipse dot, TextBlock label, bool ok, string text, bool active)
     {
         label.Text = text;
@@ -230,98 +216,75 @@ public partial class NovaSenhaWindow : Window
 
     private void Salvar_Click(object sender, RoutedEventArgs e)
     {
-        string senha = txtSenha.Password;
+        string senha     = txtSenha.Password;
         string confirmar = txtConfirmar.Password;
 
-        if (!ValidatePassword(senha))
-        {
-            MostrarMensagem("Senha não atende à política.");
-            return;
-        }
+        if (!ValidatePassword(senha))  { MostrarMensagem("Senha não atende à política."); return; }
 
         string? forbidden = PasswordBlacklist.GetForbiddenWord(senha);
-        if (forbidden != null)
-        {
-            MostrarMensagem($"A senha contém a palavra proibida: {forbidden}");
-            return;
-        }
+        if (forbidden != null) { MostrarMensagem($"A senha contém a palavra proibida: {forbidden}"); return; }
 
-        if (senha != confirmar)
-        {
-            MostrarMensagem("Senhas não conferem.");
-            return;
-        }
+        if (senha != confirmar) { MostrarMensagem("Senhas não conferem."); return; }
 
         string normalizedUser = LdapHelper.NormalizeLogin(login);
         bool senhaAlterada = false;
 
-        // 1️⃣ tenta AD
+        string adUser  = ConfigHelper.Get("ActiveDirectory:Usuario");
+        string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+        string domFQDN = ConfigHelper.Get("ActiveDirectory:Domain");
+        string domNB   = ConfigHelper.Get("ActiveDirectory:DomainNetBIOS");
+
+        // 1️⃣ AD — FQDN
         try
         {
-            using var ctx = new PrincipalContext(ContextType.Domain);
+            using var ctx = new PrincipalContext(ContextType.Domain, domFQDN, adUser, adSenha);
             var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, normalizedUser);
-
-            if (user != null)
-            {
-                user.SetPassword(senha);
-                user.Save();
-                senhaAlterada = true;
-            }
+            if (user != null) { user.SetPassword(senha); user.Save(); senhaAlterada = true; }
         }
-        catch { /* falhou no AD, tenta local */ }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[AD FQDN] Falhou: {ex.Message}"); }
 
-        // 2️⃣ tenta local
+        // 2️⃣ AD — NetBIOS
+        if (!senhaAlterada)
+        {
+            try
+            {
+                using var ctx = new PrincipalContext(ContextType.Domain, domNB, adUser, adSenha);
+                var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, normalizedUser);
+                if (user != null) { user.SetPassword(senha); user.Save(); senhaAlterada = true; }
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[AD NetBIOS] Falhou: {ex.Message}"); }
+        }
+
+        // 3️⃣ fallback local
         if (!senhaAlterada)
         {
             try
             {
                 USER_INFO_1003 info = new() { usri1003_password = senha };
-
                 int result = NetUserSetInfo(".", normalizedUser, 1003, ref info, out _);
 
-                if (result == 0)
-                {
-                    senhaAlterada = true;
-                }
+                if (result == 0) { senhaAlterada = true; }
                 else
                 {
                     MostrarMensagem(result switch
                     {
                         2245 => "A senha não atende à política do Windows.",
-                        5 => "Permissão negada. Execute como administrador.",
-                        _ => $"Erro ao alterar senha. Código: {result}"
+                        5    => "Permissão negada. Execute como administrador.",
+                        _    => $"Erro ao alterar senha. Código: {result}"
                     });
                     return;
                 }
             }
-            catch (Exception ex)
-            {
-                MostrarMensagem("Erro ao alterar senha: " + ex.Message);
-                return;
-            }
+            catch (Exception ex) { MostrarMensagem("Erro ao alterar senha: " + ex.Message); return; }
         }
 
-        // 3️⃣ sucesso
         if (senhaAlterada)
         {
             EnableMFA();
-
             MostrarMensagem("Senha alterada com sucesso!");
-
             DialogResult = true;
             Close();
         }
-    }
-
-    private void ForcarFoco()
-    {
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            Topmost = true;
-            Activate();
-            Focus();
-            Keyboard.Focus(txtSenha);
-        }));
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)
@@ -332,17 +295,17 @@ public partial class NovaSenhaWindow : Window
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
-        if (result == MessageBoxResult.Yes)
-        {
-            DialogResult = false;
-            Close();
-        }
+        if (result == MessageBoxResult.Yes) { DialogResult = false; Close(); }
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e) => ForcarFoco();
-    private void Window_Deactivated(object sender, EventArgs e)
+    // ✅ só foca uma vez ao carregar — sem Window_Deactivated
+    private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        if (!mostrandoDialog) ForcarFoco();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            Activate();
+            Keyboard.Focus(txtSenha);
+        }));
     }
 
     private MessageBoxResult MostrarMensagem(

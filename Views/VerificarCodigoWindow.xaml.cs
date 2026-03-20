@@ -9,9 +9,8 @@ public partial class VerificarCodigoWindow : Window
 {
     private byte[] key;
     private bool autenticado = false;
-
-    // controla se um dialog está aberto
     private bool mostrandoDialog = false;
+    private bool _forcandoFoco = false; // ✅ evita loop de reentrada
 
     public VerificarCodigoWindow(string secret)
     {
@@ -23,7 +22,6 @@ public partial class VerificarCodigoWindow : Window
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
-        // 🔒 bloqueia minimizar
         this.StateChanged += (s, e) =>
         {
             if (this.WindowState == WindowState.Minimized)
@@ -38,7 +36,7 @@ public partial class VerificarCodigoWindow : Window
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        if (mostrandoDialog)
+        if (mostrandoDialog || _forcandoFoco)
             return;
 
         ForcarFoco();
@@ -46,12 +44,23 @@ public partial class VerificarCodigoWindow : Window
 
     private void ForcarFoco()
     {
+        if (_forcandoFoco) return;
+
+        _forcandoFoco = true;
+
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            Topmost = true;
-            Activate();
-            Focus();
-            Keyboard.Focus(txtCode);
+            try
+            {
+                Topmost = true;
+                Activate();
+                Focus();
+                Keyboard.Focus(txtCode);
+            }
+            finally
+            {
+                _forcandoFoco = false;
+            }
         }));
     }
 
@@ -78,22 +87,18 @@ public partial class VerificarCodigoWindow : Window
             if (valid)
             {
                 autenticado = true;
-
                 MostrarMensagem("Código válido ✔");
-
                 Environment.Exit(0);
             }
             else
             {
                 MostrarMensagem("Código inválido ❌");
-
                 Environment.Exit(1);
             }
         }
         catch (Exception ex)
         {
             MostrarMensagem("Erro: " + ex.Message);
-
             Environment.Exit(1);
         }
     }
@@ -110,8 +115,6 @@ public partial class VerificarCodigoWindow : Window
         base.OnClosing(e);
 
         if (!autenticado)
-        {
             Environment.Exit(1);
-        }
     }
 }

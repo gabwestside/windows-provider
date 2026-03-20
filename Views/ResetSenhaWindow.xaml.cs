@@ -12,6 +12,7 @@ public partial class ResetSenhaWindow : Window
     private bool autenticado = false;
     private bool cancelado = false;
     private bool mostrandoDialog = false;
+    private bool _forcandoFoco = false; // ✅ evita loop
 
     private string secret = "";
     private string login;
@@ -23,7 +24,6 @@ public partial class ResetSenhaWindow : Window
 
         txtLogin.Text = login;
 
-        // 🔐 busca secret direto do extensionAttribute1
         string? secretAd = ObterSecretMFA(login);
 
         if (string.IsNullOrEmpty(secretAd))
@@ -36,26 +36,19 @@ public partial class ResetSenhaWindow : Window
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning
                 );
-
                 Close();
             };
-
             return;
         }
 
         secret = secretAd;
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  Lê extensionAttribute1.
-    //  Retorna null se vazio ou "setup" (MFA não configurado ainda).
-    //  Retorna o valor se for um secret Base32 válido (MFA ativo).
-    // ══════════════════════════════════════════════════════════════
     private string? ObterSecretMFA(string login)
     {
         try
         {
-            string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+            string ldap   = ConfigHelper.Get("ActiveDirectory:LDAP");
             string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
             string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
 
@@ -82,23 +75,28 @@ public partial class ResetSenhaWindow : Window
 
             return valor;
         }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  FOCO
-    // ══════════════════════════════════════════════════════════════
     private void ForcarFoco()
     {
+        if (_forcandoFoco) return;
+
+        _forcandoFoco = true;
+
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            Topmost = true;
-            Activate();
-            Focus();
-            Keyboard.Focus(txtCode);
+            try
+            {
+                Topmost = true;
+                Activate();
+                Focus();
+                Keyboard.Focus(txtCode);
+            }
+            finally
+            {
+                _forcandoFoco = false;
+            }
         }));
     }
 
@@ -109,13 +107,13 @@ public partial class ResetSenhaWindow : Window
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        if (!mostrandoDialog)
-            ForcarFoco();
+        // ✅ não força foco se já está autenticado (NovaSenhaWindow está aberto)
+        if (mostrandoDialog || _forcandoFoco || autenticado)
+            return;
+
+        ForcarFoco();
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  VALIDAÇÃO
-    // ══════════════════════════════════════════════════════════════
     private void Validar_Click(object sender, RoutedEventArgs e)
     {
         string code = txtCode.Text.Trim();
@@ -143,12 +141,11 @@ public partial class ResetSenhaWindow : Window
             return;
         }
 
-        // ✅ MFA OK
-        autenticado = true;
-
+        autenticado = true; // ✅ seta ANTES de abrir NovaSenhaWindow
         Hide();
 
-        new NovaSenhaWindow(login) { Topmost = true }.ShowDialog();
+        var novaSenha = new NovaSenhaWindow(login);
+        novaSenha.ShowDialog(); // ✅ sem Topmost aqui — NovaSenhaWindow controla o próprio foco
 
         Close();
     }
