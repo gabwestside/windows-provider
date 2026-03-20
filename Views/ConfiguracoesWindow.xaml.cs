@@ -27,8 +27,8 @@ namespace CredentialProviderAPP.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao carregar configurações: " + ex.Message,
-                    "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                ModernMessageBox.Show("Erro ao carregar configurações: " + ex.Message,
+                    "Erro", ModernMessageBox.Kind.Error);
             }
         }
 
@@ -44,25 +44,26 @@ namespace CredentialProviderAPP.Views
 
             if (string.IsNullOrWhiteSpace(login))
             {
-                MessageBox.Show("O login do administrador não pode ser vazio.",
-                    "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ModernMessageBox.Show("O login do administrador não pode ser vazio.",
+                    "Validação", ModernMessageBox.Kind.Warning);
                 return;
             }
 
             try
             {
                 AdminCredentialService.Salvar(login, novaSenha);
-                MessageBox.Show("Configurações salvas com sucesso!",
-                    "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+                ModernMessageBox.Show("Configurações salvas com sucesso!",
+                    "Sucesso", ModernMessageBox.Kind.Info);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao salvar: " + ex.Message,
-                    "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                ModernMessageBox.Show("Erro ao salvar: " + ex.Message,
+                    "Erro", ModernMessageBox.Kind.Info);
             }
         }
 
         private void BtnCancelar_Click(object sender, RoutedEventArgs e) => Close();
+
         private void BtnFechar_Click(object sender, RoutedEventArgs e) => Close();
 
         private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
