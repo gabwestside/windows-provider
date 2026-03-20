@@ -233,7 +233,7 @@ namespace CredentialProviderAPP.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao consultar Active Directory:\n" + ex.Message);
+                ModernMessageBox.Show("Erro ao consultar Active Directory:\n" + ex.Message);
             }
 
             return usuarios;
@@ -260,7 +260,7 @@ namespace CredentialProviderAPP.Views
                         });
                 }
             }
-            catch { MessageBox.Show("Erro ao buscar usuários locais."); }
+            catch { ModernMessageBox.Show("Erro ao buscar usuários locais."); }
 
             return usuarios.OrderBy(x => x.NomeCompleto).ThenBy(x => x.Login).ToList();
         }
@@ -351,7 +351,7 @@ namespace CredentialProviderAPP.Views
             if (_computadorEmDominio) await BuscarUsuariosAsync(txtPesquisa.Text);
             else AtualizarGrid();
 
-            MessageBox.Show("Lista atualizada.");
+            ModernMessageBox.Show("Lista atualizada.");
         }
 
         private async void ProximaPagina_Click(object sender, RoutedEventArgs e)
@@ -463,11 +463,11 @@ namespace CredentialProviderAPP.Views
                     }
                 }
 
-                MessageBox.Show($"MFA ativado para {usuarios.Count} usuários.");
+                ModernMessageBox.Show($"MFA ativado para {usuarios.Count} usuários.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao ativar MFA: " + ex.Message);
+                ModernMessageBox.Show("Erro ao ativar MFA: " + ex.Message);
             }
         }
         private static string EscapeLdap(string input)
@@ -483,7 +483,7 @@ namespace CredentialProviderAPP.Views
         private void AtivarMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
-            if (!sel.Any()) { MessageBox.Show("Selecione pelo menos um usuário."); return; }
+            if (!sel.Any()) { ModernMessageBox.Show("Selecione pelo menos um usuário."); return; }
             AtivarMFAEmMassa(sel);
             AtualizarGrid();
         }
@@ -493,10 +493,9 @@ namespace CredentialProviderAPP.Views
             var todos = CombinarUsuarios()
                 .Where(u => u.MFAStatus == "Não configurado").ToList();
 
-            if (!todos.Any()) { MessageBox.Show("Nenhum usuário precisa de MFA."); return; }
+            if (!todos.Any()) { ModernMessageBox.Show("Nenhum usuário precisa de MFA."); return; }
 
-            if (MessageBox.Show($"Ativar MFA para {todos.Count} usuários?", "Confirmação",
-                MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            if (ModernMessageBox.ShowYesNo($"Ativar MFA para {todos.Count} usuários?", "Confirmação", ModernMessageBox.Kind.Warning) != MessageBoxResult.Yes) return;
 
             AtivarMFAEmMassa(todos);
             AtualizarGrid();
@@ -535,21 +534,20 @@ namespace CredentialProviderAPP.Views
                     }
                 }
 
-                MessageBox.Show($"MFA resetado para {usuarios.Count} usuários.");
+                ModernMessageBox.Show($"MFA resetado para {usuarios.Count} usuários.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao resetar MFA: " + ex.Message);
+                ModernMessageBox.Show("Erro ao resetar MFA: " + ex.Message);
             }
         }
 
         private void ResetarMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
-            if (!sel.Any()) { MessageBox.Show("Selecione pelo menos um usuário."); return; }
+            if (!sel.Any()) { ModernMessageBox.Show("Selecione pelo menos um usuário."); return; }
 
-            if (MessageBox.Show($"Resetar MFA para {sel.Count} usuários?", "Confirmação",
-                MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            if (ModernMessageBox.ShowYesNo($"Resetar MFA para {sel.Count} usuários?", "Confirmação", ModernMessageBox.Kind.Warning) != MessageBoxResult.Yes) return;
 
             ResetarMFA(sel);
             AtualizarGrid();
@@ -560,10 +558,9 @@ namespace CredentialProviderAPP.Views
             var todos = CombinarUsuarios()
                 .Where(u => u.MFAStatus != "Não configurado").ToList();
 
-            if (!todos.Any()) { MessageBox.Show("Nenhum usuário possui MFA."); return; }
+            if (!todos.Any()) { ModernMessageBox.Show("Nenhum usuário possui MFA."); return; }
 
-            if (MessageBox.Show($"Resetar MFA para {todos.Count} usuários?", "Confirmação",
-                MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            if (ModernMessageBox.ShowYesNo($"Resetar MFA para {todos.Count} usuários?", "Confirmação", ModernMessageBox.Kind.Warning) != MessageBoxResult.Yes) return;
 
             ResetarMFA(todos);
             AtualizarGrid();
@@ -602,17 +599,17 @@ namespace CredentialProviderAPP.Views
                     }
                 }
 
-                MessageBox.Show($"MFA removido de {usuarios.Count} usuários.");
+                ModernMessageBox.Show($"MFA removido de {usuarios.Count} usuários.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao remover MFA: " + ex.Message);
+                ModernMessageBox.Show("Erro ao remover MFA: " + ex.Message);
             }
         }
         private void RemoverMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
-            if (!sel.Any()) { MessageBox.Show("Selecione pelo menos um usuário."); return; }
+            if (!sel.Any()) { ModernMessageBox.Show("Selecione pelo menos um usuário."); return; }
             RemoverMFA(sel);
             AtualizarGrid();
         }
@@ -622,10 +619,9 @@ namespace CredentialProviderAPP.Views
             var todos = CombinarUsuarios()
                 .Where(u => u.MFAStatus != "Não configurado").ToList();
 
-            if (!todos.Any()) { MessageBox.Show("Nenhum usuário possui MFA."); return; }
+            if (!todos.Any()) { ModernMessageBox.Show("Nenhum usuário possui MFA."); return; }
 
-            if (MessageBox.Show($"Remover MFA de {todos.Count} usuários?", "Confirmação",
-                MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            if (ModernMessageBox.ShowYesNo($"Remover MFA de {todos.Count} usuários?", "Confirmação", ModernMessageBox.Kind.Warning) != MessageBoxResult.Yes) return;
 
             RemoverMFA(todos);
             AtualizarGrid();
@@ -640,8 +636,7 @@ namespace CredentialProviderAPP.Views
 
             if (!sel.Any())
             {
-                MessageBox.Show("Selecione pelo menos um usuário.", "Atenção",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                ModernMessageBox.Show("Selecione pelo menos um usuário.", "Atenção", ModernMessageBox.Kind.Warning);
                 return;
             }
 
@@ -656,8 +651,7 @@ namespace CredentialProviderAPP.Views
 
             if (!adUsers.Any())
             {
-                MessageBox.Show("Nenhum usuário de domínio encontrado.", "Atenção",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                ModernMessageBox.Show("Nenhum usuário de domínio encontrado.", "Atenção", ModernMessageBox.Kind.Warning);
                 return;
             }
 
@@ -683,59 +677,58 @@ namespace CredentialProviderAPP.Views
         }
 
         private void ForcarTrocaSenha(List<UsuarioViewModel> usuarios)
-{
-    int ok = 0, fail = 0;
-
-    foreach (var user in usuarios)
-    {
-        try
         {
-            if (user.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) == true)
+            int ok = 0, fail = 0;
+
+            foreach (var user in usuarios)
             {
-                using var ctx = new PrincipalContext(ContextType.Machine);
-                var u = UserPrincipal.FindByIdentity(ctx, user.Login);
-
-                if (u == null) { fail++; continue; }
-
-                u.ExpirePasswordNow();
-                u.Save();
-                ok++;
-            }
-            else
-            {
-                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-
-                var login = EscapeLdap(NormalizarLogin(user.Login));
-
-                using var searcher = new DirectorySearcher(new DirectoryEntry(ldap))
+                try
                 {
-                    Filter = $"(&(objectClass=user)(samAccountName={login}))"
-                };
-                searcher.PropertiesToLoad.Add("distinguishedName");
+                    if (user.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        using var ctx = new PrincipalContext(ContextType.Machine);
+                        var u = UserPrincipal.FindByIdentity(ctx, user.Login);
 
-                var result = searcher.FindOne();
-                if (result == null) { fail++; continue; }
+                        if (u == null) { fail++; continue; }
 
-                using var entry = result.GetDirectoryEntry();
-                entry.Properties["pwdLastSet"].Value = 0;
-                entry.CommitChanges();
-                ok++;
+                        u.ExpirePasswordNow();
+                        u.Save();
+                        ok++;
+                    }
+                    else
+                    {
+                        string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+
+                        var login = EscapeLdap(NormalizarLogin(user.Login));
+
+                        using var searcher = new DirectorySearcher(new DirectoryEntry(ldap))
+                        {
+                            Filter = $"(&(objectClass=user)(samAccountName={login}))"
+                        };
+                        searcher.PropertiesToLoad.Add("distinguishedName");
+
+                        var result = searcher.FindOne();
+                        if (result == null) { fail++; continue; }
+
+                        using var entry = result.GetDirectoryEntry();
+                        entry.Properties["pwdLastSet"].Value = 0;
+                        entry.CommitChanges();
+                        ok++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                    fail++;
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(ex.Message);
-            fail++;
-        }
-    }
 
-    string msg = $"✅ {ok} usuário(s) configurados para trocar senha no próximo login.";
-    if (fail > 0)
-        msg += $"\n⚠️ {fail} usuário(s) não puderam ser processados.";
+            string msg = $"✅ {ok} usuário(s) configurados para trocar senha no próximo login.";
+            if (fail > 0)
+                msg += $"\n⚠️ {fail} usuário(s) não puderam ser processados.";
 
-    MessageBox.Show(msg, "Trocar Senha no Próximo Login",
-        MessageBoxButton.OK, MessageBoxImage.Information);
-}
+            ModernMessageBox.Show(msg, "Trocar Senha no Próximo Login", ModernMessageBox.Kind.Info);
+        }
         // ══════════════════════════════════════════════════════════════
         //  HELPERS INTERNOS
         // ══════════════════════════════════════════════════════════════

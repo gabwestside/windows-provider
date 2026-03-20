@@ -39,6 +39,13 @@ namespace CredentialProviderAPP.Views
             Kind kind = Kind.Info,
             Window? owner = null)
         {
+            if (Application.Current?.Dispatcher.CheckAccess() == false)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                    Show(mensagem, titulo, kind, owner));
+                return;
+            }
+
             var dlg = Criar(mensagem, titulo, kind, owner, yesNo: false);
             AplicarBlur(dlg.Owner, true);
             dlg.ShowDialog();
@@ -52,6 +59,12 @@ namespace CredentialProviderAPP.Views
             Kind kind = Kind.Warning,
             Window? owner = null)
         {
+            if (Application.Current?.Dispatcher.CheckAccess() == false)
+            {
+                return Application.Current.Dispatcher.Invoke(() =>
+                    ShowYesNo(mensagem, titulo, kind, owner));
+            }
+
             var dlg = Criar(mensagem, titulo, kind, owner, yesNo: true);
             AplicarBlur(dlg.Owner, true);
             dlg.ShowDialog();
