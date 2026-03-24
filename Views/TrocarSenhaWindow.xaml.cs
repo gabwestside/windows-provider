@@ -20,10 +20,12 @@ namespace CredentialProviderAPP.Views
     {
         // ── resultado público ─────────────────────────────────────────
         public bool Confirmado { get; private set; } = false;
+
         public string SenhaGerada { get; private set; } = "";
 
         // ── política carregada ────────────────────────────────────────
         private int _minLength = 8;
+
         private int _minEspeciais = 1;
         private string _especiaisPermitidos = "!@#$%&*";
         private bool _exigirMaiuscula = true;
@@ -32,6 +34,7 @@ namespace CredentialProviderAPP.Views
 
         // ── estado ────────────────────────────────────────────────────
         private bool _senhaVisivel = false;
+
         private readonly List<UsuarioViewModel> _usuarios;
         private readonly Random _rng = new();
 
@@ -327,23 +330,21 @@ namespace CredentialProviderAPP.Views
                 await Task.Run(() => EnviarEmails(email, SenhaGerada));
 
                 Confirmado = true;
-                MessageBox.Show(
+                ModernMessageBox.Show(
                     $"✅ Senha enviada com sucesso para: {email}\n\n" +
                     $"O(s) usuário(s) deve(m) alterar a senha no próximo acesso.",
                     "Confirmado",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    ModernMessageBox.Kind.Info);
 
                 Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                ModernMessageBox.Show(
                     $"⚠️ Erro ao enviar e-mail:\n{ex.Message}\n\n" +
                     "A troca de senha foi configurada no AD, mas o e-mail não foi entregue.",
                     "Atenção",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                    ModernMessageBox.Kind.Warning);
 
                 // Ainda assim considera confirmado (AD já foi configurado antes de abrir esta janela)
                 Confirmado = true;
