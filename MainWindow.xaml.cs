@@ -230,7 +230,7 @@ para confirmar a configuração.";
         private void MostrarMensagem(string msg)
         {
             mostrandoDialog = true;
-            MessageBox.Show(msg);
+            ModernMessageBox.Show(msg);
             mostrandoDialog = false;
         }
 

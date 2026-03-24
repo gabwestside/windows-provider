@@ -327,7 +327,7 @@ namespace CredentialProviderAPP.Views
         private async void AtivarMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
-            if (!sel.Any()) { MessageBox.Show("Selecione pelo menos um usuário."); return; }
+            if (!sel.Any()) { ModernMessageBox.Show("Selecione pelo menos um usuário."); return; }
             AtivarMFAEmMassa(sel);
             await BuscarUsuariosAsync(txtPesquisa.Text);
         }
@@ -337,10 +337,10 @@ namespace CredentialProviderAPP.Views
             var todos = CombinarUsuarios()
                 .Where(u => u.MFAStatus == "Não configurado").ToList();
 
-            if (!todos.Any()) { MessageBox.Show("Nenhum usuário precisa de MFA."); return; }
+            if (!todos.Any()) { ModernMessageBox.Show("Nenhum usuário precisa de MFA."); return; }
 
-            if (MessageBox.Show($"Ativar MFA para {todos.Count} usuário(s)?", "Confirmação",
-                MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            if (ModernMessageBox.ShowYesNo($"Ativar MFA para {todos.Count} usuário(s)?", "Confirmação",
+                ModernMessageBox.Kind.Warning) != MessageBoxResult.Yes) return;
 
             AtivarMFAEmMassa(todos);
             await BuscarUsuariosAsync(txtPesquisa.Text); // ← era AtualizarGrid()
@@ -574,8 +574,8 @@ namespace CredentialProviderAPP.Views
                 return;
             }
 
-            if (MessageBox.Show($"Remover MFA de {todos.Count} usuário(s)?", "Confirmação",
-                MessageBoxButton.YesNo) != MessageBoxResult.Yes)
+            if (ModernMessageBox.ShowYesNo($"Remover MFA de {todos.Count} usuário(s)?", "Confirmação",
+                ModernMessageBox.Kind.Warning) != MessageBoxResult.Yes)
                 return;
 
             RemoverMFA(todos);
@@ -735,9 +735,9 @@ namespace CredentialProviderAPP.Views
                 return;
             }
 
-            if (MessageBox.Show($"Resetar MFA de {todos.Count} usuário(s)?",
+            if (ModernMessageBox.ShowYesNo($"Resetar MFA de {todos.Count} usuário(s)?",
                 "Confirmação",
-                MessageBoxButton.YesNo) != MessageBoxResult.Yes)
+                ModernMessageBox.Kind.Warning) != MessageBoxResult.Yes)
                 return;
 
             ResetarMFA(todos);
