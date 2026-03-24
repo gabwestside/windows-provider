@@ -35,26 +35,36 @@ namespace CredentialProviderAPP
                         return;
                     }
 
-if (mode == "reset")
-{
-    string login = e.Args.Length > 1 ? e.Args[1] : "";
+                    if (mode == "reset")
+                    {
+                        string login = e.Args.Length > 1 ? e.Args[1] : "";
 
-    var reset = new ResetSenhaWindow(login);
-    bool? ok = reset.ShowDialog();
+                        var reset = new ResetSenhaWindow(login);
+                        bool? ok = reset.ShowDialog();
 
-    if (ok == true)
-    {
-        // 🔥 depois da troca de senha → chama MFA
-        var mfa = new MainWindow(login);
-        mfa.Show();
-    }
-    else
-    {
-        Environment.Exit(1);
-    }
+                        if (ok == true)
+                        {
+                            // 🔥 depois da troca de senha → chama MFA
+                            var mfa = new MainWindow(login);
+                            mfa.Show();
+                        }
+                        else
+                        {
+                            Environment.Exit(1);
+                        }
 
-    return;
-}
+                        return;
+                    }
+                    if (mode == "newpassword")
+                    {
+                        string login = e.Args.Length > 1 ? e.Args[1] : "";
+
+                        var w = new NovaSenhaWindow(login);
+                        bool? ok = w.ShowDialog();
+
+                        Environment.Exit(ok == true ? 0 : 1);
+                        return;
+                    }
                 }
 
                 if (UsuarioEhAdministrador())
