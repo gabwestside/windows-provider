@@ -365,8 +365,6 @@ namespace CredentialProviderAPP.Views
 
             try
             {
-                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-
                 using var root = CriarConexaoAD();
                 using var search = new DirectorySearcher(root)
                 {
@@ -378,7 +376,8 @@ namespace CredentialProviderAPP.Views
                 search.PropertiesToLoad.Add("displayName");
                 search.PropertiesToLoad.Add("lastLogonTimestamp");
                 search.PropertiesToLoad.Add("mail");
-                search.PropertiesToLoad.Add("info"); // ← era extensionAttribute1
+                search.PropertiesToLoad.Add("description");
+                search.PropertiesToLoad.Add("info");
 
                 foreach (SearchResult r in search.FindAll())
                 {
@@ -388,8 +387,12 @@ namespace CredentialProviderAPP.Views
                     string nome = r.Properties["displayname"].Count > 0
                         ? r.Properties["displayname"][0].ToString()! : login;
 
-                    string email = r.Properties["mail"].Count > 0
-                        ? r.Properties["mail"][0].ToString()! : "";
+                    // ✅ tenta mail primeiro, depois description como fallback
+                    string email = "";
+                    if (r.Properties["mail"].Count > 0)
+                        email = r.Properties["mail"][0].ToString()!;
+                    else if (r.Properties["description"].Count > 0)
+                        email = r.Properties["description"][0].ToString()!;
 
                     string data = "-";
                     if (r.Properties["lastlogontimestamp"].Count > 0)
@@ -399,7 +402,7 @@ namespace CredentialProviderAPP.Views
                     }
 
                     string mfaRaw = r.Properties["info"].Count > 0
-                        ? r.Properties["info"][0].ToString()! : ""; // ← era extensionattribute1
+                        ? r.Properties["info"][0].ToString()! : "";
 
                     if (!string.IsNullOrWhiteSpace(filtro) &&
                         !login.Contains(filtro, StringComparison.OrdinalIgnoreCase) &&

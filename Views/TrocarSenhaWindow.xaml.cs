@@ -107,8 +107,10 @@ namespace CredentialProviderAPP.Views
             }
 
             // Pré-preencher e-mail se for apenas 1 usuário (se o modelo tiver Email)
-            if (n == 1 && !string.IsNullOrWhiteSpace(_usuarios[0].Email))
-                txtEmail.Text = _usuarios[0].Email;
+            if (n == 1)
+                txtEmail.Text = !string.IsNullOrWhiteSpace(_usuarios[0].Email)
+                    ? _usuarios[0].Email
+                    : "EMAIL-Não-Informado";
         }
 
         // ══════════════════════════════════════════════════════════════
