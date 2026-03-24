@@ -619,13 +619,17 @@ namespace CredentialProviderAPP.Views
             if (!modal.Confirmado) return;
 
             MostrarLoading();
-            try { ForcarTrocaSenha(usuarios); }
+            try { ForcarTrocaSenha(usuarios, modal.SenhaGerada); }
             finally { OcultarLoading(); }
         }
 
-        private void ForcarTrocaSenha(List<UsuarioViewModel> usuarios)
+        private void ForcarTrocaSenha(List<UsuarioViewModel> usuarios, string senhaNova)
         {
             int ok = 0, fail = 0;
+
+            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
+            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+            string domFQDN = ConfigHelper.Get("ActiveDirectory:Domain");
 
             foreach (var user in usuarios)
             {
@@ -638,26 +642,42 @@ namespace CredentialProviderAPP.Views
 
                         if (u == null) { fail++; continue; }
 
+                        u.SetPassword(senhaNova);
                         u.ExpirePasswordNow();
                         u.Save();
                         ok++;
                     }
                     else
                     {
-                        string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
                         var login = LdapHelper.Escape(LdapHelper.NormalizeLogin(user.Login));
 
+                        // 1️⃣ grava a senha nova via PrincipalContext
+                        using var ctx = new PrincipalContext(ContextType.Domain, domFQDN, adUser, adSenha);
+                        var u = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, login);
+
+                        if (u == null) { fail++; continue; }
+
+                        u.SetPassword(senhaNova);
+                        u.Save();
+
+                        // 2️⃣ seta pwdLastSet = 0 + limpa MFA
                         using var searcher = new DirectorySearcher(CriarConexaoAD())
                         {
                             Filter = $"(&(objectClass=user)(samAccountName={login}))"
                         };
-                        searcher.PropertiesToLoad.Add("distinguishedName");
-
                         var result = searcher.FindOne();
+
                         if (result == null) { fail++; continue; }
 
                         using var entry = result.GetDirectoryEntry();
+
+                        // força troca no próximo login
                         entry.Properties["pwdLastSet"].Value = 0;
+
+                        // ✅ zera MFA — usuário vai reconfigurar após trocar a senha
+                        if (entry.Properties.Contains("info"))
+                            entry.Properties["info"].Clear();
+
                         entry.CommitChanges();
                         ok++;
                     }
