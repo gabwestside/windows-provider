@@ -307,14 +307,11 @@
                         FontWeight="SemiBold"
                         Foreground="#6B7280"
                         Text="E-mail do destinatário" />
-                    <TextBox
-                        x:Name="txtEmail"
-                        Margin="0,0,0,18"
-                        Style="{StaticResource ModernInput}">
-                        <TextBox.Text>
-                            usuario@empresa.com.br
-                        </TextBox.Text>
-                    </TextBox>
+<TextBox
+    x:Name="txtEmail"
+    Margin="0,0,0,18"
+    TextChanged="TxtEmail_TextChanged"
+    Style="{StaticResource ModernInput}" />
 
                     <!--  SENHA GERADA  -->
                     <Grid Margin="0,0,0,6">

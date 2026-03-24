@@ -2,189 +2,119 @@ using OtpNet;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Threading;
 
-namespace CredentialProviderAPP.Views
+namespace CredentialProviderAPP.Views;
+
+public partial class VerificarCodigoWindow : Window
 {
-    public partial class VerificarCodigoWindow : Window
+    private byte[] key;
+    private bool autenticado = false;
+    private bool mostrandoDialog = false;
+    private bool _forcandoFoco = false; // ✅ evita loop de reentrada
+
+    public VerificarCodigoWindow(string secret)
     {
-        private readonly byte[] _key;
-        private bool _autenticado = false;
-        private bool _mostrandoDialog = false;
+        InitializeComponent();
 
-        // ── Timer regressivo de 30 segundos (ciclo TOTP) ──
-        private readonly DispatcherTimer _timer = new();
+        key = Base32Encoding.ToBytes(secret);
 
-        private int _segundosRestantes = 30;
+        Topmost = true;
+        ShowInTaskbar = false;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
-        public VerificarCodigoWindow(string secret)
+        this.StateChanged += (s, e) =>
         {
-            InitializeComponent();
-            _key = Base32Encoding.ToBytes(secret);
+            if (this.WindowState == WindowState.Minimized)
+                this.WindowState = WindowState.Normal;
+        };
+    }
 
-            Topmost = true;
-            ShowInTaskbar = false;
-            WindowStartupLocation = WindowStartupLocation.CenterScreen;
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        ForcarFoco();
+    }
 
-            // Bloqueia minimizar
-            StateChanged += (s, e) =>
-            {
-                if (WindowState == WindowState.Minimized)
-                    WindowState = WindowState.Normal;
-            };
+    private void Window_Deactivated(object sender, EventArgs e)
+    {
+        if (mostrandoDialog || _forcandoFoco)
+            return;
 
-            InicializarTimer();
-        }
+        ForcarFoco();
+    }
 
-        // ══════════════════════════════════════════════════════════════
-        //  TIMER REGRESSIVO — sincronizado com o ciclo TOTP (30 s)
-        // ══════════════════════════════════════════════════════════════
-        private void InicializarTimer()
+    private void ForcarFoco()
+    {
+        if (_forcandoFoco) return;
+
+        _forcandoFoco = true;
+
+        Dispatcher.BeginInvoke(new Action(() =>
         {
-            // Calcula os segundos restantes no ciclo TOTP atual
-            long epoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            _segundosRestantes = 30 - (int)(epoch % 30);
-
-            AtualizarLabelTimer();
-
-            _timer.Interval = TimeSpan.FromSeconds(1);
-            _timer.Tick += Timer_Tick;
-            _timer.Start();
-        }
-
-        private void Timer_Tick(object? sender, EventArgs e)
-        {
-            _segundosRestantes--;
-
-            if (_segundosRestantes <= 0)
-                _segundosRestantes = 30; // reinicia ciclo
-
-            AtualizarLabelTimer();
-        }
-
-        private void AtualizarLabelTimer()
-        {
-            lblTimer.Text = $"{_segundosRestantes:D2}:{0:D2}"; // ex: 24:00
-            // Nos últimos 5 segundos muda de cor para alertar
-            lblTimer.Foreground = _segundosRestantes <= 5
-                ? new System.Windows.Media.SolidColorBrush(
-                      System.Windows.Media.Color.FromRgb(0xEF, 0x44, 0x44))
-                : new System.Windows.Media.SolidColorBrush(
-                      System.Windows.Media.Color.FromRgb(0x64, 0x74, 0x8B));
-        }
-
-        // ══════════════════════════════════════════════════════════════
-        //  FOCO
-        // ══════════════════════════════════════════════════════════════
-        private void Window_Loaded(object sender, RoutedEventArgs e) => ForcarFoco();
-
-        private void Window_Deactivated(object sender, EventArgs e)
-        {
-            if (_mostrandoDialog) return;
-            ForcarFoco();
-        }
-
-        private void ForcarFoco()
-        {
-            Dispatcher.BeginInvoke(new Action(() =>
+            try
             {
                 Topmost = true;
                 Activate();
                 Focus();
                 Keyboard.Focus(txtCode);
-            }));
-        }
-
-        // ══════════════════════════════════════════════════════════════
-        //  ENTER no campo dispara verificação
-        // ══════════════════════════════════════════════════════════════
-        private void TxtCode_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-                Verificar_Click(sender, e);
-        }
-
-        // ══════════════════════════════════════════════════════════════
-        //  VERIFICAR
-        // ══════════════════════════════════════════════════════════════
-        private void Verificar_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                string code = txtCode.Text.Trim();
-
-                if (string.IsNullOrEmpty(code))
-                {
-                    MostrarAviso("Digite o código de verificação.");
-                    return;
-                }
-
-                var totp = new Totp(_key);
-                bool valid = totp.VerifyTotp(code, out long _, new VerificationWindow(1, 1));
-
-                _timer.Stop();
-
-                if (valid)
-                {
-                    _autenticado = true;
-                    MostrarSucesso("Código válido. Acesso autorizado.");
-                    Environment.Exit(0);
-                }
-                else
-                {
-                    MostrarErro("Código inválido. Tente novamente.");
-                    Environment.Exit(1);
-                }
             }
-            catch (Exception ex)
+            finally
             {
-                MostrarErro("Erro ao verificar: " + ex.Message);
+                _forcandoFoco = false;
+            }
+        }));
+    }
+
+    private void Verificar_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string code = txtCode.Text.Trim();
+
+            if (string.IsNullOrEmpty(code))
+            {
+                MostrarMensagem("Digite o código.");
+                return;
+            }
+
+            var totp = new Totp(key);
+
+            bool valid = totp.VerifyTotp(
+                code,
+                out long step,
+                new VerificationWindow(1, 1)
+            );
+
+            if (valid)
+            {
+                autenticado = true;
+                MostrarMensagem("Código válido ✔");
+                Environment.Exit(0);
+            }
+            else
+            {
+                MostrarMensagem("Código inválido ❌");
                 Environment.Exit(1);
             }
         }
-
-        // ══════════════════════════════════════════════════════════════
-        //  CANCELAR
-        // ══════════════════════════════════════════════════════════════
-        private void Cancelar_Click(object sender, RoutedEventArgs e)
+        catch (Exception ex)
         {
-            _timer.Stop();
-            _autenticado = true; // evita o OnClosing disparar segundo modal
+            MostrarMensagem("Erro: " + ex.Message);
             Environment.Exit(1);
         }
+    }
 
-        // ══════════════════════════════════════════════════════════════
-        //  FECHAR
-        // ══════════════════════════════════════════════════════════════
-        protected override void OnClosing(CancelEventArgs e)
-        {
-            base.OnClosing(e);
-            if (!_autenticado)
-                Environment.Exit(1);
-        }
+    private void MostrarMensagem(string msg)
+    {
+        mostrandoDialog = true;
+        MessageBox.Show(msg);
+        mostrandoDialog = false;
+    }
 
-        // ══════════════════════════════════════════════════════════════
-        //  HELPERS DE MENSAGEM
-        // ══════════════════════════════════════════════════════════════
-        private void MostrarAviso(string msg)
-        {
-            _mostrandoDialog = true;
-            ModernMessageBox.Show(msg, "Atenção", ModernMessageBox.Kind.Warning, this);
-            _mostrandoDialog = false;
-        }
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        base.OnClosing(e);
 
-        private void MostrarErro(string msg)
-        {
-            _mostrandoDialog = true;
-            ModernMessageBox.Show(msg, "Erro", ModernMessageBox.Kind.Error, this);
-            _mostrandoDialog = false;
-        }
-
-        private void MostrarSucesso(string msg)
-        {
-            _mostrandoDialog = true;
-            ModernMessageBox.Show(msg, "Sucesso", ModernMessageBox.Kind.Success, this);
-            _mostrandoDialog = false;
-        }
+        if (!autenticado)
+            Environment.Exit(1);
     }
 }

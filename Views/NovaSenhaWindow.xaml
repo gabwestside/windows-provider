@@ -12,8 +12,7 @@
     Topmost="True"
     WindowStartupLocation="CenterScreen"
     WindowStyle="None"
-    Loaded="Window_Loaded"
-    Deactivated="Window_Deactivated">
+    Loaded="Window_Loaded">
 
     <Window.Resources>
 

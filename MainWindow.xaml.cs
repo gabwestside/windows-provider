@@ -1,11 +1,12 @@
-﻿using CredentialProviderAPP.Data;
-using CredentialProviderAPP.Views;
+﻿using CredentialProviderAPP.Views;
+using CredentialProviderAPP.Utils;
 using OtpNet;
 using QRCoder;
 using System.Drawing;
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.DirectoryServices;
 
 namespace CredentialProviderAPP
 {
@@ -32,40 +33,91 @@ namespace CredentialProviderAPP
                 return;
 
             loginAtual = login;
-
-            var user = Database.GetUser(login);
-
             txtUser.Text = login;
             txtUser.IsReadOnly = true;
             btnBuscar.Visibility = Visibility.Collapsed;
 
-            // MFA DESATIVADO → sai imediatamente
-            if (!user.mfaenabled)
+            string? valorInfo = ObterInfoAD(login);
+
+            // vazio → MFA não habilitado pelo admin → deixa passar
+            if (string.IsNullOrWhiteSpace(valorInfo))
             {
                 Environment.Exit(0);
                 return;
             }
 
-            // MFA habilitado mas NÃO configurado → gerar QR
-            if (user.mfaenabled && !user.configured)
+            // "setup" → habilitado mas ainda não configurado → mostrar QR
+            if (valorInfo.Equals("setup", StringComparison.OrdinalIgnoreCase))
             {
                 lblMensagem.Text =
-                    $"Bem-vindo, {login}.\n\nPara proteger sua conta, gere o QR Code\ne configure a autenticação em dois fatores.";
+    $@"Bem-vindo {login}
+
+Para proteger sua conta,
+gere agora o QR Code para configurar
+a autenticação em dois fatores.";
 
                 btnGerarQR.Visibility = Visibility.Visible;
                 return;
             }
 
-            // MFA habilitado e configurado → validar código
-            if (user.mfaenabled && user.configured && !string.IsNullOrEmpty(user.secret))
-            {
-                VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
-                win.ShowDialog();
-                Environment.Exit(0);
-                return;
-            }
+            // qualquer outro valor → é o secret → validar código
+            VerificarCodigoWindow win = new VerificarCodigoWindow(valorInfo);
+            win.ShowDialog();
+            Environment.Exit(0);
+        }
 
-            Environment.Exit(1);
+        private string? ObterInfoAD(string login)
+        {
+            try
+            {
+                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+                using var root = CriarDirectoryEntry(ldap);
+
+                var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
+                using var searcher = new DirectorySearcher(root)
+                {
+                    Filter = $"(&(objectClass=user)(samAccountName={user}))"
+                };
+                searcher.PropertiesToLoad.Add("info");
+
+                var result = searcher.FindOne();
+                if (result == null) return null;
+
+                return result.Properties["info"].Count > 0
+                    ? result.Properties["info"][0].ToString()
+                    : null;
+            }
+            catch { return null; }
+        }
+        // ✅ direto com credenciais — sem tentativa anônima
+        private DirectoryEntry CriarDirectoryEntry(string ldap)
+        {
+            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
+            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+            return new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
+        }
+
+        private void SalvarSecretAD(string login, string secret)
+        {
+            string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
+            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
+            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+
+            using var root = CriarDirectoryEntry(ldap);
+
+            var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
+            using var searcher = new DirectorySearcher(root)
+            {
+                Filter = $"(&(objectClass=user)(samAccountName={user}))"
+            };
+
+            var result = searcher.FindOne();
+            if (result == null) throw new Exception("Usuário não encontrado no AD.");
+
+            // ✅ entry também com credenciais explícitas
+            using var entry = new DirectoryEntry(result.Path, adUser, adSenha, AuthenticationTypes.Secure);
+            entry.Properties["info"].Value = secret;
+            entry.CommitChanges();
         }
 
         private void BuscarUsuario_Click(object sender, RoutedEventArgs e)
@@ -78,31 +130,33 @@ namespace CredentialProviderAPP
                 return;
             }
 
-            var user = Database.GetUser(username);
-
             txtUser.IsReadOnly = true;
             btnBuscar.Visibility = Visibility.Collapsed;
 
-            // MFA DESATIVADO
-            if (!user.mfaenabled)
+            string? valorInfo = ObterInfoAD(username);
+
+            if (string.IsNullOrWhiteSpace(valorInfo))
             {
                 Environment.Exit(0);
                 return;
             }
 
-            // MFA CONFIGURADO → validar
-            if (user.mfaenabled && user.configured && !string.IsNullOrEmpty(user.secret))
+            if (valorInfo.Equals("setup", StringComparison.OrdinalIgnoreCase))
             {
-                VerificarCodigoWindow win = new VerificarCodigoWindow(user.secret);
-                win.ShowDialog();
+                lblMensagem.Text =
+    $@"Bem-vindo {username}
+
+Para proteger sua conta,
+gere agora o QR Code para configurar
+a autenticação em dois fatores.";
+
+                btnGerarQR.Visibility = Visibility.Visible;
                 return;
             }
 
-            // MFA NÃO CONFIGURADO → gerar QR
-            lblMensagem.Text =
-                $"Bem-vindo, {username}.\n\nPara proteger sua conta, gere o QR Code\ne configure a autenticação em dois fatores.";
-
-            btnGerarQR.Visibility = Visibility.Visible;
+            // secret → validar
+            VerificarCodigoWindow win = new VerificarCodigoWindow(valorInfo);
+            win.ShowDialog();
         }
 
         private void GerarQR_Click(object sender, RoutedEventArgs e)
@@ -119,19 +173,21 @@ namespace CredentialProviderAPP
 
                 QRCodeGenerator qrGenerator = new QRCodeGenerator();
                 QRCodeData qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
-
                 QRCode qrCode = new QRCode(qrCodeData);
                 Bitmap qrBitmap = qrCode.GetGraphic(20);
 
                 imgQR.Source = BitmapToImageSource(qrBitmap);
-
-                // Exibe o painel do QR e o painel do código OTP
-                painelQR.Visibility = Visibility.Visible;
-                painelCodigo.Visibility = Visibility.Visible;
-                btnGerarQR.Visibility = Visibility.Collapsed;
+                imgQR.Visibility = Visibility.Visible;
 
                 lblMensagem.Text =
-                    "Escaneie o QR Code no Google Authenticator\ne insira o código de 6 dígitos gerado.";
+    @"Escaneie o QR Code no Google Authenticator.
+
+Agora valide o código gerado
+para confirmar a configuração.";
+
+                txtCode.Visibility = Visibility.Visible;
+                btnValidar.Visibility = Visibility.Visible;
+                btnGerarQR.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
@@ -146,7 +202,7 @@ namespace CredentialProviderAPP
                 string username = txtUser.Text.Trim();
                 string code = txtCode.Text.Trim();
 
-                if (currentKey == null)
+                if (currentKey == null || currentSecret == null)
                     return;
 
                 var totp = new Totp(currentKey);
@@ -154,20 +210,15 @@ namespace CredentialProviderAPP
 
                 if (!valid)
                 {
-                    MostrarMensagem("Código inválido. Tente novamente.");
-                    txtCode.Clear();
-                    txtCode.Focus();
+                    MostrarMensagem("Código inválido.");
                     return;
                 }
 
-                if (currentSecret == null)
-                    return;
-
-                Database.SaveSecret(username, currentSecret);
+                // ✅ grava secret no AD em vez do banco
+                SalvarSecretAD(username, currentSecret);
 
                 autenticado = true;
-
-                MostrarMensagem("✅ MFA configurado com sucesso!");
+                MostrarMensagem("MFA configurado com sucesso!");
                 Environment.Exit(0);
             }
             catch (Exception ex)
@@ -179,22 +230,19 @@ namespace CredentialProviderAPP
         private void MostrarMensagem(string msg)
         {
             mostrandoDialog = true;
-            ModernMessageBox.Show(msg);
+            MessageBox.Show(msg);
             mostrandoDialog = false;
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             base.OnClosing(e);
-
-            if (!autenticado)
-                Environment.Exit(1);
+            if (!autenticado) Environment.Exit(1);
         }
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
-            if (mostrandoDialog)
-                return;
+            if (mostrandoDialog) return;
 
             Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -203,13 +251,13 @@ namespace CredentialProviderAPP
             }));
         }
 
-        private static BitmapImage BitmapToImageSource(Bitmap bitmap)
+        private BitmapImage BitmapToImageSource(Bitmap bitmap)
         {
             using MemoryStream memory = new MemoryStream();
             bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
             memory.Position = 0;
 
-            BitmapImage bitmapImage = new BitmapImage();
+            BitmapImage bitmapImage = new();
             bitmapImage.BeginInit();
             bitmapImage.StreamSource = memory;
             bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
@@ -217,5 +265,6 @@ namespace CredentialProviderAPP
 
             return bitmapImage;
         }
+
     }
 }

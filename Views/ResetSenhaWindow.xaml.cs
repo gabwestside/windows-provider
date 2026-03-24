@@ -1,159 +1,187 @@
-using CredentialProviderAPP.Data;
-using OtpNet;
 using System.ComponentModel;
+using System.DirectoryServices;
 using System.Windows;
+using System.Windows.Input;
+using OtpNet;
+using CredentialProviderAPP.Utils;
 
-namespace CredentialProviderAPP.Views
+namespace CredentialProviderAPP.Views;
+
+public partial class ResetSenhaWindow : Window
 {
-    public partial class ResetSenhaWindow : Window
+    private bool autenticado = false;
+    private bool cancelado = false;
+    private bool mostrandoDialog = false;
+    private bool _forcandoFoco = false; // ✅ evita loop
+
+    private string secret = "";
+    private string login;
+
+    public ResetSenhaWindow(string login)
     {
-        private bool autenticado = false;
-        private bool cancelado = false;
-        private bool mostrandoDialog = false;
+        InitializeComponent();
+        this.login = login;
 
-        public ResetSenhaWindow(string login)
+        txtLogin.Text = login;
+
+        string? secretAd = ObterSecretMFA(login);
+
+        if (string.IsNullOrEmpty(secretAd))
         {
-            InitializeComponent();
-            txtLogin.Text = login;
-
-            var user = Database.GetUser(login);
-            var (mfaenabled, configured, secret) = user;
-
-            // 🔒 BLOQUEIA reset se não tiver MFA configurado
-            if (!configured || string.IsNullOrEmpty(secret))
+            Loaded += (s, e) =>
             {
-                Loaded += (s, e) =>
-                {
-                    ModernMessageBox.Show(
-                        "Este usuário não possui MFA configurado.\n\n" +
-                        "Por segurança a redefinição de senha só é permitida para contas com MFA ativo.\n\n" +
-                        "Entre em contato com o suporte de TI.",
-                        "Segurança",
-                        ModernMessageBox.Kind.Warning
-                    );
-
-                    Close();
-                };
-
-                return;
-            }
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (!autenticado)
-                txtCode.Focus();
-        }
-
-        private void Window_Deactivated(object sender, EventArgs e)
-        {
-            if (mostrandoDialog)
-                return;
-
-            if (!autenticado && !cancelado)
-            {
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Topmost = true;
-                    Activate();
-                }));
-            }
-        }
-
-        private void Validar_Click(object sender, RoutedEventArgs e)
-        {
-            string login = txtLogin.Text.Trim();
-            string code = txtCode.Text.Trim();
-
-            var user = Database.GetUser(login);
-            var (mfaenabled, configured, secret) = user;
-
-            // 🔒 segurança extra
-            if (!configured || string.IsNullOrEmpty(secret))
-            {
-                ModernMessageBox.Show(
-                    "Reset de senha só é permitido para contas com MFA ativo.",
+                MessageBox.Show(
+                    "Este usuário não possui MFA configurado no Active Directory.",
                     "Segurança",
-                    ModernMessageBox.Kind.Warning
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
                 );
-
                 Close();
-                return;
-            }
-
-            if (code.Length != 6)
-            {
-                mostrandoDialog = true;
-                ModernMessageBox.Show("Digite o código de 6 dígitos.");
-                mostrandoDialog = false;
-
-                txtCode.Focus();
-                return;
-            }
-
-            var key = Base32Encoding.ToBytes(secret);
-            var totp = new Totp(key);
-
-            bool valid = totp.VerifyTotp(
-                code,
-                out long step,
-                new VerificationWindow(1, 1)
-            );
-
-            if (!valid)
-            {
-                mostrandoDialog = true;
-                ModernMessageBox.Show("Código inválido.");
-                mostrandoDialog = false;
-
-                txtCode.Clear();
-                txtCode.Focus();
-                return;
-            }
-
-            // ✅ MFA validado
-            autenticado = true;
-
-            Hide();
-
-            NovaSenhaWindow novaSenha = new(login)
-            {
-                Topmost = true
             };
-            novaSenha.ShowDialog();
-
-            Close();
+            return;
         }
 
-        private void Cancelar_Click(object sender, RoutedEventArgs e)
+        secret = secretAd;
+    }
+
+    private string? ObterSecretMFA(string login)
+    {
+        try
         {
+            string ldap   = ConfigHelper.Get("ActiveDirectory:LDAP");
+            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
+            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+
+            using var root = new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
+
+            var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
+
+            using var searcher = new DirectorySearcher(root)
+            {
+                Filter = $"(&(objectClass=user)(samAccountName={user}))"
+            };
+            searcher.PropertiesToLoad.Add("info");
+
+            var result = searcher.FindOne();
+            if (result == null) return null;
+
+            string? valor = result.Properties["info"].Count > 0
+                ? result.Properties["info"][0].ToString()
+                : null;
+
+            if (string.IsNullOrWhiteSpace(valor) ||
+                valor.Equals("setup", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            return valor;
+        }
+        catch { return null; }
+    }
+
+    private void ForcarFoco()
+    {
+        if (_forcandoFoco) return;
+
+        _forcandoFoco = true;
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            try
+            {
+                Topmost = true;
+                Activate();
+                Focus();
+                Keyboard.Focus(txtCode);
+            }
+            finally
+            {
+                _forcandoFoco = false;
+            }
+        }));
+    }
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        ForcarFoco();
+    }
+
+    private void Window_Deactivated(object sender, EventArgs e)
+    {
+        // ✅ não força foco se já está autenticado (NovaSenhaWindow está aberto)
+        if (mostrandoDialog || _forcandoFoco || autenticado)
+            return;
+
+        ForcarFoco();
+    }
+
+    private void Validar_Click(object sender, RoutedEventArgs e)
+    {
+        string code = txtCode.Text.Trim();
+
+        if (code.Length != 6)
+        {
+            Mostrar("Digite o código de 6 dígitos.");
+            return;
+        }
+
+        var key = Base32Encoding.ToBytes(secret);
+        var totp = new Totp(key);
+
+        bool valid = totp.VerifyTotp(
+            code,
+            out long _,
+            new VerificationWindow(1, 1)
+        );
+
+        if (!valid)
+        {
+            Mostrar("Código inválido.");
+            txtCode.Clear();
+            txtCode.Focus();
+            return;
+        }
+
+        autenticado = true; // ✅ seta ANTES de abrir NovaSenhaWindow
+        Hide();
+
+        var novaSenha = new NovaSenhaWindow(login);
+        novaSenha.ShowDialog(); // ✅ sem Topmost aqui — NovaSenhaWindow controla o próprio foco
+
+        Close();
+    }
+
+    private void Mostrar(string msg)
+    {
+        mostrandoDialog = true;
+        MessageBox.Show(msg);
+        mostrandoDialog = false;
+    }
+
+    private void Cancelar_Click(object sender, RoutedEventArgs e)
+    {
+        cancelado = true;
+        Close();
+    }
+
+    private void Window_Closing(object sender, CancelEventArgs e)
+    {
+        if (autenticado || cancelado)
+            return;
+
+        mostrandoDialog = true;
+
+        var result = MessageBox.Show(
+            "Deseja cancelar o processo de redefinição de senha?",
+            "Cancelar",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question
+        );
+
+        mostrandoDialog = false;
+
+        if (result == MessageBoxResult.No)
+            e.Cancel = true;
+        else
             cancelado = true;
-            Close();
-        }
-
-        private void Window_Closing(object sender, CancelEventArgs e)
-        {
-            if (autenticado || cancelado)
-                return;
-
-            mostrandoDialog = true;
-
-            var result = ModernMessageBox.ShowYesNo(
-                "Deseja cancelar o processo de redefinição de senha?",
-                "Cancelar",
-                ModernMessageBox.Kind.Warning
-            );
-
-            mostrandoDialog = false;
-
-            if (result == MessageBoxResult.No)
-            {
-                e.Cancel = true;
-            }
-            else
-            {
-                cancelado = true;
-            }
-        }
     }
 }
