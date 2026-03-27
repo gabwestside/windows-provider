@@ -1,221 +1,190 @@
-﻿using CredentialProviderAPP.Views;
+﻿using CredentialProviderAPP.Enums;
+using CredentialProviderAPP.Models.Api;
+using CredentialProviderAPP.Services;
 using CredentialProviderAPP.Utils;
-using OtpNet;
+using CredentialProviderAPP.Views;
 using QRCoder;
+using System;
 using System.Drawing;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
-using System.DirectoryServices;
 
 namespace CredentialProviderAPP;
 
 public partial class MainWindow : Window
 {
-    private byte[]? currentKey;
-    private string? currentSecret;
-
     private bool autenticado = false;
     private bool mostrandoDialog = false;
 
     private string loginAtual = "";
+    private string? otpAuthUrlAtual = null;
+    private readonly AppMode _modo;
 
     public MainWindow()
     {
         InitializeComponent();
+        _modo = AppMode.Default;
     }
 
-    public MainWindow(string login)
+    public MainWindow(string login, AppMode modo)
     {
         InitializeComponent();
 
-        if (string.IsNullOrEmpty(login))
+        _modo = modo;
+
+        if (string.IsNullOrWhiteSpace(login))
+        {
+            MostrarMensagem("Login não informado.");
+            Environment.Exit(1);
             return;
+        }
 
         loginAtual = login;
         txtUser.Text = login;
         txtUser.IsReadOnly = true;
         btnBuscar.Visibility = Visibility.Collapsed;
 
-        string? valorInfo = ObterInfoAD(login);
-
-        // vazio → MFA não habilitado pelo admin → deixa passar
-        if (string.IsNullOrWhiteSpace(valorInfo))
-        {
-            Environment.Exit(0);
-            return;
-        }
-
-        // "setup" → habilitado mas ainda não configurado → mostrar QR
-        if (valorInfo.Equals("setup", StringComparison.OrdinalIgnoreCase))
-        {
-            lblMensagem.Text =
-$@"Bem-vindo {login}
-
-Para proteger sua conta,
-gere agora o QR Code para configurar
-a autenticação em dois fatores.";
-
-            btnGerarQR.Visibility = Visibility.Visible;
-            return;
-        }
-
-        // qualquer outro valor → é o secret → validar código
-        VerificarCodigoWindow win = new VerificarCodigoWindow(valorInfo);
-        win.ShowDialog();
-        Environment.Exit(0);
+        Loaded += async (_, __) => await ProcessarFluxoUsuarioAsync(login);
     }
 
-    private string? ObterInfoAD(string login)
+    private async Task ProcessarFluxoUsuarioAsync(string login)
     {
         try
         {
-            string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-            using var root = CriarDirectoryEntry(ldap);
+            var statusResponse = await ServerApiService.ObterStatusMfaAsync(login);
 
-            var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
-            using var searcher = new DirectorySearcher(root)
+            if (!statusResponse.Sucesso)
             {
-                Filter = $"(&(objectClass=user)(samAccountName={user}))"
-            };
-            searcher.PropertiesToLoad.Add("info");
+                MostrarMensagem(statusResponse.Erro ?? "Erro ao consultar status do MFA.");
+                Environment.Exit(1);
+                return;
+            }
 
-            var result = searcher.FindOne();
-            if (result == null) return null;
+            if (_modo == AppMode.Setup)
+            {
+                await AbrirFluxoSetupAsync(login, statusResponse.Status);
+                return;
+            }
 
-            return result.Properties["info"].Count > 0
-                ? result.Properties["info"][0].ToString()
-                : null;
+            MostrarMensagem("Modo de operação inválido.");
+            Environment.Exit(1);
         }
-        catch { return null; }
-    }
-    // ✅ direto com credenciais — sem tentativa anônima
-    private DirectoryEntry CriarDirectoryEntry(string ldap)
-    {
-        string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
-        string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
-        return new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
-    }
-
-    private void SalvarSecretAD(string login, string secret)
-    {
-        string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-        string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
-        string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
-
-        using var root = CriarDirectoryEntry(ldap);
-
-        var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
-        using var searcher = new DirectorySearcher(root)
+        catch (Exception ex)
         {
-            Filter = $"(&(objectClass=user)(samAccountName={user}))"
-        };
-
-        var result = searcher.FindOne();
-        if (result == null) throw new Exception("Usuário não encontrado no AD.");
-
-        // ✅ entry também com credenciais explícitas
-        using var entry = new DirectoryEntry(result.Path, adUser, adSenha, AuthenticationTypes.Secure);
-        entry.Properties["info"].Value = secret;
-        entry.CommitChanges();
+            MostrarMensagem("Erro ao processar MFA: " + ex.Message);
+            Environment.Exit(1);
+        }
     }
 
-    private void BuscarUsuario_Click(object sender, RoutedEventArgs e)
+    private async Task AbrirFluxoSetupAsync(string login, string status)
+    {
+        if (!status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            MostrarMensagem("MFA não está pendente para este usuário.");
+            Environment.Exit(1);
+            return;
+        }
+
+        var setupResponse = await ServerApiService.ObterSetupMfaAsync(login);
+
+        if (!setupResponse.Sucesso)
+        {
+            MostrarMensagem(setupResponse.Erro ?? "Erro ao preparar configuração do MFA.");
+            Environment.Exit(1);
+            return;
+        }
+
+        loginAtual = setupResponse.Login;
+        txtUser.Text = setupResponse.Login;
+        otpAuthUrlAtual = setupResponse.OtpAuthUrl;
+
+        lblMensagem.Text =
+$@"Bem-vindo {setupResponse.Nome}
+
+Para proteger sua conta,
+escaneie agora o QR Code para configurar
+a autenticação em dois fatores.";
+
+        if (string.IsNullOrWhiteSpace(otpAuthUrlAtual))
+        {
+            MostrarMensagem("O servidor não retornou os dados do QR Code.");
+            Environment.Exit(1);
+            return;
+        }
+
+        ExibirQrCode(otpAuthUrlAtual);
+
+        btnGerarQR.Visibility = Visibility.Collapsed;
+        txtCode.Visibility = Visibility.Visible;
+        btnValidar.Visibility = Visibility.Visible;
+        imgQR.Visibility = Visibility.Visible;
+    }
+
+    private async void BuscarUsuario_Click(object sender, RoutedEventArgs e)
     {
         string username = txtUser.Text.Trim();
 
-        if (string.IsNullOrEmpty(username))
+        if (string.IsNullOrWhiteSpace(username))
         {
             MostrarMensagem("Digite um usuário.");
             return;
         }
 
+        loginAtual = username;
         txtUser.IsReadOnly = true;
         btnBuscar.Visibility = Visibility.Collapsed;
 
-        string? valorInfo = ObterInfoAD(username);
-
-        if (string.IsNullOrWhiteSpace(valorInfo))
-        {
-            Environment.Exit(0);
-            return;
-        }
-
-        if (valorInfo.Equals("setup", StringComparison.OrdinalIgnoreCase))
-        {
-            lblMensagem.Text =
-$@"Bem-vindo {username}
-
-Para proteger sua conta,
-gere agora o QR Code para configurar
-a autenticação em dois fatores.";
-
-            btnGerarQR.Visibility = Visibility.Visible;
-            return;
-        }
-
-        // secret → validar
-        VerificarCodigoWindow win = new VerificarCodigoWindow(valorInfo);
-        win.ShowDialog();
+        await ProcessarFluxoUsuarioAsync(username);
     }
 
     private void GerarQR_Click(object sender, RoutedEventArgs e)
     {
-        try
+        if (string.IsNullOrWhiteSpace(otpAuthUrlAtual))
         {
-            string username = txtUser.Text.Trim();
-
-            currentKey = KeyGeneration.GenerateRandomKey(20);
-            currentSecret = Base32Encoding.ToString(currentKey);
-
-            string issuer = "CredentialProvider";
-            string url = $"otpauth://totp/{issuer}:{username}?secret={currentSecret}&issuer={issuer}";
-
-            QRCodeGenerator qrGenerator = new QRCodeGenerator();
-            QRCodeData qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
-            QRCode qrCode = new QRCode(qrCodeData);
-            Bitmap qrBitmap = qrCode.GetGraphic(20);
-
-            imgQR.Source = BitmapToImageSource(qrBitmap);
-            imgQR.Visibility = Visibility.Visible;
-
-            lblMensagem.Text =
-@"Escaneie o QR Code no Google Authenticator.
-
-Agora valide o código gerado
-para confirmar a configuração.";
-
-            txtCode.Visibility = Visibility.Visible;
-            btnValidar.Visibility = Visibility.Visible;
-            btnGerarQR.Visibility = Visibility.Collapsed;
+            MostrarMensagem("QR Code ainda não disponível.");
+            return;
         }
-        catch (Exception ex)
-        {
-            MostrarMensagem(ex.ToString());
-        }
+
+        ExibirQrCode(otpAuthUrlAtual);
     }
 
-    private void ValidarCodigo_Click(object sender, RoutedEventArgs e)
+    private async void ValidarCodigo_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             string username = txtUser.Text.Trim();
             string code = txtCode.Text.Trim();
 
-            if (currentKey == null || currentSecret == null)
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                MostrarMensagem("Login inválido.");
                 return;
+            }
 
-            var totp = new Totp(currentKey);
-            bool valid = totp.VerifyTotp(code, out long _, new VerificationWindow(1, 1));
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                MostrarMensagem("Digite o código gerado pelo aplicativo autenticador.");
+                return;
+            }
 
-            if (!valid)
+            btnValidar.IsEnabled = false;
+            txtCode.IsEnabled = false;
+
+            var response = await ServerApiService.ValidarCodigoMfaAsync(username, code);
+
+            if (!response.Sucesso)
+            {
+                MostrarMensagem(response.Erro ?? "Erro ao validar MFA.");
+                return;
+            }
+
+            if (!response.Valido)
             {
                 MostrarMensagem("Código inválido.");
                 return;
             }
-
-            // ✅ grava secret no AD em vez do banco
-            SalvarSecretAD(username, currentSecret);
 
             autenticado = true;
             MostrarMensagem("MFA configurado com sucesso!");
@@ -223,8 +192,30 @@ para confirmar a configuração.";
         }
         catch (Exception ex)
         {
-            MostrarMensagem(ex.ToString());
+            MostrarMensagem("Erro ao validar MFA: " + ex.Message);
         }
+        finally
+        {
+            btnValidar.IsEnabled = true;
+            txtCode.IsEnabled = true;
+        }
+    }
+
+    private void ExibirQrCode(string otpAuthUrl)
+    {
+        QRCodeGenerator qrGenerator = new QRCodeGenerator();
+        QRCodeData qrCodeData = qrGenerator.CreateQrCode(otpAuthUrl, QRCodeGenerator.ECCLevel.Q);
+        QRCode qrCode = new QRCode(qrCodeData);
+        Bitmap qrBitmap = qrCode.GetGraphic(20);
+
+        imgQR.Source = BitmapToImageSource(qrBitmap);
+        imgQR.Visibility = Visibility.Visible;
+
+        lblMensagem.Text =
+@"Escaneie o QR Code no Google Authenticator.
+
+Agora digite o código gerado
+para confirmar a configuração.";
     }
 
     private void MostrarMensagem(string msg)
@@ -237,12 +228,15 @@ para confirmar a configuração.";
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);
-        if (!autenticado) Environment.Exit(1);
+
+        if (!autenticado && _modo == AppMode.Setup)
+            Environment.Exit(1);
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        if (mostrandoDialog) return;
+        if (mostrandoDialog || _modo != AppMode.Setup)
+            return;
 
         Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -265,5 +259,4 @@ para confirmar a configuração.";
 
         return bitmapImage;
     }
-
 }

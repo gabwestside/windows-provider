@@ -1,183 +1,175 @@
-using System.DirectoryServices.AccountManagement;
-using System.IO;
-using System.Runtime.InteropServices;
+using System;
+using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
-using System.DirectoryServices;
-using CredentialProviderAPP.Utils;
+using CredentialProviderAPP.Services;
 
 namespace CredentialProviderAPP.Views;
 
 public partial class NovaSenhaWindow : Window
 {
-    private string login;
-
-    private int minLength;
-    private int minSpecial;
-    private string allowedChars = "";
-    private bool needUpper;
-    private bool needLower;
-    private bool needNumber;
+    private readonly string login;
     private bool mostrandoDialog = false;
+    private bool senhaValidadaServidor = false;
 
-    // ✅ _forcandoFoco removido — NovaSenhaWindow não sequestra foco
     private static readonly SolidColorBrush _neutral = new(Color.FromRgb(0xC4, 0xC9, 0xD4));
     private static readonly SolidColorBrush _ok = new(Color.FromRgb(0x22, 0xC5, 0x5E));
     private static readonly SolidColorBrush _fail = new(Color.FromRgb(0xEF, 0x44, 0x44));
-
-    private string policyPath =
-        System.IO.Path.Combine(
-            System.IO.Path.GetDirectoryName(
-                System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName
-            )!,
-            "password_policy.txt"
-        );
 
     public NovaSenhaWindow(string user)
     {
         InitializeComponent();
         login = user;
-
-        LoadPolicy();
-        UpdateRules("");
-
         btnSalvar.IsEnabled = false;
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed)
-            this.DragMove();
+            DragMove();
     }
 
-    private void LoadPolicy()
+    private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        if (!File.Exists(policyPath))
+        try
         {
-            MostrarMensagem("Política de senha não encontrada.");
-            Close();
-            return;
+            btnSalvar.IsEnabled = false;
+
+            InicializarRegras();
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Activate();
+                Keyboard.Focus(txtSenha);
+            }));
         }
+        catch (Exception ex)
+        {
+            MostrarMensagem("Erro ao inicializar tela de senha: " + ex.Message, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            DialogResult = false;
+            Close();
+        }
+    }
 
-        var lines = File.ReadAllLines(policyPath);
+    private void InicializarRegras()
+    {
+        SetRule(dotLength, ruleLength, null, "Validação da política no servidor");
+        SetRule(dotUpper, ruleUpper, null, "Validação de maiúsculas/minúsculas/números");
+        SetRule(dotLower, ruleLower, null, "Validação de caracteres especiais permitidos");
+        SetRule(dotNumber, ruleNumber, null, "Validação de palavras proibidas");
+        SetRule(dotSpecial, ruleSpecial, null, "A senha será validada ao sair do campo");
 
-        minLength = int.Parse(lines[0]);
-        minSpecial = int.Parse(lines[1]);
-        allowedChars = lines[2];
-        needUpper = bool.Parse(lines[3]);
-        needLower = bool.Parse(lines[4]);
-        needNumber = bool.Parse(lines[5]);
+        panelBlacklist.Visibility = Visibility.Collapsed;
+        panelMatch.Visibility = Visibility.Collapsed;
     }
 
     private void SenhaChanged(object sender, RoutedEventArgs e)
     {
-        UpdateRules(txtSenha.Password);
-    }
+        senhaValidadaServidor = false;
+        btnSalvar.IsEnabled = false;
 
-    private void UpdateRules(string senha)
-    {
-        bool lengthOK = senha.Length >= minLength;
-        bool upperOK = !needUpper || senha.Any(char.IsUpper);
-        bool lowerOK = !needLower || senha.Any(char.IsLower);
-        bool numberOK = !needNumber || senha.Any(char.IsDigit);
+        bool temSenha = !string.IsNullOrWhiteSpace(txtSenha.Password);
+        bool temConfirmacao = !string.IsNullOrWhiteSpace(txtConfirmar.Password);
+        bool match = temSenha && temConfirmacao && txtSenha.Password == txtConfirmar.Password;
 
-        int specialCount = senha.Count(c => allowedChars.Contains(c));
-        bool specialOK = specialCount >= minSpecial;
+        panelBlacklist.Visibility = Visibility.Collapsed;
 
-        string? forbiddenWord = null;
-        bool blacklistOK = true;
-
-        bool match = txtConfirmar.Password == senha && senha.Length > 0;
-
-        if (match)
-        {
-            forbiddenWord = PasswordBlacklist.GetForbiddenWord(senha);
-            blacklistOK = forbiddenWord == null;
-        }
-
-        SetRule(dotLength, ruleLength, lengthOK, $"Mínimo {minLength} caracteres", senha.Length > 0);
-        SetRule(dotUpper, ruleUpper, upperOK, "Letra maiúscula", senha.Length > 0);
-        SetRule(dotLower, ruleLower, lowerOK, "Letra minúscula", senha.Length > 0);
-        SetRule(dotNumber, ruleNumber, numberOK, "Número", senha.Length > 0);
-        SetRule(dotSpecial, ruleSpecial, specialOK, $"Especial ({minSpecial})", senha.Length > 0);
-
-        if (match)
-        {
-            panelBlacklist.Visibility = Visibility.Visible;
-            SetRule(dotBlacklist, ruleBlacklist, blacklistOK,
-                blacklistOK
-                    ? "Não contém palavras proibidas"
-                    : $"Palavra não pode ser usada: {forbiddenWord}",
-                true);
-        }
-        else
-        {
-            panelBlacklist.Visibility = Visibility.Collapsed;
-        }
-
-        if (txtConfirmar.Password.Length > 0)
+        if (temConfirmacao)
         {
             panelMatch.Visibility = Visibility.Visible;
-            SetRule(dotMatch, ruleMatch, match, "Senhas coincidem", true);
+            SetRule(dotMatch, ruleMatch, match, match ? "Senhas coincidem" : "Senhas não coincidem");
         }
         else
         {
             panelMatch.Visibility = Visibility.Collapsed;
         }
-
-        btnSalvar.IsEnabled =
-            lengthOK && upperOK && lowerOK && numberOK &&
-            specialOK && blacklistOK && match;
     }
 
-    private void EnableMFA()
+    private async Task ValidarSenhaServidorAsync()
     {
+        string senha = txtSenha.Password;
+        string confirmar = txtConfirmar.Password;
+
+        senhaValidadaServidor = false;
+        btnSalvar.IsEnabled = false;
+
+        if (string.IsNullOrWhiteSpace(senha))
+        {
+            panelBlacklist.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(confirmar))
+        {
+            panelBlacklist.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (senha != confirmar)
+        {
+            panelBlacklist.Visibility = Visibility.Collapsed;
+            panelMatch.Visibility = Visibility.Visible;
+            SetRule(dotMatch, ruleMatch, false, "Senhas não coincidem");
+            return;
+        }
+
         try
         {
-            string ldap    = ConfigHelper.Get("ActiveDirectory:LDAP");
-            string adUser  = ConfigHelper.Get("ActiveDirectory:Usuario");
-            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+            var result = await ServerApiService.ValidarSenhaAsync(login, senha);
 
-            using var root = new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
+            panelBlacklist.Visibility = Visibility.Visible;
 
-            var normalizedUser = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
-
-            using var searcher = new DirectorySearcher(root)
+            if (!result.Sucesso)
             {
-                Filter = $"(&(objectClass=user)(samAccountName={normalizedUser}))"
-            };
-            searcher.PropertiesToLoad.Add("info");
+                SetRule(dotBlacklist, ruleBlacklist, false, AjustarMensagemServidor(result.Erro ?? "Erro ao validar senha no servidor"));
+                return;
+            }
 
-            var result = searcher.FindOne();
-            if (result == null) { MostrarMensagem("Usuário não encontrado no Active Directory."); return; }
-
-            using var entry = new DirectoryEntry(result.Path, adUser, adSenha, AuthenticationTypes.Secure);
-
-            string? valorAtual = entry.Properties["info"]?.Value?.ToString();
-            if (!string.IsNullOrWhiteSpace(valorAtual)) return;
-
-            entry.Properties["info"].Value = "setup";
-            entry.CommitChanges();
+            if (result.Valida)
+            {
+                panelBlacklist.Visibility = Visibility.Collapsed;
+                senhaValidadaServidor = true;
+                btnSalvar.IsEnabled = true;
+            }
+            else
+            {
+                SetRule(dotBlacklist, ruleBlacklist, false, AjustarMensagemServidor(result.Erro ?? "Senha inválida"));
+            }
         }
         catch (Exception ex)
         {
-            MostrarMensagem("Erro ao atualizar MFA no AD: " + ex.Message);
+            panelBlacklist.Visibility = Visibility.Visible;
+            SetRule(dotBlacklist, ruleBlacklist, false, "Erro ao validar senha: " + ex.Message);
         }
     }
 
-    private void SetRule(Ellipse dot, TextBlock label, bool ok, string text, bool active)
+    private static string AjustarMensagemServidor(string mensagem)
+    {
+        if (string.IsNullOrWhiteSpace(mensagem))
+            return "Senha inválida.";
+
+        const string prefixo = "A senha contém caractere(s) especial(is) não permitido(s):";
+
+        if (mensagem.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase))
+        {
+            string resto = mensagem.Substring(prefixo.Length).Trim();
+            return $"Caracteres não podem ser usados: {resto}";
+        }
+
+        return mensagem;
+    }
+
+    private void SetRule(System.Windows.Shapes.Ellipse dot, System.Windows.Controls.TextBlock label, bool? ok, string text)
     {
         label.Text = text;
 
-        if (!active)
+        if (ok == null)
         {
             dot.Fill = _neutral;
             label.Foreground = new SolidColorBrush(Color.FromRgb(0x9C, 0xA3, 0xAF));
         }
-        else if (ok)
+        else if (ok == true)
         {
             dot.Fill = _ok;
             label.Foreground = new SolidColorBrush(Color.FromRgb(0x16, 0xA3, 0x4A));
@@ -189,102 +181,88 @@ public partial class NovaSenhaWindow : Window
         }
     }
 
-    private bool ValidatePassword(string senha)
+    private async void Salvar_Click(object sender, RoutedEventArgs e)
     {
-        if (senha.Length < minLength) return false;
-        if (needUpper && !senha.Any(char.IsUpper)) return false;
-        if (needLower && !senha.Any(char.IsLower)) return false;
-        if (needNumber && !senha.Any(char.IsDigit)) return false;
-        if (senha.Count(c => allowedChars.Contains(c)) < minSpecial) return false;
-        return true;
-    }
-
-    [DllImport("Netapi32.dll", CharSet = CharSet.Unicode)]
-    private static extern int NetUserSetInfo(
-        string servername,
-        string username,
-        int level,
-        ref USER_INFO_1003 buf,
-        out int parm_err
-    );
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct USER_INFO_1003
-    {
-        public string usri1003_password;
-    }
-
-    private void Salvar_Click(object sender, RoutedEventArgs e)
-    {
-        string senha     = txtSenha.Password;
+        string senha = txtSenha.Password;
         string confirmar = txtConfirmar.Password;
 
-        if (!ValidatePassword(senha))  { MostrarMensagem("Senha não atende à política."); return; }
+        if (string.IsNullOrWhiteSpace(senha))
+        {
+            MostrarMensagem("Digite a nova senha.", "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
-        string? forbidden = PasswordBlacklist.GetForbiddenWord(senha);
-        if (forbidden != null) { MostrarMensagem($"A senha contém a palavra proibida: {forbidden}"); return; }
+        if (senha != confirmar)
+        {
+            panelMatch.Visibility = Visibility.Visible;
+            SetRule(dotMatch, ruleMatch, false, "Senhas não coincidem");
 
-        if (senha != confirmar) { MostrarMensagem("Senhas não conferem."); return; }
+            MostrarMensagem("Senhas não conferem.", "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+            btnSalvar.IsEnabled = false;
+            return;
+        }
 
-        string normalizedUser = LdapHelper.NormalizeLogin(login);
-        bool senhaAlterada = false;
-
-        string adUser  = ConfigHelper.Get("ActiveDirectory:Usuario");
-        string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
-        string domFQDN = ConfigHelper.Get("ActiveDirectory:Domain");
-        string domNB   = ConfigHelper.Get("ActiveDirectory:DomainNetBIOS");
-
-        // 1️⃣ AD — FQDN
         try
         {
-            using var ctx = new PrincipalContext(ContextType.Domain, domFQDN, adUser, adSenha);
-            var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, normalizedUser);
-            if (user != null) { user.SetPassword(senha); user.Save(); senhaAlterada = true; }
-        }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[AD FQDN] Falhou: {ex.Message}"); }
+            ToggleSalvar(false);
 
-        // 2️⃣ AD — NetBIOS
-        if (!senhaAlterada)
-        {
-            try
+            await ValidarSenhaServidorAsync();
+
+            if (!senhaValidadaServidor)
             {
-                using var ctx = new PrincipalContext(ContextType.Domain, domNB, adUser, adSenha);
-                var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, normalizedUser);
-                if (user != null) { user.SetPassword(senha); user.Save(); senhaAlterada = true; }
+                MostrarMensagem(
+                    string.IsNullOrWhiteSpace(ruleBlacklist.Text) ? "Senha inválida." : ruleBlacklist.Text,
+                    "Validação",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[AD NetBIOS] Falhou: {ex.Message}"); }
-        }
 
-        // 3️⃣ fallback local
-        if (!senhaAlterada)
-        {
-            try
+            var result = await ServerApiService.TrocarSenhaAsync(login, senha);
+
+            if (!result.Sucesso)
             {
-                USER_INFO_1003 info = new() { usri1003_password = senha };
-                int result = NetUserSetInfo(".", normalizedUser, 1003, ref info, out _);
-
-                if (result == 0) { senhaAlterada = true; }
-                else
-                {
-                    MostrarMensagem(result switch
-                    {
-                        2245 => "A senha não atende à política do Windows.",
-                        5    => "Permissão negada. Execute como administrador.",
-                        _    => $"Erro ao alterar senha. Código: {result}"
-                    });
-                    return;
-                }
+                MostrarMensagem(result.Erro ?? "Não foi possível alterar a senha.", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
-            catch (Exception ex) { MostrarMensagem("Erro ao alterar senha: " + ex.Message); return; }
-        }
 
-        if (senhaAlterada)
-        {
-            EnableMFA();
-            MostrarMensagem("Senha alterada com sucesso!");
+            MostrarMensagem("Senha alterada com sucesso!", "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
             DialogResult = true;
             Close();
         }
+        catch (Exception ex)
+        {
+            MostrarMensagem("Erro ao alterar senha: " + ex.Message, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            ToggleSalvar(true);
+        }
+    }
+
+    private void ToggleSalvar(bool enabled)
+    {
+        txtSenha.IsEnabled = enabled;
+        txtConfirmar.IsEnabled = enabled;
+
+        if (!enabled)
+        {
+            btnSalvar.IsEnabled = false;
+            return;
+        }
+
+        btnSalvar.IsEnabled = senhaValidadaServidor;
+    }
+
+    private async void Senha_LostFocus(object sender, RoutedEventArgs e)
+    {
+        await ValidarSenhaServidorAsync();
+    }
+
+    private async void Senha_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+            await ValidarSenhaServidorAsync();
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)
@@ -293,19 +271,14 @@ public partial class NovaSenhaWindow : Window
             "Deseja cancelar a alteração de senha?",
             "Cancelar",
             MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
+            MessageBoxImage.Question
+        );
 
-        if (result == MessageBoxResult.Yes) { DialogResult = false; Close(); }
-    }
-
-    // ✅ só foca uma vez ao carregar — sem Window_Deactivated
-    private void Window_Loaded(object sender, RoutedEventArgs e)
-    {
-        Dispatcher.BeginInvoke(new Action(() =>
+        if (result == MessageBoxResult.Yes)
         {
-            Activate();
-            Keyboard.Focus(txtSenha);
-        }));
+            DialogResult = false;
+            Close();
+        }
     }
 
     private MessageBoxResult MostrarMensagem(

@@ -14,7 +14,6 @@
     WindowStyle="SingleBorderWindow"
     Topmost="True"
 
-    Loaded="Window_Loaded"
     Deactivated="Window_Deactivated"
     Closing="Window_Closing"
 
@@ -68,6 +67,7 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
 
                     <Button
+                        x:Name="btnValidar"
                         Width="120"
                         Height="40"
                         Margin="4"
@@ -79,6 +79,7 @@
                         Content="Validar"/>
 
                     <Button
+                        x:Name="btnCancelar"
                         Width="120"
                         Height="40"
                         Margin="4"

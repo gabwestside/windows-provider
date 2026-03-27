@@ -37,6 +37,7 @@
                 MaxLength="6" />
 
             <Button
+                x:Name="btnVerificar"
                 Height="35"
                 Click="Verificar_Click"
                 Content="Verificar" />

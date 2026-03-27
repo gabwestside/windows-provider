@@ -194,26 +194,22 @@
                         Foreground="{StaticResource TextSecondary}"
                         Text="Digite a nova senha:" />
 
-                    <PasswordBox
-                        x:Name="txtSenha"
-                        Margin="0,0,0,18"
-                        PasswordChanged="SenhaChanged"
-                        Style="{StaticResource ModernPasswordBox}" />
+<PasswordBox
+    x:Name="txtSenha"
+    Margin="0,0,0,18"
+    PasswordChanged="SenhaChanged"
+    LostFocus="Senha_LostFocus"
+    KeyDown="Senha_KeyDown"
+    Style="{StaticResource ModernPasswordBox}" />
 
                     <!--  Confirmar  -->
-                    <TextBlock
-                        Margin="0,0,0,6"
-                        FontFamily="Segoe UI"
-                        FontSize="13"
-                        FontWeight="Medium"
-                        Foreground="{StaticResource TextSecondary}"
-                        Text="Confirmação da nova senha:" />
-
-                    <PasswordBox
-                        x:Name="txtConfirmar"
-                        Margin="0,0,0,24"
-                        PasswordChanged="SenhaChanged"
-                        Style="{StaticResource ModernPasswordBox}" />
+<PasswordBox
+    x:Name="txtConfirmar"
+    Margin="0,0,0,24"
+    PasswordChanged="SenhaChanged"
+    LostFocus="Senha_LostFocus"
+    KeyDown="Senha_KeyDown"
+    Style="{StaticResource ModernPasswordBox}" />
 
                     <!--  REGRAS  -->
                     <!--  (mantive exatamente seu bloco original)  -->
@@ -335,12 +331,14 @@
                                     Margin="0,0,10,0"
                                     VerticalAlignment="Center"
                                     Fill="{StaticResource RuleNeutral}" />
-                                <TextBlock
-                                    x:Name="ruleBlacklist"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI"
-                                    FontSize="13"
-                                    Foreground="{StaticResource TextSecondary}" />
+<TextBlock
+    x:Name="ruleBlacklist"
+    VerticalAlignment="Center"
+    FontFamily="Segoe UI"
+    FontSize="13"
+    Foreground="{StaticResource TextSecondary}"
+    TextWrapping="Wrap"
+    MaxWidth="300" />
                             </StackPanel>
 
                             <!--  ruleMatch  -->
@@ -355,13 +353,15 @@
                                     Margin="0,0,10,0"
                                     VerticalAlignment="Center"
                                     Fill="{StaticResource RuleNeutral}" />
-                                <TextBlock
-                                    x:Name="ruleMatch"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI"
-                                    FontSize="13"
-                                    FontWeight="Medium"
-                                    Foreground="{StaticResource TextSecondary}" />
+<TextBlock
+    x:Name="ruleMatch"
+    VerticalAlignment="Center"
+    FontFamily="Segoe UI"
+    FontSize="13"
+    FontWeight="Medium"
+    Foreground="{StaticResource TextSecondary}"
+    TextWrapping="Wrap"
+    MaxWidth="300" />
                             </StackPanel>
 
                         </StackPanel>

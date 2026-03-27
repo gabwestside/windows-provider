@@ -1,112 +1,103 @@
-using OtpNet;
+using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
-using System.Windows.Input;
+using CredentialProviderAPP.Services;
+using CredentialProviderAPP.Utils;
 
 namespace CredentialProviderAPP.Views;
 
 public partial class VerificarCodigoWindow : Window
 {
-    private byte[] key;
+    private readonly string login;
     private bool autenticado = false;
     private bool mostrandoDialog = false;
-    private bool _forcandoFoco = false; // ✅ evita loop de reentrada
 
-    public VerificarCodigoWindow(string secret)
+    public VerificarCodigoWindow(string login)
     {
         InitializeComponent();
 
-        key = Base32Encoding.ToBytes(secret);
+        this.login = login;
 
         Topmost = true;
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
-        this.StateChanged += (s, e) =>
+        StateChanged += (s, e) =>
         {
-            if (this.WindowState == WindowState.Minimized)
-                this.WindowState = WindowState.Normal;
+            if (WindowState == WindowState.Minimized)
+                WindowState = WindowState.Normal;
         };
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        ForcarFoco();
+        WindowFocusHelper.ForcarFoco(this, txtCode);
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        if (mostrandoDialog || _forcandoFoco)
+        if (mostrandoDialog || !IsVisible || WindowState == WindowState.Minimized)
             return;
-
-        ForcarFoco();
-    }
-
-    private void ForcarFoco()
-    {
-        if (_forcandoFoco) return;
-
-        _forcandoFoco = true;
 
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            try
-            {
-                Topmost = true;
-                Activate();
-                Focus();
-                Keyboard.Focus(txtCode);
-            }
-            finally
-            {
-                _forcandoFoco = false;
-            }
-        }));
+            if (!mostrandoDialog && IsVisible && !IsActive)
+                WindowFocusHelper.ForcarFoco(this, txtCode);
+        }), System.Windows.Threading.DispatcherPriority.Background);
     }
 
-    private void Verificar_Click(object sender, RoutedEventArgs e)
+    private async void Verificar_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             string code = txtCode.Text.Trim();
 
-            if (string.IsNullOrEmpty(code))
+            if (code.Length != 6 || !code.All(char.IsDigit))
             {
-                MostrarMensagem("Digite o código.");
+                MostrarMensagem("Digite um código de 6 dígitos.", "Validação", MessageBoxImage.Warning);
                 return;
             }
 
-            var totp = new Totp(key);
+            btnVerificar.IsEnabled = false;
+            txtCode.IsEnabled = false;
 
-            bool valid = totp.VerifyTotp(
-                code,
-                out long step,
-                new VerificationWindow(1, 1)
-            );
+            var response = await ServerApiService.ValidarCodigoMfaAsync(login, code);
 
-            if (valid)
+            if (!response.Sucesso)
+            {
+                MostrarMensagem(response.Erro ?? "Erro ao validar MFA.", "Erro", MessageBoxImage.Error);
+                txtCode.Focus();
+                return;
+            }
+
+            if (response.Valido)
             {
                 autenticado = true;
-                MostrarMensagem("Código válido ✔");
                 Environment.Exit(0);
+                return;
             }
-            else
-            {
-                MostrarMensagem("Código inválido ❌");
-                Environment.Exit(1);
-            }
+
+            MostrarMensagem("Código inválido.", "Validação", MessageBoxImage.Warning);
+            txtCode.Clear();
+            txtCode.Focus();
         }
         catch (Exception ex)
         {
-            MostrarMensagem("Erro: " + ex.Message);
+            MostrarMensagem("Erro: " + ex.Message, "Erro", MessageBoxImage.Error);
             Environment.Exit(1);
+        }
+        finally
+        {
+            btnVerificar.IsEnabled = true;
+            txtCode.IsEnabled = true;
         }
     }
 
-    private void MostrarMensagem(string msg)
+    private void MostrarMensagem(string msg, string titulo = "Aviso", MessageBoxImage image = MessageBoxImage.Information)
     {
         mostrandoDialog = true;
-        MessageBox.Show(msg);
+        MessageBox.Show(msg, titulo, MessageBoxButton.OK, image);
         mostrandoDialog = false;
     }
 
