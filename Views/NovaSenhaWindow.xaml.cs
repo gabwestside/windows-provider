@@ -100,41 +100,45 @@ public partial class NovaSenhaWindow : Window
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(confirmar))
-        {
-            panelBlacklist.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        if (senha != confirmar)
-        {
-            panelBlacklist.Visibility = Visibility.Collapsed;
-            panelMatch.Visibility = Visibility.Visible;
-            SetRule(dotMatch, ruleMatch, false, "Senhas não coincidem");
-            return;
-        }
-
         try
         {
             var result = await ServerApiService.ValidarSenhaAsync(login, senha);
 
-            panelBlacklist.Visibility = Visibility.Visible;
-
             if (!result.Sucesso)
             {
-                SetRule(dotBlacklist, ruleBlacklist, false, AjustarMensagemServidor(result.Erro ?? "Erro ao validar senha no servidor"));
-                return;
+                panelBlacklist.Visibility = Visibility.Visible;
+                SetRule(dotBlacklist, ruleBlacklist, false,
+                    AjustarMensagemServidor(result.Erro ?? "Erro ao validar senha no servidor"));
             }
-
-            if (result.Valida)
+            else if (result.Valida)
             {
                 panelBlacklist.Visibility = Visibility.Collapsed;
-                senhaValidadaServidor = true;
-                btnSalvar.IsEnabled = true;
             }
             else
             {
-                SetRule(dotBlacklist, ruleBlacklist, false, AjustarMensagemServidor(result.Erro ?? "Senha inválida"));
+                panelBlacklist.Visibility = Visibility.Visible;
+                SetRule(dotBlacklist, ruleBlacklist, false,
+                    AjustarMensagemServidor(result.Erro ?? "Senha inválida"));
+            }
+
+            bool temConfirmacao = !string.IsNullOrWhiteSpace(confirmar);
+
+            if (temConfirmacao)
+            {
+                panelMatch.Visibility = Visibility.Visible;
+
+                bool match = senha == confirmar;
+                SetRule(dotMatch, ruleMatch, match, match ? "Senhas coincidem" : "Senhas não coincidem");
+
+                if (result.Sucesso && result.Valida && match)
+                {
+                    senhaValidadaServidor = true;
+                    btnSalvar.IsEnabled = true;
+                }
+            }
+            else
+            {
+                panelMatch.Visibility = Visibility.Collapsed;
             }
         }
         catch (Exception ex)
@@ -149,12 +153,11 @@ public partial class NovaSenhaWindow : Window
         if (string.IsNullOrWhiteSpace(mensagem))
             return "Senha inválida.";
 
-        const string prefixo = "A senha contém caractere(s) especial(is) não permitido(s):";
+        const string prefixoAntigo = "A senha contém caractere(s) especial(is) não permitido(s):";
 
-        if (mensagem.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase))
+        if (mensagem.Contains(prefixoAntigo, StringComparison.OrdinalIgnoreCase))
         {
-            string resto = mensagem.Substring(prefixo.Length).Trim();
-            return $"Caracteres não podem ser usados: {resto}";
+            mensagem = mensagem.Replace(prefixoAntigo, "Caracteres não podem ser usados:");
         }
 
         return mensagem;

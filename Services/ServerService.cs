@@ -835,20 +835,22 @@ namespace CredentialProviderAPP.Services
 
         private static string? ValidarSenhaPolitica(string senha, PasswordPolicyConfig policy)
         {
+            var erros = new List<string>();
+
             if (string.IsNullOrWhiteSpace(senha))
-                return "Senha não informada.";
+                erros.Add("Senha não informada.");
 
             if (senha.Length < policy.MinLength)
-                return $"A senha deve ter no mínimo {policy.MinLength} caracteres.";
+                erros.Add($"A senha deve ter no mínimo {policy.MinLength} caracteres.");
 
             if (policy.RequireUppercase && !senha.Any(char.IsUpper))
-                return "A senha deve conter ao menos uma letra maiúscula.";
+                erros.Add("A senha deve conter ao menos uma letra maiúscula.");
 
             if (policy.RequireLowercase && !senha.Any(char.IsLower))
-                return "A senha deve conter ao menos uma letra minúscula.";
+                erros.Add("A senha deve conter ao menos uma letra minúscula.");
 
             if (policy.RequireNumber && !senha.Any(char.IsDigit))
-                return "A senha deve conter ao menos um número.";
+                erros.Add("A senha deve conter ao menos um número.");
 
             string allowedSpecialChars = policy.AllowedSpecialChars ?? string.Empty;
 
@@ -858,19 +860,23 @@ namespace CredentialProviderAPP.Services
                 .ToArray();
 
             if (invalidSpecialChars.Length > 0)
-                return $"A senha contém caractere(s) especial(is) não permitido(s): {string.Join(" ", invalidSpecialChars)}";
+                erros.Add($"Caracteres não podem ser usados: {string.Join(" ", invalidSpecialChars)}");
 
             int specialCount = senha.Count(c => allowedSpecialChars.Contains(c));
 
             if (specialCount < policy.MinSpecialChars)
-                return $"A senha deve conter ao menos {policy.MinSpecialChars} caractere(s) especial(is) permitido(s).";
+                erros.Add($"A senha deve conter ao menos {policy.MinSpecialChars} caractere(s) especial(is) permitido(s).");
 
             string? palavraProibida = ObterPalavraProibida(senha);
             if (palavraProibida != null)
-                return $"A senha contém uma palavra proibida: {palavraProibida}";
+                erros.Add($"A senha contém uma palavra proibida: {palavraProibida}");
 
-            return null;
+            if (erros.Count == 0)
+                return null;
+
+            return string.Join(Environment.NewLine, erros);
         }
+
         private static async Task ResponderJson(HttpListenerResponse res, int statusCode, object payload)
         {
             res.StatusCode = statusCode;
