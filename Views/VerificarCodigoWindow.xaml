@@ -35,7 +35,7 @@
                 HorizontalContentAlignment="Center"
                 FontSize="20"
                 MaxLength="6" />
-
+ 
             <Button
                 x:Name="btnVerificar"
                 Height="35"

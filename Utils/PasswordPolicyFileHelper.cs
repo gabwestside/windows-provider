@@ -11,7 +11,7 @@ namespace CredentialProviderAPP.Utils
         {
             get
             {
-                string path = ConfigHelper.Get("PasswordPolicy:PolicyPath");
+                string path = ConfigHelper.GetOptional("PasswordPolicy:PolicyPath");
 
                 if (string.IsNullOrWhiteSpace(path))
                 {

@@ -25,6 +25,7 @@ namespace CredentialProviderAPP
                 .Build();
         }
 
+        // mantém o comportamento atual
         public static string Get(string key)
         {
             string? value = _config[key];
@@ -36,6 +37,27 @@ namespace CredentialProviderAPP
             }
 
             return value;
+        }
+
+        // novo: opcional
+        public static string GetOptional(string key, string defaultValue = "")
+        {
+            string? value = _config[key];
+            return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
+        }
+
+        // novo: int opcional
+        public static int GetInt(string key, int defaultValue = 0)
+        {
+            string? value = _config[key];
+            return int.TryParse(value, out int result) ? result : defaultValue;
+        }
+
+        // novo: bool opcional
+        public static bool GetBool(string key, bool defaultValue = false)
+        {
+            string? value = _config[key];
+            return bool.TryParse(value, out bool result) ? result : defaultValue;
         }
     }
 }

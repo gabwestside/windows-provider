@@ -358,7 +358,7 @@ namespace CredentialProviderAPP.Views
 
             try
             {
-                using var root =  ActiveDirectoryHelper.CriarConexaoAD();
+                using var root = ActiveDirectoryHelper.CriarConexaoAD();
                 using var search = new DirectorySearcher(root)
                 {
                     Filter = "(&(objectCategory=person)(objectClass=user))",
@@ -426,7 +426,7 @@ namespace CredentialProviderAPP.Views
             try
             {
                 string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-                using var root =  ActiveDirectoryHelper.CriarConexaoAD();
+                using var root = ActiveDirectoryHelper.CriarConexaoAD();
 
                 foreach (var user in usuarios)
                 {
@@ -467,7 +467,7 @@ namespace CredentialProviderAPP.Views
 
             try
             {
-                using var root =  ActiveDirectoryHelper.CriarConexaoAD();
+                using var root = ActiveDirectoryHelper.CriarConexaoAD();
 
                 foreach (var user in usuarios)
                 {
@@ -514,7 +514,7 @@ namespace CredentialProviderAPP.Views
             try
             {
                 string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-                using var root =  ActiveDirectoryHelper.CriarConexaoAD();
+                using var root = ActiveDirectoryHelper.CriarConexaoAD();
 
                 foreach (var user in usuarios)
                 {
@@ -587,47 +587,7 @@ namespace CredentialProviderAPP.Views
         // ══════════════════════════════════════════════════════════════
         //  TROCAR SENHA NO PRÓXIMO LOGIN
         // ══════════════════════════════════════════════════════════════
-        private void TrocarSenhaProximoLoginSelecionados_Click(object sender, RoutedEventArgs e)
-        {
-            var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
 
-            if (!sel.Any())
-            {
-                MessageBox.Show("Selecione pelo menos um usuário.", "Atenção",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            AbrirModalTrocaSenha(sel);
-        }
-
-        private void TrocarSenhaProximoLoginTodos_Click(object sender, RoutedEventArgs e)
-        {
-            var adUsers = _usuariosAD
-                .Where(u => !u.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) ?? false)
-                .ToList();
-
-            if (!adUsers.Any())
-            {
-                MessageBox.Show("Nenhum usuário de domínio encontrado.", "Atenção",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            AbrirModalTrocaSenha(adUsers);
-        }
-
-        private void AbrirModalTrocaSenha(List<UsuarioViewModel> usuarios)
-        {
-            var modal = new TrocarSenhaWindow(usuarios) { Owner = this };
-            modal.ShowDialog();
-
-            if (!modal.Confirmado) return;
-
-            MostrarLoading();
-            try { ForcarTrocaSenha(usuarios, modal.SenhaGerada); }
-            finally { OcultarLoading(); }
-        }
 
         private bool EstaNoControladorDeDominio()
         {
@@ -675,6 +635,121 @@ namespace CredentialProviderAPP.Views
             return new PrincipalContext(ContextType.Domain, domFQDN, adUser, adSenha);
         }
 
+        // ══════════════════════════════════════════════════════════════
+        //  TROCAR SENHA NO PRÓXIMO LOGIN
+        // ══════════════════════════════════════════════════════════════
+        private void TrocarSenhaProximoLoginSelecionados_Click(object sender, RoutedEventArgs e)
+        {
+            var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
+
+            if (!sel.Any())
+            {
+                MessageBox.Show("Selecione pelo menos um usuário.", "Atenção",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            AbrirModalTrocaSenha(sel);
+        }
+
+        private void TrocarSenhaProximoLoginTodos_Click(object sender, RoutedEventArgs e)
+        {
+            var adUsers = _usuariosAD
+                .Where(u => !u.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) ?? false)
+                .ToList();
+
+            if (!adUsers.Any())
+            {
+                MessageBox.Show("Nenhum usuário de domínio encontrado.", "Atenção",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            AbrirModalTrocaSenha(adUsers);
+        }
+
+        private void AbrirModalTrocaSenha(List<UsuarioViewModel> usuarios)
+        {
+            var modal = new TrocarSenhaWindow(usuarios) { Owner = this };
+            modal.ShowDialog();
+
+            if (!modal.Confirmado)
+                return;
+
+            MostrarLoading();
+
+            try
+            {
+                if (modal.SomenteForcarTrocaNoProximoLogin)
+                    MarcarTrocaSenhaProximoLoginSemAlterarSenha(usuarios);
+                else
+                    ForcarTrocaSenha(usuarios, modal.SenhaGerada);
+            }
+            finally
+            {
+                OcultarLoading();
+            }
+        }
+
+        private void MarcarTrocaSenhaProximoLoginSemAlterarSenha(List<UsuarioViewModel> usuarios)
+        {
+            int ok = 0, fail = 0;
+
+            foreach (var user in usuarios)
+            {
+                try
+                {
+                    if (user.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        using var ctx = new PrincipalContext(ContextType.Machine);
+                        var u = UserPrincipal.FindByIdentity(ctx, user.Login);
+
+                        if (u == null)
+                        {
+                            fail++;
+                            continue;
+                        }
+
+                        u.ExpirePasswordNow();
+                        u.Save();
+                        ok++;
+                    }
+                    else
+                    {
+                        var login = LdapHelper.Escape(LdapHelper.NormalizeLogin(user.Login));
+
+                        using var searcher = new DirectorySearcher(ActiveDirectoryHelper.CriarConexaoAD())
+                        {
+                            Filter = $"(&(objectClass=user)(samAccountName={login}))"
+                        };
+
+                        var result = searcher.FindOne();
+                        if (result == null)
+                        {
+                            fail++;
+                            continue;
+                        }
+
+                        using var entry = result.GetDirectoryEntry();
+                        entry.Properties["pwdLastSet"].Value = 0;
+                        entry.CommitChanges();
+                        ok++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                    fail++;
+                }
+            }
+
+            string msg = $"✅ {ok} usuário(s) marcados para trocar senha no próximo login.";
+            if (fail > 0)
+                msg += $"\nFalha em {fail} usuário(s).";
+
+            MessageBox.Show(msg, "Concluído", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void ForcarTrocaSenha(List<UsuarioViewModel> usuarios, string senhaNova)
         {
             int ok = 0, fail = 0;
@@ -703,7 +778,6 @@ namespace CredentialProviderAPP.Views
                     {
                         var login = LdapHelper.Escape(LdapHelper.NormalizeLogin(user.Login));
 
-                        // 1) Altera a senha no AD
                         using var ctx = CriarContextoDominio();
                         var u = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, login);
 
@@ -716,8 +790,7 @@ namespace CredentialProviderAPP.Views
                         u.SetPassword(senhaNova);
                         u.Save();
 
-                        // 2) Força troca no próximo login e limpa MFA
-                        using var searcher = new DirectorySearcher( ActiveDirectoryHelper.CriarConexaoAD())
+                        using var searcher = new DirectorySearcher(ActiveDirectoryHelper.CriarConexaoAD())
                         {
                             Filter = $"(&(objectClass=user)(samAccountName={login}))"
                         };
@@ -749,13 +822,9 @@ namespace CredentialProviderAPP.Views
 
             string msg = $"✅ {ok} usuário(s) configurados para trocar senha no próximo login.";
             if (fail > 0)
-                msg += $"\n⚠️ {fail} usuário(s) não puderam ser processados.";
+                msg += $"\nFalha em {fail} usuário(s).";
 
-            MessageBox.Show(
-                msg,
-                "Trocar Senha no Próximo Login",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            MessageBox.Show(msg, "Concluído", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // ══════════════════════════════════════════════════════════════

@@ -13,6 +13,8 @@ public partial class VerificarCodigoWindow : Window
     private bool autenticado = false;
     private bool mostrandoDialog = false;
 
+    public bool CodigoValidado => autenticado;
+
     public VerificarCodigoWindow(string login)
     {
         InitializeComponent();
@@ -74,7 +76,8 @@ public partial class VerificarCodigoWindow : Window
             if (response.Valido)
             {
                 autenticado = true;
-                Environment.Exit(0);
+                DialogResult = true;
+                Close();
                 return;
             }
 
@@ -85,7 +88,6 @@ public partial class VerificarCodigoWindow : Window
         catch (Exception ex)
         {
             MostrarMensagem("Erro: " + ex.Message, "Erro", MessageBoxImage.Error);
-            Environment.Exit(1);
         }
         finally
         {
@@ -106,6 +108,6 @@ public partial class VerificarCodigoWindow : Window
         base.OnClosing(e);
 
         if (!autenticado)
-            Environment.Exit(1);
+            DialogResult = false;
     }
 }
