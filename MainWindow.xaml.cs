@@ -1,8 +1,6 @@
 ﻿using CredentialProviderAPP.Enums;
-using CredentialProviderAPP.Models.Api;
 using CredentialProviderAPP.Services;
 using CredentialProviderAPP.Utils;
-using CredentialProviderAPP.Views;
 using QRCoder;
 using System;
 using System.Drawing;
@@ -21,6 +19,8 @@ public partial class MainWindow : Window
     private string loginAtual = "";
     private string? otpAuthUrlAtual = null;
     private readonly AppMode _modo;
+
+    private string metodoSelecionado = ""; // "app" ou "sms"
 
     public MainWindow()
     {
@@ -103,23 +103,13 @@ public partial class MainWindow : Window
         lblMensagem.Text =
 $@"Bem-vindo {setupResponse.Nome}
 
-Para proteger sua conta,
-escaneie agora o QR Code para configurar
+Escolha como deseja configurar
 a autenticação em dois fatores.";
 
-        if (string.IsNullOrWhiteSpace(otpAuthUrlAtual))
-        {
-            MostrarMensagem("O servidor não retornou os dados do QR Code.");
-            Environment.Exit(1);
-            return;
-        }
+        panelMetodo.Visibility = Visibility.Visible;
+        lblMetodoInfo.Visibility = Visibility.Visible;
 
-        ExibirQrCode(otpAuthUrlAtual);
-
-        btnGerarQR.Visibility = Visibility.Collapsed;
-        txtCode.Visibility = Visibility.Visible;
-        btnValidar.Visibility = Visibility.Visible;
-        imgQR.Visibility = Visibility.Visible;
+        rbAuthenticator.IsChecked = true;
     }
 
     private async void BuscarUsuario_Click(object sender, RoutedEventArgs e)
@@ -139,6 +129,59 @@ a autenticação em dois fatores.";
         await ProcessarFluxoUsuarioAsync(username);
     }
 
+private void MetodoMfa_Checked(object sender, RoutedEventArgs e)
+{
+    if (rbAuthenticator.IsChecked == true)
+    {
+        metodoSelecionado = "app";
+
+        lblMetodoInfo.Text =
+@"Você escolheu aplicativo autenticador.
+
+Escaneie o QR Code e depois informe
+o código gerado no aplicativo.";
+        lblMetodoInfo.Visibility = Visibility.Visible;
+
+        panelQr.Visibility = Visibility.Visible;
+        imgQR.Visibility = Visibility.Visible;
+
+        btnGerarQR.Visibility = Visibility.Visible;
+        btnEnviarSms.Visibility = Visibility.Collapsed;
+
+        lblCodigo.Visibility = Visibility.Visible;
+        txtCode.Visibility = Visibility.Visible;
+        btnValidar.Visibility = Visibility.Visible;
+
+        txtCode.Clear();
+
+        if (!string.IsNullOrWhiteSpace(otpAuthUrlAtual))
+            ExibirQrCode(otpAuthUrlAtual);
+    }
+    else if (rbSms.IsChecked == true)
+    {
+        metodoSelecionado = "sms";
+
+        lblMetodoInfo.Text =
+@"Você escolheu SMS.
+
+Envie um código para o telefone cadastrado
+e informe o código recebido.";
+        lblMetodoInfo.Visibility = Visibility.Visible;
+
+        panelQr.Visibility = Visibility.Collapsed;
+        imgQR.Visibility = Visibility.Collapsed;
+
+        btnGerarQR.Visibility = Visibility.Collapsed;
+        btnEnviarSms.Visibility = Visibility.Visible;
+
+        lblCodigo.Visibility = Visibility.Visible;
+        txtCode.Visibility = Visibility.Visible;
+        btnValidar.Visibility = Visibility.Visible;
+
+        txtCode.Clear();
+    }
+}
+
     private void GerarQR_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(otpAuthUrlAtual))
@@ -148,6 +191,36 @@ a autenticação em dois fatores.";
         }
 
         ExibirQrCode(otpAuthUrlAtual);
+    }
+
+    private async void EnviarSms_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(loginAtual))
+            {
+                MostrarMensagem("Usuário não informado.");
+                return;
+            }
+
+            btnEnviarSms.IsEnabled = false;
+
+            // TODO:
+            // aqui depois vamos chamar a API real de SMS
+            // ex: await ServerApiService.EnviarCodigoSmsAsync(loginAtual);
+
+            await Task.Delay(500);
+
+            MostrarMensagem("Código SMS enviado com sucesso.");
+        }
+        catch (Exception ex)
+        {
+            MostrarMensagem("Erro ao enviar SMS: " + ex.Message);
+        }
+        finally
+        {
+            btnEnviarSms.IsEnabled = true;
+        }
     }
 
     private async void ValidarCodigo_Click(object sender, RoutedEventArgs e)
@@ -165,12 +238,17 @@ a autenticação em dois fatores.";
 
             if (string.IsNullOrWhiteSpace(code))
             {
-                MostrarMensagem("Digite o código gerado pelo aplicativo autenticador.");
+                MostrarMensagem("Digite o código de validação.");
                 return;
             }
 
             btnValidar.IsEnabled = false;
             txtCode.IsEnabled = false;
+
+            // Por enquanto mantém a validação existente.
+            // Depois, no backend, você pode separar:
+            // - ValidarCodigoMfaAsync para app autenticador
+            // - ValidarCodigoSmsAsync para SMS
 
             var response = await ServerApiService.ValidarCodigoMfaAsync(username, code);
 
@@ -201,22 +279,17 @@ a autenticação em dois fatores.";
         }
     }
 
-    private void ExibirQrCode(string otpAuthUrl)
-    {
-        QRCodeGenerator qrGenerator = new QRCodeGenerator();
-        QRCodeData qrCodeData = qrGenerator.CreateQrCode(otpAuthUrl, QRCodeGenerator.ECCLevel.Q);
-        QRCode qrCode = new QRCode(qrCodeData);
-        Bitmap qrBitmap = qrCode.GetGraphic(20);
+private void ExibirQrCode(string otpAuthUrl)
+{
+    QRCodeGenerator qrGenerator = new QRCodeGenerator();
+    QRCodeData qrCodeData = qrGenerator.CreateQrCode(otpAuthUrl, QRCodeGenerator.ECCLevel.Q);
+    QRCode qrCode = new QRCode(qrCodeData);
+    Bitmap qrBitmap = qrCode.GetGraphic(20);
 
-        imgQR.Source = BitmapToImageSource(qrBitmap);
-        imgQR.Visibility = Visibility.Visible;
-
-        lblMensagem.Text =
-@"Escaneie o QR Code no Google Authenticator.
-
-Agora digite o código gerado
-para confirmar a configuração.";
-    }
+    imgQR.Source = BitmapToImageSource(qrBitmap);
+    panelQr.Visibility = Visibility.Visible;
+    imgQR.Visibility = Visibility.Visible;
+}
 
     private void MostrarMensagem(string msg)
     {

@@ -10,16 +10,20 @@ namespace CredentialProviderAPP.Views;
 public partial class VerificarCodigoWindow : Window
 {
     private readonly string login;
+    private readonly string metodo; // "sms" ou "app"
     private bool autenticado = false;
     private bool mostrandoDialog = false;
 
     public bool CodigoValidado => autenticado;
 
-    public VerificarCodigoWindow(string login)
+    public VerificarCodigoWindow(string login, string metodo = "app")
     {
         InitializeComponent();
 
         this.login = login;
+        this.metodo = string.IsNullOrWhiteSpace(metodo)
+            ? "app"
+            : metodo.Trim().ToLowerInvariant();
 
         Topmost = true;
         ShowInTaskbar = false;
@@ -34,6 +38,17 @@ public partial class VerificarCodigoWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        if (metodo == "sms")
+        {
+            lblTitulo.Text = "Digite o código enviado por SMS";
+            lblSubtitulo.Text = "Enviamos um código de 6 dígitos para o telefone cadastrado.";
+        }
+        else
+        {
+            lblTitulo.Text = "Digite o código do aplicativo autenticador";
+            lblSubtitulo.Text = "Abra seu aplicativo autenticador e informe o código de 6 dígitos.";
+        }
+
         WindowFocusHelper.ForcarFoco(this, txtCode);
     }
 
@@ -64,6 +79,26 @@ public partial class VerificarCodigoWindow : Window
             btnVerificar.IsEnabled = false;
             txtCode.IsEnabled = false;
 
+            // =========================
+            // MODO VISUAL / TESTE DE TELA
+            // =========================
+            // Aqui você pode testar a UI sem backend SMS.
+            // Por enquanto:
+            // - app continua chamando backend real
+            // - sms só simula sucesso visual
+
+            if (metodo == "sms")
+            {
+                // simulação visual
+                await System.Threading.Tasks.Task.Delay(400);
+
+                autenticado = true;
+                DialogResult = true;
+                Close();
+                return;
+            }
+
+            // app / authenticator
             var response = await ServerApiService.ValidarCodigoMfaAsync(login, code);
 
             if (!response.Sucesso)
