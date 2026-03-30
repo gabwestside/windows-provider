@@ -27,7 +27,7 @@
         <SolidColorBrush x:Key="RuleOk" Color="#22C55E" />
         <SolidColorBrush x:Key="RuleFail" Color="#EF4444" />
 
-        <!--  ══ PASSWORDBOX MODERNO ══  -->
+        <!-- PASSWORDBOX -->
         <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
             <Setter Property="Background" Value="White" />
             <Setter Property="Foreground" Value="#1A1D23" />
@@ -63,7 +63,7 @@
             </Setter>
         </Style>
 
-        <!--  ══ BOTÃO PRIMÁRIO ══  -->
+        <!-- BOTÃO -->
         <Style x:Key="BtnPrimary" TargetType="Button">
             <Setter Property="Background" Value="#7B93D1" />
             <Setter Property="Foreground" Value="White" />
@@ -101,10 +101,9 @@
 
     </Window.Resources>
 
-    <!--  Fundo clicável para arrastar  -->
     <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
 
-        <!--  ══ FUNDO ══  -->
+        <!-- FUNDO -->
         <Border
             Background="{StaticResource BgPage}"
             BorderBrush="{StaticResource BorderColor}"
@@ -118,7 +117,7 @@
             </Border.Effect>
         </Border>
 
-        <!--  ══ CONTEÚDO CENTRAL ══  -->
+        <!-- CONTEÚDO CENTRAL -->
         <Grid VerticalAlignment="Center">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -128,7 +127,7 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!--  LOGO  -->
+            <!-- LOGO -->
             <StackPanel Grid.Row="0" HorizontalAlignment="Center">
                 <TextBlock
                     HorizontalAlignment="Center"
@@ -147,7 +146,7 @@
                     Text="Sistema de Gestão de Credenciais" />
             </StackPanel>
 
-            <!--  CARD  -->
+            <!-- CARD -->
             <Border
                 Grid.Row="2"
                 Width="400"
@@ -185,7 +184,7 @@
                         Text="Crie uma senha forte para proteger sua conta."
                         TextAlignment="Center" />
 
-                    <!--  Senha  -->
+                    <!-- SENHA -->
                     <TextBlock
                         Margin="0,0,0,6"
                         FontFamily="Segoe UI"
@@ -194,26 +193,24 @@
                         Foreground="{StaticResource TextSecondary}"
                         Text="Digite a nova senha:" />
 
-<PasswordBox
-    x:Name="txtSenha"
-    Margin="0,0,0,18"
-    PasswordChanged="SenhaChanged"
-    LostFocus="Senha_LostFocus"
-    KeyDown="Senha_KeyDown"
-    Style="{StaticResource ModernPasswordBox}" />
+                    <PasswordBox
+                        x:Name="txtSenha"
+                        Margin="0,0,0,18"
+                        PasswordChanged="SenhaChanged"
+                        LostFocus="Senha_LostFocus"
+                        KeyDown="Senha_KeyDown"
+                        Style="{StaticResource ModernPasswordBox}" />
 
-                    <!--  Confirmar  -->
-<PasswordBox
-    x:Name="txtConfirmar"
-    Margin="0,0,0,24"
-    PasswordChanged="SenhaChanged"
-    LostFocus="Senha_LostFocus"
-    KeyDown="Senha_KeyDown"
-    Style="{StaticResource ModernPasswordBox}" />
+                    <!-- CONFIRMAR -->
+                    <PasswordBox
+                        x:Name="txtConfirmar"
+                        Margin="0,0,0,24"
+                        PasswordChanged="SenhaChanged"
+                        LostFocus="Senha_LostFocus"
+                        KeyDown="Senha_KeyDown"
+                        Style="{StaticResource ModernPasswordBox}" />
 
-                    <!--  REGRAS  -->
-                    <!--  (mantive exatamente seu bloco original)  -->
-
+                    <!-- REGRAS -->
                     <Border
                         Margin="0,0,0,22"
                         Padding="16,14"
@@ -232,8 +229,7 @@
                                 Foreground="{StaticResource TextMuted}"
                                 Text="REQUISITOS DA SENHA" />
 
-
-                            <!--  ruleLength  -->
+                            <!-- ruleLength -->
                             <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
                                 <Ellipse
                                     x:Name="dotLength"
@@ -250,7 +246,7 @@
                                     Foreground="{StaticResource TextSecondary}" />
                             </StackPanel>
 
-                            <!--  ruleUpper  -->
+                            <!-- ruleUpper -->
                             <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
                                 <Ellipse
                                     x:Name="dotUpper"
@@ -267,7 +263,7 @@
                                     Foreground="{StaticResource TextSecondary}" />
                             </StackPanel>
 
-                            <!--  ruleLower  -->
+                            <!-- ruleLower -->
                             <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
                                 <Ellipse
                                     x:Name="dotLower"
@@ -284,7 +280,7 @@
                                     Foreground="{StaticResource TextSecondary}" />
                             </StackPanel>
 
-                            <!--  ruleNumber  -->
+                            <!-- ruleNumber -->
                             <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
                                 <Ellipse
                                     x:Name="dotNumber"
@@ -301,7 +297,7 @@
                                     Foreground="{StaticResource TextSecondary}" />
                             </StackPanel>
 
-                            <!--  ruleSpecial  -->
+                            <!-- ruleSpecial -->
                             <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
                                 <Ellipse
                                     x:Name="dotSpecial"
@@ -318,7 +314,7 @@
                                     Foreground="{StaticResource TextSecondary}" />
                             </StackPanel>
 
-                            <!--  ruleBlacklist  -->
+                            <!-- ruleBlacklist -->
                             <StackPanel
                                 x:Name="panelBlacklist"
                                 Margin="0,0,0,6"
@@ -329,19 +325,19 @@
                                     Width="16"
                                     Height="16"
                                     Margin="0,0,10,0"
-                                    VerticalAlignment="Center"
+                                    VerticalAlignment="Top"
                                     Fill="{StaticResource RuleNeutral}" />
-<TextBlock
-    x:Name="ruleBlacklist"
-    VerticalAlignment="Center"
-    FontFamily="Segoe UI"
-    FontSize="13"
-    Foreground="{StaticResource TextSecondary}"
-    TextWrapping="Wrap"
-    MaxWidth="300" />
+                                <TextBlock
+                                    x:Name="ruleBlacklist"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    TextWrapping="Wrap"
+                                    MaxWidth="300" />
                             </StackPanel>
 
-                            <!--  ruleMatch  -->
+                            <!-- ruleMatch -->
                             <StackPanel
                                 x:Name="panelMatch"
                                 Orientation="Horizontal"
@@ -353,21 +349,33 @@
                                     Margin="0,0,10,0"
                                     VerticalAlignment="Center"
                                     Fill="{StaticResource RuleNeutral}" />
-<TextBlock
-    x:Name="ruleMatch"
-    VerticalAlignment="Center"
-    FontFamily="Segoe UI"
-    FontSize="13"
-    FontWeight="Medium"
-    Foreground="{StaticResource TextSecondary}"
-    TextWrapping="Wrap"
-    MaxWidth="300" />
+                                <TextBlock
+                                    x:Name="ruleMatch"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI"
+                                    FontSize="13"
+                                    FontWeight="Medium"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    TextWrapping="Wrap"
+                                    MaxWidth="300" />
                             </StackPanel>
 
                         </StackPanel>
                     </Border>
 
-                    <!--  Botão salvar  -->
+                    <!-- STATUS OPCIONAL -->
+                    <TextBlock
+                        x:Name="txtStatusValidacao"
+                        Margin="0,0,0,12"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI"
+                        FontSize="12"
+                        FontStyle="Italic"
+                        Foreground="{StaticResource TextMuted}"
+                        Text=""
+                        Visibility="Collapsed" />
+
+                    <!-- BOTÃO -->
                     <Button
                         x:Name="btnSalvar"
                         Click="Salvar_Click"
@@ -377,7 +385,7 @@
                 </StackPanel>
             </Border>
 
-            <!--  ── RODAPÉ ──  -->
+            <!-- RODAPÉ -->
             <TextBlock
                 Grid.Row="4"
                 HorizontalAlignment="Center"
@@ -387,7 +395,7 @@
                 Text="© 2023 CredentialProvider System - Todos os direitos reservados." />
         </Grid>
 
-        <!--  ═════════ BOTÃO X ═════════  -->
+        <!-- BOTÃO X -->
         <Button
             Width="34"
             Height="34"
@@ -407,6 +415,48 @@
                 Foreground="#6B7280"
                 Text="✕" />
         </Button>
+
+        <!-- OVERLAY DE LOADING -->
+        <Grid
+            x:Name="overlayLoading"
+            Background="#80FFFFFF"
+            Visibility="Collapsed"
+            Panel.ZIndex="1000">
+
+            <Border
+                Width="260"
+                Padding="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="White"
+                BorderBrush="{StaticResource BorderColor}"
+                BorderThickness="1"
+                CornerRadius="12">
+
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="18"
+                        Opacity="0.12"
+                        ShadowDepth="3" />
+                </Border.Effect>
+
+                <StackPanel>
+                    <ProgressBar
+                        Width="200"
+                        Height="8"
+                        IsIndeterminate="True"
+                        Margin="0,0,0,12" />
+
+                    <TextBlock
+                        x:Name="txtLoading"
+                        Text="Carregando..."
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI"
+                        FontSize="13"
+                        Foreground="{StaticResource TextSecondary}" />
+                </StackPanel>
+            </Border>
+        </Grid>
 
     </Grid>
 </Window>

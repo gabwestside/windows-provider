@@ -12,6 +12,7 @@ public partial class ResetSenhaWindow : Window
     private bool autenticado = false;
     private bool cancelado = false;
     private bool mostrandoDialog = false;
+    private bool fluxoConcluido = false;
 
     private readonly string login;
 
@@ -117,12 +118,24 @@ public partial class ResetSenhaWindow : Window
             var novaSenha = new NovaSenhaWindow(login);
             bool? ok = novaSenha.ShowDialog();
 
-            DialogResult = ok == true;
-            Close();
+            if (ok == true)
+            {
+                fluxoConcluido = true;
+                DialogResult = true;
+                Close();
+                return;
+            }
+
+            // se o usuário fechou/cancelou a troca de senha, volta pra tela MFA
+            Show();
+            Activate();
+            WindowFocusHelper.ForcarFoco(this, txtCode);
         }
-        catch
+        catch (Exception ex)
         {
-            Mostrar("Erro ao validar MFA.");
+            Mostrar("Erro no fluxo de redefinição: " + ex.Message);
+            Show();
+            Activate();
             txtCode.Focus();
         }
         finally
@@ -154,7 +167,7 @@ public partial class ResetSenhaWindow : Window
 
     private void Window_Closing(object sender, CancelEventArgs e)
     {
-        if (autenticado || cancelado)
+        if (fluxoConcluido || cancelado)
             return;
 
         mostrandoDialog = true;

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -11,7 +13,17 @@ public partial class NovaSenhaWindow : Window
 {
     private readonly string login;
     private bool mostrandoDialog = false;
-    private bool senhaValidadaServidor = false;
+    private bool senhaValidadaLocal = false;
+
+    private List<string> palavrasProibidas = new();
+
+    private int minLength;
+    private int minSpecialChars;
+    private string allowedSpecialChars = string.Empty;
+    private bool requireUppercase;
+    private bool requireLowercase;
+    private bool requireNumber;
+    private bool politicaCarregada = false;
 
     private static readonly SolidColorBrush _neutral = new(Color.FromRgb(0xC4, 0xC9, 0xD4));
     private static readonly SolidColorBrush _ok = new(Color.FromRgb(0x22, 0xC5, 0x5E));
@@ -30,13 +42,17 @@ public partial class NovaSenhaWindow : Window
             DragMove();
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            btnSalvar.IsEnabled = false;
+            SetLoading(true, "Carregando regras de senha...");
 
             InicializarRegras();
+            await CarregarPoliticaAsync();
+            await CarregarBlacklistAsync();
+
+            SetLoading(false);
 
             Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -46,7 +62,14 @@ public partial class NovaSenhaWindow : Window
         }
         catch (Exception ex)
         {
-            MostrarMensagem("Erro ao inicializar tela de senha: " + ex.Message, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            SetLoading(false);
+
+            MostrarMensagem(
+                "Erro ao carregar regras de senha: " + ex.Message,
+                "Erro",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+
             DialogResult = false;
             Close();
         }
@@ -54,113 +77,165 @@ public partial class NovaSenhaWindow : Window
 
     private void InicializarRegras()
     {
-        SetRule(dotLength, ruleLength, null, "Validação da política no servidor");
-        SetRule(dotUpper, ruleUpper, null, "Validação de maiúsculas/minúsculas/números");
-        SetRule(dotLower, ruleLower, null, "Validação de caracteres especiais permitidos");
-        SetRule(dotNumber, ruleNumber, null, "Validação de palavras proibidas");
-        SetRule(dotSpecial, ruleSpecial, null, "A senha será validada ao sair do campo");
+        SetRule(dotLength, ruleLength, null, "Tamanho mínimo");
+        SetRule(dotUpper, ruleUpper, null, "Letra maiúscula");
+        SetRule(dotLower, ruleLower, null, "Letra minúscula");
+        SetRule(dotNumber, ruleNumber, null, "Número");
+        SetRule(dotSpecial, ruleSpecial, null, "Caracteres especiais");
 
         panelBlacklist.Visibility = Visibility.Collapsed;
         panelMatch.Visibility = Visibility.Collapsed;
     }
 
+    private async Task CarregarPoliticaAsync()
+    {
+        var result = await ServerApiService.ObterPoliticaSenhaAsync();
+
+        if (!result.Sucesso)
+            throw new InvalidOperationException(result.Erro ?? "Não foi possível carregar a política de senha.");
+
+        minLength = result.MinLength;
+        minSpecialChars = result.MinSpecialChars;
+        allowedSpecialChars = result.AllowedSpecialChars ?? string.Empty;
+        requireUppercase = result.RequireUppercase;
+        requireLowercase = result.RequireLowercase;
+        requireNumber = result.RequireNumber;
+        politicaCarregada = true;
+
+        ruleLength.Text = minLength > 0
+            ? $"Mínimo de {minLength} caracteres"
+            : "Sem tamanho mínimo obrigatório";
+
+        ruleUpper.Text = requireUppercase
+            ? "Pelo menos uma letra maiúscula"
+            : "Letra maiúscula não obrigatória";
+
+        ruleLower.Text = requireLowercase
+            ? "Pelo menos uma letra minúscula"
+            : "Letra minúscula não obrigatória";
+
+        ruleNumber.Text = requireNumber
+            ? "Pelo menos um número"
+            : "Número não obrigatório";
+
+        ruleSpecial.Text = minSpecialChars > 0
+            ? $"Pelo menos {minSpecialChars} especial(is): {allowedSpecialChars}"
+            : "Caracteres especiais não obrigatórios";
+    }
+
+    private async Task CarregarBlacklistAsync()
+    {
+        var result = await ServerApiService.ObterBlacklistSenhaAsync();
+
+        if (!result.Sucesso)
+            throw new InvalidOperationException(result.Erro ?? "Não foi possível carregar a lista de palavras proibidas.");
+
+        palavrasProibidas = result.Palavras ?? new List<string>();
+    }
+
     private void SenhaChanged(object sender, RoutedEventArgs e)
     {
-        senhaValidadaServidor = false;
+        senhaValidadaLocal = false;
         btnSalvar.IsEnabled = false;
 
-        bool temSenha = !string.IsNullOrWhiteSpace(txtSenha.Password);
-        bool temConfirmacao = !string.IsNullOrWhiteSpace(txtConfirmar.Password);
-        bool match = temSenha && temConfirmacao && txtSenha.Password == txtConfirmar.Password;
+        if (!politicaCarregada)
+            return;
 
-        panelBlacklist.Visibility = Visibility.Collapsed;
+        ValidarSenhaLocal();
+    }
+
+    private void ValidarSenhaLocal()
+    {
+        string senha = txtSenha.Password;
+        string confirmar = txtConfirmar.Password;
+
+        bool lengthOk = senha.Length >= minLength;
+        bool upperOk = !requireUppercase || senha.Any(char.IsUpper);
+        bool lowerOk = !requireLowercase || senha.Any(char.IsLower);
+        bool numberOk = !requireNumber || senha.Any(char.IsDigit);
+
+        int specialCount = senha.Count(c => allowedSpecialChars.Contains(c));
+        bool specialCountOk = minSpecialChars == 0 || specialCount >= minSpecialChars;
+
+        var invalidSpecialChars = senha
+            .Where(c => !char.IsLetterOrDigit(c) && !allowedSpecialChars.Contains(c))
+            .Distinct()
+            .ToArray();
+
+        bool invalidSpecialOk = invalidSpecialChars.Length == 0;
+        bool specialOk = specialCountOk && invalidSpecialOk;
+
+        string? palavraProibida = palavrasProibidas
+            .FirstOrDefault(p =>
+                !string.IsNullOrWhiteSpace(p) &&
+                senha.Contains(p, StringComparison.OrdinalIgnoreCase));
+
+        bool blacklistOk = string.IsNullOrWhiteSpace(palavraProibida);
+
+        SetRule(dotLength, ruleLength, lengthOk,
+            minLength > 0 ? $"Mínimo de {minLength} caracteres" : "Sem tamanho mínimo obrigatório");
+
+        SetRule(dotUpper, ruleUpper, upperOk,
+            requireUppercase ? "Pelo menos uma letra maiúscula" : "Letra maiúscula não obrigatória");
+
+        SetRule(dotLower, ruleLower, lowerOk,
+            requireLowercase ? "Pelo menos uma letra minúscula" : "Letra minúscula não obrigatória");
+
+        SetRule(dotNumber, ruleNumber, numberOk,
+            requireNumber ? "Pelo menos um número" : "Número não obrigatório");
+
+        if (!invalidSpecialOk)
+        {
+            SetRule(dotSpecial, ruleSpecial, false,
+                $"Caracteres não podem ser usados: {string.Join(" ", invalidSpecialChars)}");
+        }
+        else
+        {
+            SetRule(
+                dotSpecial,
+                ruleSpecial,
+                specialOk,
+                minSpecialChars > 0
+                    ? $"Pelo menos {minSpecialChars} especial(is): {allowedSpecialChars}"
+                    : "Caracteres especiais não obrigatórios");
+        }
+
+        if (!blacklistOk)
+        {
+            panelBlacklist.Visibility = Visibility.Visible;
+            SetRule(dotBlacklist, ruleBlacklist, false,
+                $"A senha contém uma palavra proibida: {palavraProibida}");
+        }
+        else
+        {
+            panelBlacklist.Visibility = Visibility.Collapsed;
+        }
+
+        bool temConfirmacao = !string.IsNullOrWhiteSpace(confirmar);
 
         if (temConfirmacao)
         {
+            bool match = senha == confirmar;
             panelMatch.Visibility = Visibility.Visible;
-            SetRule(dotMatch, ruleMatch, match, match ? "Senhas coincidem" : "Senhas não coincidem");
+            SetRule(dotMatch, ruleMatch, match,
+                match ? "Senhas coincidem" : "Senhas não coincidem");
         }
         else
         {
             panelMatch.Visibility = Visibility.Collapsed;
         }
-    }
 
-    private async Task ValidarSenhaServidorAsync()
-    {
-        string senha = txtSenha.Password;
-        string confirmar = txtConfirmar.Password;
+        bool matchOk = !string.IsNullOrWhiteSpace(confirmar) && senha == confirmar;
 
-        senhaValidadaServidor = false;
-        btnSalvar.IsEnabled = false;
+        senhaValidadaLocal = lengthOk
+                             && upperOk
+                             && lowerOk
+                             && numberOk
+                             && specialOk
+                             && blacklistOk
+                             && matchOk;
 
-        if (string.IsNullOrWhiteSpace(senha))
-        {
-            panelBlacklist.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        try
-        {
-            var result = await ServerApiService.ValidarSenhaAsync(login, senha);
-
-            if (!result.Sucesso)
-            {
-                panelBlacklist.Visibility = Visibility.Visible;
-                SetRule(dotBlacklist, ruleBlacklist, false,
-                    AjustarMensagemServidor(result.Erro ?? "Erro ao validar senha no servidor"));
-            }
-            else if (result.Valida)
-            {
-                panelBlacklist.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                panelBlacklist.Visibility = Visibility.Visible;
-                SetRule(dotBlacklist, ruleBlacklist, false,
-                    AjustarMensagemServidor(result.Erro ?? "Senha inválida"));
-            }
-
-            bool temConfirmacao = !string.IsNullOrWhiteSpace(confirmar);
-
-            if (temConfirmacao)
-            {
-                panelMatch.Visibility = Visibility.Visible;
-
-                bool match = senha == confirmar;
-                SetRule(dotMatch, ruleMatch, match, match ? "Senhas coincidem" : "Senhas não coincidem");
-
-                if (result.Sucesso && result.Valida && match)
-                {
-                    senhaValidadaServidor = true;
-                    btnSalvar.IsEnabled = true;
-                }
-            }
-            else
-            {
-                panelMatch.Visibility = Visibility.Collapsed;
-            }
-        }
-        catch (Exception ex)
-        {
-            panelBlacklist.Visibility = Visibility.Visible;
-            SetRule(dotBlacklist, ruleBlacklist, false, "Erro ao validar senha: " + ex.Message);
-        }
-    }
-
-    private static string AjustarMensagemServidor(string mensagem)
-    {
-        if (string.IsNullOrWhiteSpace(mensagem))
-            return "Senha inválida.";
-
-        const string prefixoAntigo = "A senha contém caractere(s) especial(is) não permitido(s):";
-
-        if (mensagem.Contains(prefixoAntigo, StringComparison.OrdinalIgnoreCase))
-        {
-            mensagem = mensagem.Replace(prefixoAntigo, "Caracteres não podem ser usados:");
-        }
-
-        return mensagem;
+        btnSalvar.IsEnabled = senhaValidadaLocal;
     }
 
     private void SetRule(System.Windows.Shapes.Ellipse dot, System.Windows.Controls.TextBlock label, bool? ok, string text)
@@ -191,7 +266,11 @@ public partial class NovaSenhaWindow : Window
 
         if (string.IsNullOrWhiteSpace(senha))
         {
-            MostrarMensagem("Digite a nova senha.", "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MostrarMensagem(
+                "Digite a nova senha.",
+                "Validação",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
@@ -200,46 +279,93 @@ public partial class NovaSenhaWindow : Window
             panelMatch.Visibility = Visibility.Visible;
             SetRule(dotMatch, ruleMatch, false, "Senhas não coincidem");
 
-            MostrarMensagem("Senhas não conferem.", "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MostrarMensagem(
+                "Senhas não conferem.",
+                "Validação",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+
             btnSalvar.IsEnabled = false;
+            return;
+        }
+
+        if (!senhaValidadaLocal)
+        {
+            MostrarMensagem(
+                "Corrija os requisitos da senha antes de continuar.",
+                "Validação",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
         try
         {
-            ToggleSalvar(false);
+            SetLoading(true, "Validando senha no servidor...");
 
-            await ValidarSenhaServidorAsync();
+            var validacaoServidor = await ServerApiService.ValidarSenhaAsync(login, senha);
 
-            if (!senhaValidadaServidor)
+            if (!validacaoServidor.Sucesso || !validacaoServidor.Valida)
             {
+                panelBlacklist.Visibility = Visibility.Visible;
+                SetRule(
+                    dotBlacklist,
+                    ruleBlacklist,
+                    false,
+                    validacaoServidor.Erro ?? "Senha rejeitada pelo servidor.");
+
                 MostrarMensagem(
-                    string.IsNullOrWhiteSpace(ruleBlacklist.Text) ? "Senha inválida." : ruleBlacklist.Text,
+                    validacaoServidor.Erro ?? "Senha rejeitada pelo servidor.",
                     "Validação",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+
                 return;
             }
+
+            SetLoading(true, "Alterando senha...");
 
             var result = await ServerApiService.TrocarSenhaAsync(login, senha);
 
             if (!result.Sucesso)
             {
-                MostrarMensagem(result.Erro ?? "Não foi possível alterar a senha.", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                panelBlacklist.Visibility = Visibility.Visible;
+                SetRule(
+                    dotBlacklist,
+                    ruleBlacklist,
+                    false,
+                    result.Erro ?? "Não foi possível alterar a senha.");
+
+                MostrarMensagem(
+                    result.Erro ?? "Não foi possível alterar a senha.",
+                    "Erro",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
                 return;
             }
 
-            MostrarMensagem("Senha alterada com sucesso!", "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+            MostrarMensagem(
+                "Senha alterada com sucesso!",
+                "Sucesso",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
             DialogResult = true;
             Close();
         }
         catch (Exception ex)
         {
-            MostrarMensagem("Erro ao alterar senha: " + ex.Message, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            MostrarMensagem(
+                "Erro ao alterar senha: " + ex.Message,
+                "Erro",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
         finally
         {
-            ToggleSalvar(true);
+            SetLoading(false);
+            ValidarSenhaLocal();
         }
     }
 
@@ -247,25 +373,19 @@ public partial class NovaSenhaWindow : Window
     {
         txtSenha.IsEnabled = enabled;
         txtConfirmar.IsEnabled = enabled;
-
-        if (!enabled)
-        {
-            btnSalvar.IsEnabled = false;
-            return;
-        }
-
-        btnSalvar.IsEnabled = senhaValidadaServidor;
+        btnSalvar.IsEnabled = enabled && senhaValidadaLocal;
     }
 
-    private async void Senha_LostFocus(object sender, RoutedEventArgs e)
+    private void Senha_LostFocus(object sender, RoutedEventArgs e)
     {
-        await ValidarSenhaServidorAsync();
+        if (politicaCarregada)
+            ValidarSenhaLocal();
     }
 
-    private async void Senha_KeyDown(object sender, KeyEventArgs e)
+    private void Senha_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
-            await ValidarSenhaServidorAsync();
+        if (e.Key == Key.Enter && politicaCarregada)
+            ValidarSenhaLocal();
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)
@@ -282,6 +402,29 @@ public partial class NovaSenhaWindow : Window
             DialogResult = false;
             Close();
         }
+    }
+
+    private void SetLoading(bool loading, string texto = "Carregando...")
+    {
+        overlayLoading.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+        txtLoading.Text = texto;
+
+        txtSenha.IsEnabled = !loading;
+        txtConfirmar.IsEnabled = !loading;
+        btnSalvar.IsEnabled = !loading && senhaValidadaLocal;
+    }
+
+    private void SetStatusValidacao(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            txtStatusValidacao.Text = string.Empty;
+            txtStatusValidacao.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        txtStatusValidacao.Text = texto;
+        txtStatusValidacao.Visibility = Visibility.Visible;
     }
 
     private MessageBoxResult MostrarMensagem(

@@ -113,5 +113,35 @@ namespace CredentialProviderAPP.Services
                 Erro = "Resposta inválida do servidor."
             };
         }
+
+        public static async Task<PasswordPolicyResponse> ObterPoliticaSenhaAsync()
+        {
+            using var httpClient = CreateHttpClient();
+
+            var response = await httpClient.GetAsync("password/policy");
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<PasswordPolicyResponse>();
+            return result ?? new PasswordPolicyResponse
+            {
+                Sucesso = false,
+                Erro = "Resposta inválida do servidor."
+            };
+        }
+
+        public static async Task<PasswordBlacklistResponse> ObterBlacklistSenhaAsync()
+        {
+            using var httpClient = CreateHttpClient();
+
+            var response = await httpClient.GetAsync("password/blacklist");
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<PasswordBlacklistResponse>();
+            return result ?? new PasswordBlacklistResponse
+            {
+                Sucesso = false,
+                Erro = "Resposta inválida do servidor."
+            };
+        }
     }
 }

@@ -463,6 +463,56 @@ namespace CredentialProviderAPP.Services
                     }
                 }
 
+                if (path == "/password/blacklist" && req.HttpMethod == "GET")
+                {
+                    try
+                    {
+                        string blacklistPath = ConfigHelper.Get("PasswordPolicy:BlacklistPath");
+
+                        if (string.IsNullOrWhiteSpace(blacklistPath))
+                        {
+                            await ResponderJson(res, 404, new PasswordBlacklistResponse
+                            {
+                                Sucesso = false,
+                                Erro = "Caminho da blacklist não configurado."
+                            });
+                            return;
+                        }
+
+                        if (!File.Exists(blacklistPath))
+                        {
+                            await ResponderJson(res, 200, new PasswordBlacklistResponse
+                            {
+                                Sucesso = true,
+                                Palavras = new List<string>()
+                            });
+                            return;
+                        }
+
+                        var palavras = File.ReadAllLines(blacklistPath)
+                            .Select(l => l.Trim())
+                            .Where(l => !string.IsNullOrWhiteSpace(l))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList();
+
+                        await ResponderJson(res, 200, new PasswordBlacklistResponse
+                        {
+                            Sucesso = true,
+                            Palavras = palavras
+                        });
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        await ResponderJson(res, 500, new PasswordBlacklistResponse
+                        {
+                            Sucesso = false,
+                            Erro = "Erro ao carregar blacklist: " + ex.Message
+                        });
+                        return;
+                    }
+                }
+
                 if (path == "/password/validate-candidate" && req.HttpMethod == "POST")
                 {
                     try
