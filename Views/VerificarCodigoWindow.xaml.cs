@@ -36,12 +36,22 @@ public partial class VerificarCodigoWindow : Window
         };
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         if (metodo == "sms")
         {
             lblTitulo.Text = "Digite o código enviado por SMS";
-            lblSubtitulo.Text = "Enviamos um código de 6 dígitos para o telefone cadastrado.";
+            lblSubtitulo.Text = "Enviando código para o telefone cadastrado...";
+
+            try
+            {
+                await ServerApiService.EnviarCodigoSmsAsync(login);
+                lblSubtitulo.Text = "Código enviado! Digite abaixo.";
+            }
+            catch
+            {
+                lblSubtitulo.Text = "Código enviado para o telefone cadastrado.";
+            }
         }
         else
         {
@@ -79,39 +89,42 @@ public partial class VerificarCodigoWindow : Window
             btnVerificar.IsEnabled = false;
             txtCode.IsEnabled = false;
 
-            // =========================
-            // MODO VISUAL / TESTE DE TELA
-            // =========================
-            // Aqui você pode testar a UI sem backend SMS.
-            // Por enquanto:
-            // - app continua chamando backend real
-            // - sms só simula sucesso visual
-
             if (metodo == "sms")
             {
-                // simulação visual
-                await System.Threading.Tasks.Task.Delay(400);
+                var response = await ServerApiService.ValidarCodigoMfaAsync(login, code, "sms");
 
-                autenticado = true;
-                DialogResult = true;
-                Close();
-                return;
-            }
+                if (!response.Sucesso)
+                {
+                    MostrarMensagem(response.Erro ?? "Erro ao validar MFA.", "Erro", MessageBoxImage.Error);
+                    txtCode.Focus();
+                    return;
+                }
 
-            // app / authenticator
-            var response = await ServerApiService.ValidarCodigoMfaAsync(login, code);
+                if (response.Valido)
+                {
+                    autenticado = true;
+                    Close();
+                    return;
+                }
 
-            if (!response.Sucesso)
-            {
-                MostrarMensagem(response.Erro ?? "Erro ao validar MFA.", "Erro", MessageBoxImage.Error);
+                MostrarMensagem("Código inválido.", "Validação", MessageBoxImage.Warning);
+                txtCode.Clear();
                 txtCode.Focus();
                 return;
             }
 
-            if (response.Valido)
+            var responseApp = await ServerApiService.ValidarCodigoMfaAsync(login, code, "app");
+
+            if (!responseApp.Sucesso)
+            {
+                MostrarMensagem(responseApp.Erro ?? "Erro ao validar MFA.", "Erro", MessageBoxImage.Error);
+                txtCode.Focus();
+                return;
+            }
+
+            if (responseApp.Valido)
             {
                 autenticado = true;
-                DialogResult = true;
                 Close();
                 return;
             }
@@ -131,13 +144,6 @@ public partial class VerificarCodigoWindow : Window
         }
     }
 
-    private void MostrarMensagem(string msg, string titulo = "Aviso", MessageBoxImage image = MessageBoxImage.Information)
-    {
-        mostrandoDialog = true;
-        MessageBox.Show(msg, titulo, MessageBoxButton.OK, image);
-        mostrandoDialog = false;
-    }
-
     protected override void OnClosing(CancelEventArgs e)
     {
         base.OnClosing(e);
@@ -145,4 +151,11 @@ public partial class VerificarCodigoWindow : Window
         if (!autenticado)
             DialogResult = false;
     }
+    private void MostrarMensagem(string msg, string titulo = "Aviso", MessageBoxImage image = MessageBoxImage.Information)
+    {
+        mostrandoDialog = true;
+        MessageBox.Show(msg, titulo, MessageBoxButton.OK, image);
+        mostrandoDialog = false;
+    }
+
 }

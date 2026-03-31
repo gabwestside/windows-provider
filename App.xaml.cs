@@ -36,7 +36,40 @@ namespace CredentialProviderAPP
 
                     case AppMode.Mfa:
                         {
-                            var verificarWindow = new VerificarCodigoWindow(login);
+                            File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] AppMode.Mfa iniciado. login={login}{Environment.NewLine}");
+
+                            string metodo = "app";
+
+                            try
+                            {
+                                string baseUrl = ConfigHelper.Get("Server:BaseUrl");
+                                string url = $"{baseUrl.TrimEnd('/')}/mfa/status?login={Uri.EscapeDataString(login)}";
+
+                                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                                var httpResp = client.GetAsync(url).GetAwaiter().GetResult();
+                                string json = httpResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+                                File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] status response: {json}{Environment.NewLine}");
+
+                                using var doc = JsonDocument.Parse(json);
+                                var root = doc.RootElement;
+
+                                if (root.TryGetProperty("Metodo", out var metodoProp))
+                                    metodo = metodoProp.GetString() ?? "app";
+                            }
+                            catch (Exception ex)
+                            {
+                                File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] erro ao obter metodo: {ex.Message}{Environment.NewLine}");
+                            }
+
+                            File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] metodo={metodo}, abrindo janela{Environment.NewLine}");
+
+                            // SMS é enviado dentro do Window_Loaded da janela
+                            var verificarWindow = new VerificarCodigoWindow(login, metodo);
                             verificarWindow.Show();
                             return;
                         }

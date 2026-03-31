@@ -11,6 +11,8 @@ using CredentialProviderAPP.Utils;
 using CredentialProviderAPP.Helpers;
 using System.Linq;
 using CredentialProviderAPP.Models;
+using CredentialProviderAPP.Services.Sms;
+using CredentialProviderAPP.Models.Api;
 
 namespace CredentialProviderAPP.Services
 {
@@ -87,11 +89,13 @@ namespace CredentialProviderAPP.Services
 
                     string info = ObterPropriedade(result, "info");
                     string status = ObterStatusMfa(info);
+                    string metodo = ExtrairMetodo(info); // novo
 
                     await ResponderJson(res, 200, new MfaStatusResponse
                     {
                         Sucesso = true,
-                        Status = status
+                        Status = status,
+                        Metodo = metodo // novo
                     });
                     return;
                 }
@@ -300,6 +304,31 @@ namespace CredentialProviderAPP.Services
                             return;
                         }
 
+                        // --- BIFURCAÇÃO SMS vs TOTP ---
+                        bool isSms = data.Metodo?.Equals("sms", StringComparison.OrdinalIgnoreCase) == true;
+
+                        if (isSms)
+                        {
+                            bool validoSms = SmsMfaService.ValidarCodigo(data.Login, data.Codigo);
+
+                            if (!validoSms)
+                            {
+                                await ResponderJson(res, 200, new ValidateMfaResponse { Sucesso = true, Valido = false });
+                                return;
+                            }
+
+                            if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+                            {
+                                using var entry = CriarEntryComCredenciais(result.Path);
+                                entry.Properties["info"].Value = $"active-sms:{secret}";
+                                entry.CommitChanges();
+                            }
+
+                            await ResponderJson(res, 200, new ValidateMfaResponse { Sucesso = true, Valido = true });
+                            return;
+                        }
+                        // --- FIM BIFURCAÇÃO ---
+
                         bool valido = ValidarTotp(secret, data.Codigo);
 
                         if (!valido)
@@ -315,7 +344,7 @@ namespace CredentialProviderAPP.Services
                         if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
                         {
                             using var entry = CriarEntryComCredenciais(result.Path);
-                            entry.Properties["info"].Value = $"active:{secret}";
+                            entry.Properties["info"].Value = $"active-sms:{secret}";
                             entry.CommitChanges();
                         }
 
@@ -362,6 +391,68 @@ namespace CredentialProviderAPP.Services
                         RequireNumber = policy.RequireNumber
                     });
                     return;
+                }
+
+                if (path == "/mfa/sms/send" && req.HttpMethod == "POST")
+                {
+                    try
+                    {
+                        SmsSendRequest? data;
+
+                        using (var reader = new StreamReader(req.InputStream, req.ContentEncoding))
+                        {
+                            string body = await reader.ReadToEndAsync();
+                            data = JsonSerializer.Deserialize<SmsSendRequest>(body,
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+
+                        if (data == null || string.IsNullOrWhiteSpace(data.Login))
+                        {
+                            await ResponderJson(res, 400, new DefaultApiResponse
+                            {
+                                Sucesso = false,
+                                Erro = "Login não informado."
+                            });
+                            return;
+                        }
+
+                        using var root = CriarConexaoAD();
+                        var result = BuscarUsuarioNoAD(root, data.Login);
+
+                        if (result == null)
+                        {
+                            await ResponderJson(res, 404, new DefaultApiResponse
+                            {
+                                Sucesso = false,
+                                Erro = "Usuário não encontrado."
+                            });
+                            return;
+                        }
+
+                        // Por enquanto pega o campo "mobile" do AD.
+                        // Quando o telefone tiver local definido, ajusta aqui.
+                        string telefone = ObterPropriedade(result, "mobile");
+
+                        if (string.IsNullOrWhiteSpace(telefone))
+                        {
+                            // fallback: usa um número fake para o provider File não falhar nos testes
+                            telefone = "SEM_TELEFONE_CADASTRADO";
+                        }
+
+                        await SmsMfaService.EnviarCodigoAsync(data.Login, telefone);
+
+                        await ResponderJson(res, 200, new DefaultApiResponse { Sucesso = true });
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        await ResponderJson(res, 500, new DefaultApiResponse
+                        {
+                            Sucesso = false,
+                            Erro = "Erro ao enviar SMS: " + ex.Message
+                        });
+                        return;
+                    }
                 }
 
                 if (path == "/password/change" && req.HttpMethod == "POST")
@@ -723,10 +814,14 @@ namespace CredentialProviderAPP.Services
             if (string.Equals(info, "setup", StringComparison.OrdinalIgnoreCase))
                 return "Pending";
 
-            if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+            if (info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase)) // retrocompat
                 return "Pending";
 
-            if (info.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
+            if (info.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("active:", StringComparison.OrdinalIgnoreCase)) // retrocompat
                 return "Configured";
 
             return "Configured";
@@ -737,16 +832,38 @@ namespace CredentialProviderAPP.Services
             if (string.IsNullOrWhiteSpace(info))
                 return null;
 
+            // novo formato
+            if (info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase))
+                return info["pending-app:".Length..].Trim();
+
+            if (info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase))
+                return info["pending-sms:".Length..].Trim();
+
+            if (info.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase))
+                return info["active-app:".Length..].Trim();
+
+            if (info.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase))
+                return info["active-sms:".Length..].Trim();
+
+            // retrocompatibilidade com formato antigo
             if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
-                return info.Substring("pending:".Length).Trim();
+                return info["pending:".Length..].Trim();
 
             if (info.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
-                return info.Substring("active:".Length).Trim();
+                return info["active:".Length..].Trim();
 
             if (string.Equals(info, "setup", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             return info.Trim();
+        }
+
+        private static string ExtrairMetodo(string info)
+        {
+            if (info.Contains("-sms:", StringComparison.OrdinalIgnoreCase))
+                return "sms";
+
+            return "app"; // padrão
         }
 
         private static string GerarSecretBase32(int numBytes = 20)

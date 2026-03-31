@@ -129,58 +129,58 @@ a autenticação em dois fatores.";
         await ProcessarFluxoUsuarioAsync(username);
     }
 
-private void MetodoMfa_Checked(object sender, RoutedEventArgs e)
-{
-    if (rbAuthenticator.IsChecked == true)
+    private void MetodoMfa_Checked(object sender, RoutedEventArgs e)
     {
-        metodoSelecionado = "app";
+        if (rbAuthenticator.IsChecked == true)
+        {
+            metodoSelecionado = "app";
 
-        lblMetodoInfo.Text =
-@"Você escolheu aplicativo autenticador.
+            lblMetodoInfo.Text =
+    @"Você escolheu aplicativo autenticador.
 
 Escaneie o QR Code e depois informe
 o código gerado no aplicativo.";
-        lblMetodoInfo.Visibility = Visibility.Visible;
+            lblMetodoInfo.Visibility = Visibility.Visible;
 
-        panelQr.Visibility = Visibility.Visible;
-        imgQR.Visibility = Visibility.Visible;
+            panelQr.Visibility = Visibility.Visible;
+            imgQR.Visibility = Visibility.Visible;
 
-        btnGerarQR.Visibility = Visibility.Visible;
-        btnEnviarSms.Visibility = Visibility.Collapsed;
+            btnGerarQR.Visibility = Visibility.Visible;
+            btnEnviarSms.Visibility = Visibility.Collapsed;
 
-        lblCodigo.Visibility = Visibility.Visible;
-        txtCode.Visibility = Visibility.Visible;
-        btnValidar.Visibility = Visibility.Visible;
+            lblCodigo.Visibility = Visibility.Visible;
+            txtCode.Visibility = Visibility.Visible;
+            btnValidar.Visibility = Visibility.Visible;
 
-        txtCode.Clear();
+            txtCode.Clear();
 
-        if (!string.IsNullOrWhiteSpace(otpAuthUrlAtual))
-            ExibirQrCode(otpAuthUrlAtual);
-    }
-    else if (rbSms.IsChecked == true)
-    {
-        metodoSelecionado = "sms";
+            if (!string.IsNullOrWhiteSpace(otpAuthUrlAtual))
+                ExibirQrCode(otpAuthUrlAtual);
+        }
+        else if (rbSms.IsChecked == true)
+        {
+            metodoSelecionado = "sms";
 
-        lblMetodoInfo.Text =
-@"Você escolheu SMS.
+            lblMetodoInfo.Text =
+    @"Você escolheu SMS.
 
 Envie um código para o telefone cadastrado
 e informe o código recebido.";
-        lblMetodoInfo.Visibility = Visibility.Visible;
+            lblMetodoInfo.Visibility = Visibility.Visible;
 
-        panelQr.Visibility = Visibility.Collapsed;
-        imgQR.Visibility = Visibility.Collapsed;
+            panelQr.Visibility = Visibility.Collapsed;
+            imgQR.Visibility = Visibility.Collapsed;
 
-        btnGerarQR.Visibility = Visibility.Collapsed;
-        btnEnviarSms.Visibility = Visibility.Visible;
+            btnGerarQR.Visibility = Visibility.Collapsed;
+            btnEnviarSms.Visibility = Visibility.Visible;
 
-        lblCodigo.Visibility = Visibility.Visible;
-        txtCode.Visibility = Visibility.Visible;
-        btnValidar.Visibility = Visibility.Visible;
+            lblCodigo.Visibility = Visibility.Visible;
+            txtCode.Visibility = Visibility.Visible;
+            btnValidar.Visibility = Visibility.Visible;
 
-        txtCode.Clear();
+            txtCode.Clear();
+        }
     }
-}
 
     private void GerarQR_Click(object sender, RoutedEventArgs e)
     {
@@ -205,13 +205,15 @@ e informe o código recebido.";
 
             btnEnviarSms.IsEnabled = false;
 
-            // TODO:
-            // aqui depois vamos chamar a API real de SMS
-            // ex: await ServerApiService.EnviarCodigoSmsAsync(loginAtual);
+            var result = await ServerApiService.EnviarCodigoSmsAsync(loginAtual);
 
-            await Task.Delay(500);
+            if (!result.Sucesso)
+            {
+                MostrarMensagem(result.Erro ?? "Erro ao enviar SMS.");
+                return;
+            }
 
-            MostrarMensagem("Código SMS enviado com sucesso.");
+            MostrarMensagem("Código enviado! Verifique C:\\CredentialProvider\\sms_debug.txt");
         }
         catch (Exception ex)
         {
@@ -250,7 +252,7 @@ e informe o código recebido.";
             // - ValidarCodigoMfaAsync para app autenticador
             // - ValidarCodigoSmsAsync para SMS
 
-            var response = await ServerApiService.ValidarCodigoMfaAsync(username, code);
+            var response = await ServerApiService.ValidarCodigoMfaAsync(username, code, metodoSelecionado);
 
             if (!response.Sucesso)
             {
@@ -279,17 +281,17 @@ e informe o código recebido.";
         }
     }
 
-private void ExibirQrCode(string otpAuthUrl)
-{
-    QRCodeGenerator qrGenerator = new QRCodeGenerator();
-    QRCodeData qrCodeData = qrGenerator.CreateQrCode(otpAuthUrl, QRCodeGenerator.ECCLevel.Q);
-    QRCode qrCode = new QRCode(qrCodeData);
-    Bitmap qrBitmap = qrCode.GetGraphic(20);
+    private void ExibirQrCode(string otpAuthUrl)
+    {
+        QRCodeGenerator qrGenerator = new QRCodeGenerator();
+        QRCodeData qrCodeData = qrGenerator.CreateQrCode(otpAuthUrl, QRCodeGenerator.ECCLevel.Q);
+        QRCode qrCode = new QRCode(qrCodeData);
+        Bitmap qrBitmap = qrCode.GetGraphic(20);
 
-    imgQR.Source = BitmapToImageSource(qrBitmap);
-    panelQr.Visibility = Visibility.Visible;
-    imgQR.Visibility = Visibility.Visible;
-}
+        imgQR.Source = BitmapToImageSource(qrBitmap);
+        panelQr.Visibility = Visibility.Visible;
+        imgQR.Visibility = Visibility.Visible;
+    }
 
     private void MostrarMensagem(string msg)
     {
