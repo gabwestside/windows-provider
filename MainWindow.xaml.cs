@@ -8,6 +8,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Linq;
 
 namespace CredentialProviderAPP;
 
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     private readonly AppMode _modo;
 
     private string metodoSelecionado = ""; // "app" ou "sms"
+
 
     public MainWindow()
     {
@@ -157,29 +159,178 @@ o código gerado no aplicativo.";
             if (!string.IsNullOrWhiteSpace(otpAuthUrlAtual))
                 ExibirQrCode(otpAuthUrlAtual);
         }
+
         else if (rbSms.IsChecked == true)
         {
             metodoSelecionado = "sms";
 
-            lblMetodoInfo.Text =
-    @"Você escolheu SMS.
-
-Envie um código para o telefone cadastrado
-e informe o código recebido.";
-            lblMetodoInfo.Visibility = Visibility.Visible;
-
             panelQr.Visibility = Visibility.Collapsed;
             imgQR.Visibility = Visibility.Collapsed;
-
             btnGerarQR.Visibility = Visibility.Collapsed;
-            btnEnviarSms.Visibility = Visibility.Visible;
-
             lblCodigo.Visibility = Visibility.Visible;
             txtCode.Visibility = Visibility.Visible;
             btnValidar.Visibility = Visibility.Visible;
-
             txtCode.Clear();
+
+            _ = AtualizarInfoTelefoneAsync();
         }
+    }
+    private bool _atualizandoTelefone = false;
+    private const string MascaraTelefone = "(__) _____-____";
+
+    private void TxtTelefone_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TextBox tb) return;
+
+        if (string.IsNullOrWhiteSpace(tb.Text))
+            tb.Text = MascaraTelefone;
+
+        int qtdNumeros = ObterSomenteNumeros(tb.Text).Length;
+        MoverCursorParaPosicaoDigitavel(tb, qtdNumeros);
+    }
+
+    private void TxtTelefone_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TextBox tb)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (!e.Text.All(char.IsDigit))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        string numeros = ObterSomenteNumeros(tb.Text);
+
+        if (numeros.Length >= 11)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        int indexNumero = ConverterCursorParaIndiceNumero(tb.CaretIndex);
+
+        if (indexNumero < 0) indexNumero = 0;
+        if (indexNumero > numeros.Length) indexNumero = numeros.Length;
+
+        numeros = numeros.Insert(indexNumero, e.Text);
+
+        if (numeros.Length > 11)
+            numeros = numeros[..11];
+
+        AtualizarTelefone(tb, numeros, indexNumero + e.Text.Length);
+
+        e.Handled = true;
+    }
+
+    private void TxtTelefone_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TextBox tb) return;
+
+        string numeros = ObterSomenteNumeros(tb.Text);
+
+        if (e.Key == System.Windows.Input.Key.Space)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == System.Windows.Input.Key.Back)
+        {
+            e.Handled = true;
+
+            if (numeros.Length == 0)
+                return;
+
+            int indexNumero = ConverterCursorParaIndiceNumero(tb.CaretIndex);
+
+            if (indexNumero > 0)
+            {
+                numeros = numeros.Remove(indexNumero - 1, 1);
+                AtualizarTelefone(tb, numeros, indexNumero - 1);
+            }
+
+            return;
+        }
+
+        if (e.Key == System.Windows.Input.Key.Delete)
+        {
+            e.Handled = true;
+
+            if (numeros.Length == 0)
+                return;
+
+            int indexNumero = ConverterCursorParaIndiceNumero(tb.CaretIndex);
+
+            if (indexNumero < numeros.Length)
+            {
+                numeros = numeros.Remove(indexNumero, 1);
+                AtualizarTelefone(tb, numeros, indexNumero);
+            }
+
+            return;
+        }
+    }
+
+    private void AtualizarTelefone(System.Windows.Controls.TextBox tb, string numeros, int proximoIndiceNumero = -1)
+    {
+        if (_atualizandoTelefone) return;
+
+        _atualizandoTelefone = true;
+
+        if (numeros.Length > 11)
+            numeros = numeros[..11];
+
+        char[] mascara = MascaraTelefone.ToCharArray();
+        int[] posicoesNumericas = { 1, 2, 5, 6, 7, 8, 9, 11, 12, 13, 14 };
+
+        for (int i = 0; i < posicoesNumericas.Length; i++)
+        {
+            mascara[posicoesNumericas[i]] = i < numeros.Length ? numeros[i] : '_';
+        }
+
+        tb.Text = new string(mascara);
+
+        if (proximoIndiceNumero < 0)
+            proximoIndiceNumero = numeros.Length;
+
+        MoverCursorParaPosicaoDigitavel(tb, proximoIndiceNumero);
+
+        _atualizandoTelefone = false;
+    }
+
+    private void MoverCursorParaPosicaoDigitavel(System.Windows.Controls.TextBox tb, int quantidadeNumeros)
+    {
+        int[] posicoesCursor = { 1, 2, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15 };
+
+        if (quantidadeNumeros < 0)
+            quantidadeNumeros = 0;
+
+        if (quantidadeNumeros >= posicoesCursor.Length)
+            quantidadeNumeros = posicoesCursor.Length - 1;
+
+        tb.CaretIndex = posicoesCursor[quantidadeNumeros];
+    }
+
+    private int ConverterCursorParaIndiceNumero(int caret)
+    {
+        int[] posicoes = { 1, 2, 5, 6, 7, 8, 9, 11, 12, 13, 14 };
+
+        for (int i = 0; i < posicoes.Length; i++)
+        {
+            if (caret <= posicoes[i])
+                return i;
+        }
+
+        return posicoes.Length;
+    }
+
+    private string ObterSomenteNumeros(string texto)
+    {
+        return new string(texto.Where(char.IsDigit).ToArray());
     }
 
     private void GerarQR_Click(object sender, RoutedEventArgs e)
@@ -221,7 +372,7 @@ e informe o código recebido.";
         }
         finally
         {
-            btnEnviarSms.IsEnabled = true;
+            await AtualizarInfoTelefoneAsync();
         }
     }
 
@@ -298,6 +449,77 @@ e informe o código recebido.";
         mostrandoDialog = true;
         MessageBox.Show(msg);
         mostrandoDialog = false;
+    }
+
+    private async Task AtualizarInfoTelefoneAsync()
+    {
+        try
+        {
+            var tel = await ServerApiService.ObterTelefoneAsync(loginAtual);
+
+            if (!tel.TemTelefone)
+            {
+                lblMetodoInfo.Text = "Você escolheu SMS.\n\nNenhum celular cadastrado no sistema.";
+                lblMetodoInfo.Visibility = Visibility.Visible;
+                panelCadastroTelefone.Visibility = Visibility.Visible;
+                btnEnviarSms.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                lblMetodoInfo.Text = $"Você escolheu SMS.\n\nCódigo será enviado para: {tel.TelefoneMascarado}";
+                lblMetodoInfo.Visibility = Visibility.Visible;
+                panelCadastroTelefone.Visibility = Visibility.Collapsed;
+                btnEnviarSms.Visibility = Visibility.Visible;
+
+                // 🔥 NOVO: verifica status do código
+                var status = await ServerApiService.ObterStatusSmsAsync(loginAtual);
+
+                // 🔥 AQUI É O QUE TU QUERIA
+                btnEnviarSms.IsEnabled = status.PodeEnviar;
+            }
+        }
+        catch
+        {
+            lblMetodoInfo.Text = "Você escolheu SMS.";
+            lblMetodoInfo.Visibility = Visibility.Visible;
+            btnEnviarSms.Visibility = Visibility.Visible;
+            panelCadastroTelefone.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private async void SalvarTelefone_Click(object sender, RoutedEventArgs e)
+    {
+        string telefone = new string(txtTelefone.Text.Where(char.IsDigit).ToArray());
+
+        if (telefone.Length < 10)
+        {
+            MostrarMensagem("Digite um número válido (ex: 85997319943).");
+            return;
+        }
+
+        try
+        {
+            btnSalvarTelefone.IsEnabled = false;
+            var result = await ServerApiService.SalvarTelefoneAsync(loginAtual, telefone);
+
+            if (!result.Sucesso)
+            {
+                MostrarMensagem(result.Erro ?? "Erro ao salvar telefone.");
+                return;
+            }
+
+            MostrarMensagem("Telefone cadastrado com sucesso!");
+            panelCadastroTelefone.Visibility = Visibility.Collapsed;
+            await AtualizarInfoTelefoneAsync();
+        }
+        catch (Exception ex)
+        {
+            MostrarMensagem("Erro: " + ex.Message);
+        }
+        finally
+        {
+            btnSalvarTelefone.IsEnabled = true;
+        }
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

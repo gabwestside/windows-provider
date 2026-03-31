@@ -70,7 +70,9 @@ namespace CredentialProviderAPP
 
                             // SMS é enviado dentro do Window_Loaded da janela
                             var verificarWindow = new VerificarCodigoWindow(login, metodo);
-                            verificarWindow.Show();
+                            bool? ok = verificarWindow.ShowDialog();
+
+                            Environment.Exit(verificarWindow.CodigoValidado ? 0 : 1);
                             return;
                         }
 

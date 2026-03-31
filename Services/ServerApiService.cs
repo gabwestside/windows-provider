@@ -105,6 +105,23 @@ namespace CredentialProviderAPP.Services
             return result ?? new DefaultApiResponse { Sucesso = false, Erro = "Resposta inválida." };
         }
 
+        public static async Task<TelefoneResponse> ObterTelefoneAsync(string login)
+        {
+            using var httpClient = CreateHttpClient();
+            var response = await httpClient.GetAsync($"mfa/telefone?login={Uri.EscapeDataString(login)}");
+            var result = await response.Content.ReadFromJsonAsync<TelefoneResponse>();
+            return result ?? new TelefoneResponse { Sucesso = false, Erro = "Resposta inválida." };
+        }
+
+        public static async Task<DefaultApiResponse> SalvarTelefoneAsync(string login, string telefone)
+        {
+            using var httpClient = CreateHttpClient();
+            var response = await httpClient.PostAsJsonAsync("mfa/telefone", new TelefoneRequest { Login = login, Telefone = telefone });
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadFromJsonAsync<DefaultApiResponse>();
+            return result ?? new DefaultApiResponse { Sucesso = false, Erro = "Resposta inválida." };
+        }
+
         public static async Task<ValidateMfaResponse> ValidarCodigoMfaAsync(string login, string codigo, string metodo = "app")
         {
             using var httpClient = CreateHttpClient();
@@ -136,6 +153,14 @@ namespace CredentialProviderAPP.Services
                 Sucesso = false,
                 Erro = "Resposta inválida do servidor."
             };
+        }
+
+        public static async Task<SmsStatusResponse> ObterStatusSmsAsync(string login)
+        {
+            using var httpClient = CreateHttpClient();
+            var response = await httpClient.GetAsync($"mfa/sms/status?login={Uri.EscapeDataString(login)}");
+            var result = await response.Content.ReadFromJsonAsync<SmsStatusResponse>();
+            return result ?? new SmsStatusResponse { Sucesso = false };
         }
 
         public static async Task<PasswordBlacklistResponse> ObterBlacklistSenhaAsync()

@@ -2,6 +2,8 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using CredentialProviderAPP.Services;
 using CredentialProviderAPP.Utils;
 
@@ -13,6 +15,7 @@ public partial class VerificarCodigoWindow : Window
     private readonly string metodo; // "sms" ou "app"
     private bool autenticado = false;
     private bool mostrandoDialog = false;
+    private bool _verificando = false;
 
     public bool CodigoValidado => autenticado;
 
@@ -38,19 +41,28 @@ public partial class VerificarCodigoWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        btnVerificar.IsEnabled = false;
+
         if (metodo == "sms")
         {
             lblTitulo.Text = "Digite o código enviado por SMS";
-            lblSubtitulo.Text = "Enviando código para o telefone cadastrado...";
+            lblSubtitulo.Text = "Informe o código para continuar.";
 
             try
             {
-                await ServerApiService.EnviarCodigoSmsAsync(login);
-                lblSubtitulo.Text = "Código enviado! Digite abaixo.";
+                var status = await ServerApiService.ObterStatusSmsAsync(login);
+
+                if (status.PodeEnviar)
+                {
+                    var envio = await ServerApiService.EnviarCodigoSmsAsync(login);
+
+                    if (!envio.Sucesso)
+                        lblSubtitulo.Text = "Não foi possível enviar o código agora.";
+                }
             }
             catch
             {
-                lblSubtitulo.Text = "Código enviado para o telefone cadastrado.";
+                lblSubtitulo.Text = "Informe o código para continuar.";
             }
         }
         else
@@ -60,6 +72,8 @@ public partial class VerificarCodigoWindow : Window
         }
 
         WindowFocusHelper.ForcarFoco(this, txtCode);
+        txtCode.Focus();
+        txtCode.SelectAll();
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
@@ -74,55 +88,83 @@ public partial class VerificarCodigoWindow : Window
         }), System.Windows.Threading.DispatcherPriority.Background);
     }
 
+    private void TxtCode_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        e.Handled = !e.Text.All(char.IsDigit);
+    }
+
+    private void TxtCode_Pasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (!e.DataObject.GetDataPresent(DataFormats.Text))
+        {
+            e.CancelCommand();
+            return;
+        }
+
+        string texto = (e.DataObject.GetData(DataFormats.Text) as string ?? "").Trim();
+        string numeros = new string(texto.Where(char.IsDigit).ToArray());
+
+        if (string.IsNullOrWhiteSpace(numeros))
+        {
+            e.CancelCommand();
+            return;
+        }
+
+        txtCode.Text = numeros.Length > 6 ? numeros[..6] : numeros;
+        txtCode.CaretIndex = txtCode.Text.Length;
+        e.CancelCommand();
+    }
+
+    private void TxtCode_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        string numeros = new string(txtCode.Text.Where(char.IsDigit).ToArray());
+
+        if (txtCode.Text != numeros)
+        {
+            int caret = numeros.Length;
+            txtCode.Text = numeros;
+            txtCode.CaretIndex = Math.Min(caret, txtCode.Text.Length);
+        }
+
+        btnVerificar.IsEnabled = !_verificando && txtCode.Text.Length == 6;
+    }
+
     private async void Verificar_Click(object sender, RoutedEventArgs e)
     {
+        await VerificarCodigoAsync();
+    }
+
+    private async System.Threading.Tasks.Task VerificarCodigoAsync()
+    {
+        if (_verificando)
+            return;
+
         try
         {
             string code = txtCode.Text.Trim();
 
             if (code.Length != 6 || !code.All(char.IsDigit))
             {
-                MostrarMensagem("Digite um código de 6 dígitos.", "Validação", MessageBoxImage.Warning);
+                btnVerificar.IsEnabled = false;
                 return;
             }
 
+            _verificando = true;
             btnVerificar.IsEnabled = false;
             txtCode.IsEnabled = false;
 
-            if (metodo == "sms")
+            var metodoValidacao = metodo == "sms" ? "sms" : "app";
+            var response = await ServerApiService.ValidarCodigoMfaAsync(login, code, metodoValidacao);
+
+            if (!response.Sucesso)
             {
-                var response = await ServerApiService.ValidarCodigoMfaAsync(login, code, "sms");
-
-                if (!response.Sucesso)
-                {
-                    MostrarMensagem(response.Erro ?? "Erro ao validar MFA.", "Erro", MessageBoxImage.Error);
-                    txtCode.Focus();
-                    return;
-                }
-
-                if (response.Valido)
-                {
-                    autenticado = true;
-                    Close();
-                    return;
-                }
-
-                MostrarMensagem("Código inválido.", "Validação", MessageBoxImage.Warning);
-                txtCode.Clear();
+                MostrarMensagem(response.Erro ?? "Erro ao validar MFA.", "Erro", MessageBoxImage.Error);
                 txtCode.Focus();
+                txtCode.SelectAll();
                 return;
             }
 
-            var responseApp = await ServerApiService.ValidarCodigoMfaAsync(login, code, "app");
-
-            if (!responseApp.Sucesso)
-            {
-                MostrarMensagem(responseApp.Erro ?? "Erro ao validar MFA.", "Erro", MessageBoxImage.Error);
-                txtCode.Focus();
-                return;
-            }
-
-            if (responseApp.Valido)
+            if (response.Valido)
             {
                 autenticado = true;
                 Close();
@@ -139,8 +181,15 @@ public partial class VerificarCodigoWindow : Window
         }
         finally
         {
-            btnVerificar.IsEnabled = true;
+            _verificando = false;
             txtCode.IsEnabled = true;
+            btnVerificar.IsEnabled = txtCode.Text.Length == 6;
+
+            if (IsVisible)
+            {
+                txtCode.Focus();
+                txtCode.SelectAll();
+            }
         }
     }
 
@@ -148,14 +197,23 @@ public partial class VerificarCodigoWindow : Window
     {
         base.OnClosing(e);
 
-        if (!autenticado)
-            DialogResult = false;
+        if (!autenticado && this.IsLoaded)
+        {
+            try
+            {
+                DialogResult = false;
+            }
+            catch (InvalidOperationException)
+            {
+                // ignorado: janela não modal
+            }
+        }
     }
+
     private void MostrarMensagem(string msg, string titulo = "Aviso", MessageBoxImage image = MessageBoxImage.Information)
     {
         mostrandoDialog = true;
         MessageBox.Show(msg, titulo, MessageBoxButton.OK, image);
         mostrandoDialog = false;
     }
-
 }

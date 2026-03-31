@@ -242,6 +242,103 @@ namespace CredentialProviderAPP.Services
                     }
                 }
 
+                // GET — busca o telefone mascarado
+                if (path == "/mfa/telefone" && req.HttpMethod == "GET")
+                {
+                    string login = req.QueryString["login"] ?? "";
+
+                    if (string.IsNullOrWhiteSpace(login))
+                    {
+                        await ResponderJson(res, 400, new { Sucesso = false, Erro = "Login não informado." });
+                        return;
+                    }
+
+                    using var root = CriarConexaoAD();
+                    var result = BuscarUsuarioNoAD(root, login);
+
+                    if (result == null)
+                    {
+                        await ResponderJson(res, 404, new { Sucesso = false, Erro = "Usuário não encontrado." });
+                        return;
+                    }
+
+                    string telefone = ObterPropriedade(result, "mobile");
+
+                    if (string.IsNullOrWhiteSpace(telefone))
+                    {
+                        await ResponderJson(res, 200, new { Sucesso = true, TemTelefone = false, TelefoneMascarado = "" });
+                        return;
+                    }
+
+                    // Remove +55 e mascara: 997****43
+                    string numero = telefone.Replace("+55", "").Replace(" ", "").Trim();
+                    string mascarado = numero.Length >= 6
+                        ? numero[..3] + new string('*', numero.Length - 6) + numero[^3..]
+                        : numero;
+
+                    await ResponderJson(res, 200, new { Sucesso = true, TemTelefone = true, TelefoneMascarado = mascarado });
+                    return;
+                }
+
+                // POST — salva o telefone no AD
+                if (path == "/mfa/telefone" && req.HttpMethod == "POST")
+                {
+                    try
+                    {
+                        TelefoneRequest? data;
+
+                        using (var reader = new StreamReader(req.InputStream, req.ContentEncoding))
+                        {
+                            string body = await reader.ReadToEndAsync();
+                            File.AppendAllText(@"C:\CredentialProvider\server_error.txt",
+                                $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] /mfa/telefone POST body={body}{Environment.NewLine}");
+                            data = JsonSerializer.Deserialize<TelefoneRequest>(body,
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+
+                        if (data == null || string.IsNullOrWhiteSpace(data.Login) || string.IsNullOrWhiteSpace(data.Telefone))
+                        {
+                            await ResponderJson(res, 400, new DefaultApiResponse { Sucesso = false, Erro = "Dados inválidos." });
+                            return;
+                        }
+
+                        string telefoneFormatado = data.Telefone.Trim();
+                        if (!telefoneFormatado.StartsWith("+"))
+                            telefoneFormatado = "+55" + telefoneFormatado.TrimStart('0');
+
+                        File.AppendAllText(@"C:\CredentialProvider\server_error.txt",
+                            $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] /mfa/telefone salvando. login={data.Login} telefone={telefoneFormatado}{Environment.NewLine}");
+
+                        using var root = CriarConexaoAD();
+                        var result = BuscarUsuarioNoAD(root, data.Login);
+
+                        if (result == null)
+                        {
+                            await ResponderJson(res, 404, new DefaultApiResponse { Sucesso = false, Erro = "Usuário não encontrado." });
+                            return;
+                        }
+
+                        using var entry = CriarEntryComCredenciais(result.Path);
+                        entry.Properties["mobile"].Value = telefoneFormatado;
+                        entry.CommitChanges();
+
+                        File.AppendAllText(@"C:\CredentialProvider\server_error.txt",
+                            $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] /mfa/telefone salvo com sucesso.{Environment.NewLine}");
+
+                        await ResponderJson(res, 200, new DefaultApiResponse { Sucesso = true });
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        File.AppendAllText(@"C:\CredentialProvider\server_error.txt",
+                            $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] ERRO /mfa/telefone POST: {ex}{Environment.NewLine}");
+
+                        await ResponderJson(res, 500, new DefaultApiResponse { Sucesso = false, Erro = ex.Message });
+                        return;
+                    }
+                }
+
+
                 if (path == "/mfa/validate" && req.HttpMethod == "POST")
                 {
                     ValidateMfaRequest? data;
@@ -416,6 +513,20 @@ namespace CredentialProviderAPP.Services
                             return;
                         }
 
+                        // 🔹 VERIFICA SE JÁ EXISTE CÓDIGO VÁLIDO
+                        var (podeEnviar, _) = SmsMfaService.VerificarReenvio(data.Login);
+
+                        if (!podeEnviar)
+                        {
+                            await ResponderJson(res, 200, new
+                            {
+                                Sucesso = true,
+                                CodigoDisponivel = true,
+                                EnviadoAgora = false
+                            });
+                            return;
+                        }
+
                         using var root = CriarConexaoAD();
                         var result = BuscarUsuarioNoAD(root, data.Login);
 
@@ -429,19 +540,21 @@ namespace CredentialProviderAPP.Services
                             return;
                         }
 
-                        // Por enquanto pega o campo "mobile" do AD.
-                        // Quando o telefone tiver local definido, ajusta aqui.
                         string telefone = ObterPropriedade(result, "mobile");
 
                         if (string.IsNullOrWhiteSpace(telefone))
-                        {
-                            // fallback: usa um número fake para o provider File não falhar nos testes
                             telefone = "SEM_TELEFONE_CADASTRADO";
-                        }
 
+                        // 🔹 ENVIA NOVO SMS
                         await SmsMfaService.EnviarCodigoAsync(data.Login, telefone);
 
-                        await ResponderJson(res, 200, new DefaultApiResponse { Sucesso = true });
+                        await ResponderJson(res, 200, new
+                        {
+                            Sucesso = true,
+                            CodigoDisponivel = true,
+                            EnviadoAgora = true
+                        });
+
                         return;
                     }
                     catch (Exception ex)
@@ -552,6 +665,27 @@ namespace CredentialProviderAPP.Services
                         });
                         return;
                     }
+                }
+
+                // GET — verifica se pode reenviar
+                if (path == "/mfa/sms/status" && req.HttpMethod == "GET")
+                {
+                    string login = req.QueryString["login"] ?? "";
+                    if (string.IsNullOrWhiteSpace(login))
+                    {
+                        await ResponderJson(res, 400, new { Sucesso = false, Erro = "Login não informado." });
+                        return;
+                    }
+
+                    var (podeEnviar, _) = SmsMfaService.VerificarReenvio(login);
+
+                    await ResponderJson(res, 200, new
+                    {
+                        Sucesso = true,
+                        CodigoDisponivel = !podeEnviar,
+                        PodeEnviar = podeEnviar
+                    });
+                    return;
                 }
 
                 if (path == "/password/blacklist" && req.HttpMethod == "GET")
@@ -741,6 +875,7 @@ namespace CredentialProviderAPP.Services
                 s.PropertiesToLoad.Add("mail");
                 s.PropertiesToLoad.Add("description");
                 s.PropertiesToLoad.Add("info");
+                s.PropertiesToLoad.Add("mobile"); // novo
 
                 return s;
             }

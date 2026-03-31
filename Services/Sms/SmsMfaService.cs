@@ -20,6 +20,26 @@ public static class SmsMfaService
         await provider.SendAsync(phoneNumber, mensagem);
     }
 
+    public static (bool PodeEnviar, int SegundosRestantes) VerificarReenvio(string login)
+    {
+        string key = login.ToLowerInvariant();
+
+        if (!_codigos.TryGetValue(key, out var entrada))
+            return (true, 0); // não tem código — pode enviar
+
+        int segundosRestantes = (int)(entrada.Expira - DateTime.UtcNow).TotalSeconds;
+
+        if (segundosRestantes <= 0)
+            return (true, 0); // expirou — pode enviar
+
+        // só bloqueia se tiver menos de 4 minutos restantes (enviou há menos de 1 min)
+        int segundosDesdeEnvio = 300 - segundosRestantes;
+        if (segundosDesdeEnvio < 60)
+            return (false, 60 - segundosDesdeEnvio);
+
+        return (true, 0);
+    }
+
     public static bool ValidarCodigo(string login, string codigo)
     {
         string key = login.ToLowerInvariant();
