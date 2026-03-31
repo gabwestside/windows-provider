@@ -1,270 +1,332 @@
-﻿using CredentialProviderAPP.Views;
-using CredentialProviderAPP.Utils;
-using OtpNet;
+﻿using CredentialProviderAPP.Enums;
+using CredentialProviderAPP.Services;
 using QRCoder;
 using System.Drawing;
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
-using System.DirectoryServices;
 
-namespace CredentialProviderAPP
+namespace CredentialProviderAPP;
+
+public partial class MainWindow : Window
 {
-    public partial class MainWindow : Window
+    private bool autenticado = false;
+    private bool mostrandoDialog = false;
+
+    private string loginAtual = "";
+    private string? otpAuthUrlAtual = null;
+    private readonly AppMode _modo;
+
+    private string metodoSelecionado = ""; // "app" ou "sms"
+
+    public MainWindow()
     {
-        private byte[]? currentKey;
-        private string? currentSecret;
+        InitializeComponent();
+        _modo = AppMode.Default;
+    }
 
-        private bool autenticado = false;
-        private bool mostrandoDialog = false;
+    public MainWindow(string login, AppMode modo)
+    {
+        InitializeComponent();
 
-        private readonly string loginAtual = "";
+        _modo = modo;
 
-        public MainWindow()
+        if (string.IsNullOrWhiteSpace(login))
         {
-            InitializeComponent();
+            MostrarMensagem("Login não informado.");
+            Environment.Exit(1);
+            return;
         }
 
-        public MainWindow(string login)
+        loginAtual = login;
+        txtUser.Text = login;
+        txtUser.IsReadOnly = true;
+        btnBuscar.Visibility = Visibility.Collapsed;
+
+        Loaded += async (_, __) => await ProcessarFluxoUsuarioAsync(login);
+    }
+
+    private async Task ProcessarFluxoUsuarioAsync(string login)
+    {
+        try
         {
-            InitializeComponent();
+            var statusResponse = await ServerApiService.ObterStatusMfaAsync(login);
 
-            if (string.IsNullOrEmpty(login))
-                return;
-
-            loginAtual = login;
-            txtUser.Text = login;
-            txtUser.IsReadOnly = true;
-            btnBuscar.Visibility = Visibility.Collapsed;
-
-            string? valorInfo = ObterInfoAD(login);
-
-            // vazio → MFA não habilitado pelo admin → deixa passar
-            if (string.IsNullOrWhiteSpace(valorInfo))
+            if (!statusResponse.Sucesso)
             {
-                Environment.Exit(0);
+                MostrarMensagem(statusResponse.Erro ?? "Erro ao consultar status do MFA.");
+                Environment.Exit(1);
                 return;
             }
 
-            // "setup" → habilitado mas ainda não configurado → mostrar QR
-            if (valorInfo.Equals("setup", StringComparison.OrdinalIgnoreCase))
+            if (_modo == AppMode.Setup)
             {
-                lblMensagem.Text =
-    $@"Bem-vindo {login}
+                await AbrirFluxoSetupAsync(login, statusResponse.Status);
+                return;
+            }
 
-Para proteger sua conta,
-gere agora o QR Code para configurar
+            MostrarMensagem("Modo de operação inválido.");
+            Environment.Exit(1);
+        }
+        catch (Exception ex)
+        {
+            MostrarMensagem("Erro ao processar MFA: " + ex.Message);
+            Environment.Exit(1);
+        }
+    }
+
+    private async Task AbrirFluxoSetupAsync(string login, string status)
+    {
+        if (!status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            MostrarMensagem("MFA não está pendente para este usuário.");
+            Environment.Exit(1);
+            return;
+        }
+
+        var setupResponse = await ServerApiService.ObterSetupMfaAsync(login);
+
+        if (!setupResponse.Sucesso)
+        {
+            MostrarMensagem(setupResponse.Erro ?? "Erro ao preparar configuração do MFA.");
+            Environment.Exit(1);
+            return;
+        }
+
+        loginAtual = setupResponse.Login;
+        txtUser.Text = setupResponse.Login;
+        otpAuthUrlAtual = setupResponse.OtpAuthUrl;
+
+        lblMensagem.Text =
+$@"Bem-vindo {setupResponse.Nome}
+
+Escolha como deseja configurar
 a autenticação em dois fatores.";
 
-                btnGerarQR.Visibility = Visibility.Visible;
+        panelMetodo.Visibility = Visibility.Visible;
+        lblMetodoInfo.Visibility = Visibility.Visible;
+
+        rbAuthenticator.IsChecked = true;
+    }
+
+    private async void BuscarUsuario_Click(object sender, RoutedEventArgs e)
+    {
+        string username = txtUser.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            MostrarMensagem("Digite um usuário.");
+            return;
+        }
+
+        loginAtual = username;
+        txtUser.IsReadOnly = true;
+        btnBuscar.Visibility = Visibility.Collapsed;
+
+        await ProcessarFluxoUsuarioAsync(username);
+    }
+
+    private void MetodoMfa_Checked(object sender, RoutedEventArgs e)
+    {
+        if (rbAuthenticator.IsChecked == true)
+        {
+            metodoSelecionado = "app";
+
+            lblMetodoInfo.Text =
+    @"Você escolheu aplicativo autenticador.
+
+Escaneie o QR Code e depois informe
+o código gerado no aplicativo.";
+            lblMetodoInfo.Visibility = Visibility.Visible;
+
+            panelQr.Visibility = Visibility.Visible;
+            imgQR.Visibility = Visibility.Visible;
+
+            btnGerarQR.Visibility = Visibility.Visible;
+            btnEnviarSms.Visibility = Visibility.Collapsed;
+
+            lblCodigo.Visibility = Visibility.Visible;
+            txtCode.Visibility = Visibility.Visible;
+            btnValidar.Visibility = Visibility.Visible;
+
+            txtCode.Clear();
+
+            if (!string.IsNullOrWhiteSpace(otpAuthUrlAtual))
+                ExibirQrCode(otpAuthUrlAtual);
+        }
+        else if (rbSms.IsChecked == true)
+        {
+            metodoSelecionado = "sms";
+
+            lblMetodoInfo.Text =
+    @"Você escolheu SMS.
+
+Envie um código para o telefone cadastrado
+e informe o código recebido.";
+            lblMetodoInfo.Visibility = Visibility.Visible;
+
+            panelQr.Visibility = Visibility.Collapsed;
+            imgQR.Visibility = Visibility.Collapsed;
+
+            btnGerarQR.Visibility = Visibility.Collapsed;
+            btnEnviarSms.Visibility = Visibility.Visible;
+
+            lblCodigo.Visibility = Visibility.Visible;
+            txtCode.Visibility = Visibility.Visible;
+            btnValidar.Visibility = Visibility.Visible;
+
+            txtCode.Clear();
+        }
+    }
+
+    private void GerarQR_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(otpAuthUrlAtual))
+        {
+            MostrarMensagem("QR Code ainda não disponível.");
+            return;
+        }
+
+        ExibirQrCode(otpAuthUrlAtual);
+    }
+
+    private async void EnviarSms_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(loginAtual))
+            {
+                MostrarMensagem("Usuário não informado.");
                 return;
             }
 
-            // qualquer outro valor → é o secret → validar código
-            VerificarCodigoWindow win = new VerificarCodigoWindow(valorInfo);
-            win.ShowDialog();
-            Environment.Exit(0);
-        }
+            btnEnviarSms.IsEnabled = false;
 
-        private string? ObterInfoAD(string login)
+            // TODO:
+            // aqui depois vamos chamar a API real de SMS
+            // ex: await ServerApiService.EnviarCodigoSmsAsync(loginAtual);
+
+            await Task.Delay(500);
+
+            MostrarMensagem("Código SMS enviado com sucesso.");
+        }
+        catch (Exception ex)
         {
-            try
-            {
-                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-                using var root = CriarDirectoryEntry(ldap);
-
-                var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
-                using var searcher = new DirectorySearcher(root)
-                {
-                    Filter = $"(&(objectClass=user)(samAccountName={user}))"
-                };
-                searcher.PropertiesToLoad.Add("info");
-
-                var result = searcher.FindOne();
-                if (result == null) return null;
-
-                return result.Properties["info"].Count > 0
-                    ? result.Properties["info"][0].ToString()
-                    : null;
-            }
-            catch { return null; }
+            MostrarMensagem("Erro ao enviar SMS: " + ex.Message);
         }
-        // ✅ direto com credenciais — sem tentativa anônima
-        private DirectoryEntry CriarDirectoryEntry(string ldap)
+        finally
         {
-            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
-            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
-            return new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
+            btnEnviarSms.IsEnabled = true;
         }
+    }
 
-        private void SalvarSecretAD(string login, string secret)
-        {
-            string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
-            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
-
-            using var root = CriarDirectoryEntry(ldap);
-
-            var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
-            using var searcher = new DirectorySearcher(root)
-            {
-                Filter = $"(&(objectClass=user)(samAccountName={user}))"
-            };
-
-            var result = searcher.FindOne();
-            if (result == null) throw new Exception("Usuário não encontrado no AD.");
-
-            // ✅ entry também com credenciais explícitas
-            using var entry = new DirectoryEntry(result.Path, adUser, adSenha, AuthenticationTypes.Secure);
-            entry.Properties["info"].Value = secret;
-            entry.CommitChanges();
-        }
-
-        private void BuscarUsuario_Click(object sender, RoutedEventArgs e)
+    private async void ValidarCodigo_Click(object sender, RoutedEventArgs e)
+    {
+        try
         {
             string username = txtUser.Text.Trim();
+            string code = txtCode.Text.Trim();
 
-            if (string.IsNullOrEmpty(username))
+            if (string.IsNullOrWhiteSpace(username))
             {
-                MostrarMensagem("Digite um usuário.");
+                MostrarMensagem("Login inválido.");
                 return;
             }
 
-            txtUser.IsReadOnly = true;
-            btnBuscar.Visibility = Visibility.Collapsed;
-
-            string? valorInfo = ObterInfoAD(username);
-
-            if (string.IsNullOrWhiteSpace(valorInfo))
+            if (string.IsNullOrWhiteSpace(code))
             {
-                Environment.Exit(0);
+                MostrarMensagem("Digite o código de validação.");
                 return;
             }
 
-            if (valorInfo.Equals("setup", StringComparison.OrdinalIgnoreCase))
+            btnValidar.IsEnabled = false;
+            txtCode.IsEnabled = false;
+
+            // Por enquanto mantém a validação existente.
+            // Depois, no backend, você pode separar:
+            // - ValidarCodigoMfaAsync para app autenticador
+            // - ValidarCodigoSmsAsync para SMS
+
+            var response = await ServerApiService.ValidarCodigoMfaAsync(username, code);
+
+            if (!response.Sucesso)
             {
-                lblMensagem.Text =
-    $@"Bem-vindo {username}
-
-Para proteger sua conta,
-gere agora o QR Code para configurar
-a autenticação em dois fatores.";
-
-                btnGerarQR.Visibility = Visibility.Visible;
+                MostrarMensagem(response.Erro ?? "Erro ao validar MFA.");
                 return;
             }
 
-            // secret → validar
-            VerificarCodigoWindow win = new VerificarCodigoWindow(valorInfo);
-            win.ShowDialog();
-        }
-
-        private void GerarQR_Click(object sender, RoutedEventArgs e)
-        {
-            try
+            if (!response.Valido)
             {
-                string username = txtUser.Text.Trim();
-
-                currentKey = KeyGeneration.GenerateRandomKey(20);
-                currentSecret = Base32Encoding.ToString(currentKey);
-
-                string issuer = "CredentialProvider";
-                string url = $"otpauth://totp/{issuer}:{username}?secret={currentSecret}&issuer={issuer}";
-
-                QRCodeGenerator qrGenerator = new QRCodeGenerator();
-                QRCodeData qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
-                QRCode qrCode = new QRCode(qrCodeData);
-                Bitmap qrBitmap = qrCode.GetGraphic(20);
-
-                imgQR.Source = BitmapToImageSource(qrBitmap);
-                imgQR.Visibility = Visibility.Visible;
-
-                lblMensagem.Text =
-    @"Escaneie o QR Code no Google Authenticator.
-
-Agora valide o código gerado
-para confirmar a configuração.";
-
-                txtCode.Visibility = Visibility.Visible;
-                btnValidar.Visibility = Visibility.Visible;
-                btnGerarQR.Visibility = Visibility.Collapsed;
+                MostrarMensagem("Código inválido.");
+                return;
             }
-            catch (Exception ex)
-            {
-                MostrarMensagem(ex.ToString());
-            }
-        }
 
-        private void ValidarCodigo_Click(object sender, RoutedEventArgs e)
+            autenticado = true;
+            MostrarMensagem("MFA configurado com sucesso!");
+            Environment.Exit(0);
+        }
+        catch (Exception ex)
         {
-            try
-            {
-                string username = txtUser.Text.Trim();
-                string code = txtCode.Text.Trim();
-
-                if (currentKey == null || currentSecret == null)
-                    return;
-
-                var totp = new Totp(currentKey);
-                bool valid = totp.VerifyTotp(code, out long _, new VerificationWindow(1, 1));
-
-                if (!valid)
-                {
-                    MostrarMensagem("Código inválido.");
-                    return;
-                }
-
-                // ✅ grava secret no AD em vez do banco
-                SalvarSecretAD(username, currentSecret);
-
-                autenticado = true;
-                MostrarMensagem("MFA configurado com sucesso!");
-                Environment.Exit(0);
-            }
-            catch (Exception ex)
-            {
-                MostrarMensagem(ex.ToString());
-            }
+            MostrarMensagem("Erro ao validar MFA: " + ex.Message);
         }
-
-        private void MostrarMensagem(string msg)
+        finally
         {
-            mostrandoDialog = true;
-            ModernMessageBox.Show(msg);
-            mostrandoDialog = false;
+            btnValidar.IsEnabled = true;
+            txtCode.IsEnabled = true;
         }
+    }
 
-        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    private void ExibirQrCode(string otpAuthUrl)
+    {
+        QRCodeGenerator qrGenerator = new QRCodeGenerator();
+        QRCodeData qrCodeData = qrGenerator.CreateQrCode(otpAuthUrl, QRCodeGenerator.ECCLevel.Q);
+        QRCode qrCode = new QRCode(qrCodeData);
+        Bitmap qrBitmap = qrCode.GetGraphic(20);
+
+        imgQR.Source = BitmapToImageSource(qrBitmap);
+        panelQr.Visibility = Visibility.Visible;
+        imgQR.Visibility = Visibility.Visible;
+    }
+
+    private void MostrarMensagem(string msg)
+    {
+        mostrandoDialog = true;
+        MessageBox.Show(msg);
+        mostrandoDialog = false;
+    }
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        base.OnClosing(e);
+
+        if (!autenticado && _modo == AppMode.Setup)
+            Environment.Exit(1);
+    }
+
+    private void Window_Deactivated(object sender, EventArgs e)
+    {
+        if (mostrandoDialog || _modo != AppMode.Setup)
+            return;
+
+        Dispatcher.BeginInvoke(new Action(() =>
         {
-            base.OnClosing(e);
-            if (!autenticado) Environment.Exit(1);
-        }
+            Topmost = true;
+            Activate();
+        }));
+    }
 
-        private void Window_Deactivated(object sender, EventArgs e)
-        {
-            if (mostrandoDialog) return;
+    private BitmapImage BitmapToImageSource(Bitmap bitmap)
+    {
+        using MemoryStream memory = new MemoryStream();
+        bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
+        memory.Position = 0;
 
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                Topmost = true;
-                Activate();
-            }));
-        }
+        BitmapImage bitmapImage = new BitmapImage();
+        bitmapImage.BeginInit();
+        bitmapImage.StreamSource = memory;
+        bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+        bitmapImage.EndInit();
 
-        private BitmapImage BitmapToImageSource(Bitmap bitmap)
-        {
-            using MemoryStream memory = new MemoryStream();
-            bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
-            memory.Position = 0;
-
-            BitmapImage bitmapImage = new();
-            bitmapImage.BeginInit();
-            bitmapImage.StreamSource = memory;
-            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-            bitmapImage.EndInit();
-
-            return bitmapImage;
-        }
-
+        return bitmapImage;
     }
 }

@@ -298,6 +298,22 @@
                                 TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                    <Border
+                        Margin="0,0,0,18"
+                        Padding="12,10"
+                        Background="#F8FAFC"
+                        BorderBrush="#E8ECF0"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <CheckBox
+                            x:Name="chkSomenteForcarTroca"
+                            Checked="ChkSomenteForcarTroca_CheckedChanged"
+                            Content="Somente marcar 'trocar senha no próximo login' (sem gerar nova senha e sem enviar e-mail)"
+                            FontFamily="Segoe UI"
+                            FontSize="12"
+                            Foreground="#1A1D23"
+                            Unchecked="ChkSomenteForcarTroca_CheckedChanged" />
+                    </Border>
 
                     <!--  EMAIL DO DESTINATÁRIO  -->
                     <TextBlock
@@ -307,11 +323,11 @@
                         FontWeight="SemiBold"
                         Foreground="#6B7280"
                         Text="E-mail do destinatário" />
-<TextBox
-    x:Name="txtEmail"
-    Margin="0,0,0,18"
-    TextChanged="TxtEmail_TextChanged"
-    Style="{StaticResource ModernInput}" />
+                    <TextBox
+                        x:Name="txtEmail"
+                        Margin="0,0,0,18"
+                        Style="{StaticResource ModernInput}"
+                        TextChanged="TxtEmail_TextChanged" />
 
                     <!--  SENHA GERADA  -->
                     <Grid Margin="0,0,0,6">
@@ -606,7 +622,10 @@
                         Style="{StaticResource BtnPrimary}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock VerticalAlignment="Center" Text="✉  " />
-                            <TextBlock VerticalAlignment="Center" Text="Enviar e confirmar" />
+                            <TextBlock
+                                x:Name="txtBtnConfirmar"
+                                VerticalAlignment="Center"
+                                Text="Enviar e confirmar" />
                         </StackPanel>
                     </Button>
                 </Grid>

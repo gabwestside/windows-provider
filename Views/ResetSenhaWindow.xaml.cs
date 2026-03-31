@@ -1,9 +1,7 @@
-using System.ComponentModel;
-using System.DirectoryServices;
-using System.Windows;
-using System.Windows.Input;
-using OtpNet;
+using CredentialProviderAPP.Services;
 using CredentialProviderAPP.Utils;
+using System.ComponentModel;
+using System.Windows;
 
 namespace CredentialProviderAPP.Views;
 
@@ -12,10 +10,9 @@ public partial class ResetSenhaWindow : Window
     private bool autenticado = false;
     private bool cancelado = false;
     private bool mostrandoDialog = false;
-    private bool _forcandoFoco = false; // ✅ evita loop
+    private bool fluxoConcluido = false;
 
-    private string secret = "";
-    private string login;
+    private readonly string login;
 
     public ResetSenhaWindow(string login)
     {
@@ -24,130 +21,132 @@ public partial class ResetSenhaWindow : Window
 
         txtLogin.Text = login;
 
-        string? secretAd = ObterSecretMFA(login);
+        Topmost = true;
+        ShowInTaskbar = false;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
-        if (string.IsNullOrEmpty(secretAd))
+        Loaded += ResetSenhaWindow_Loaded;
+
+        StateChanged += (s, e) =>
         {
-            Loaded += (s, e) =>
-            {
-                MessageBox.Show(
-                    "Este usuário não possui MFA configurado no Active Directory.",
-                    "Segurança",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                );
-                Close();
-            };
-            return;
-        }
-
-        secret = secretAd;
+            if (WindowState == WindowState.Minimized)
+                WindowState = WindowState.Normal;
+        };
     }
 
-    private string? ObterSecretMFA(string login)
+    private async void ResetSenhaWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        WindowFocusHelper.ForcarFoco(this, txtCode);
+
         try
         {
-            string ldap   = ConfigHelper.Get("ActiveDirectory:LDAP");
-            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
-            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+            var response = await ServerApiService.ObterStatusMfaAsync(login);
 
-            using var root = new DirectoryEntry(ldap, adUser, adSenha, AuthenticationTypes.Secure);
-
-            var user = LdapHelper.Escape(LdapHelper.NormalizeLogin(login));
-
-            using var searcher = new DirectorySearcher(root)
+            if (!response.Sucesso)
             {
-                Filter = $"(&(objectClass=user)(samAccountName={user}))"
-            };
-            searcher.PropertiesToLoad.Add("info");
+                MessageBox.Show(response.Erro ?? "Erro ao consultar MFA.");
+                DialogResult = false;
+                Close();
+                return;
+            }
 
-            var result = searcher.FindOne();
-            if (result == null) return null;
-
-            string? valor = result.Properties["info"].Count > 0
-                ? result.Properties["info"][0].ToString()
-                : null;
-
-            if (string.IsNullOrWhiteSpace(valor) ||
-                valor.Equals("setup", StringComparison.OrdinalIgnoreCase))
-                return null;
-
-            return valor;
+            if (response.Status != "Configured")
+            {
+                MessageBox.Show("MFA precisa estar configurado.");
+                DialogResult = false;
+                Close();
+                return;
+            }
         }
-        catch { return null; }
-    }
-
-    private void ForcarFoco()
-    {
-        if (_forcandoFoco) return;
-
-        _forcandoFoco = true;
-
-        Dispatcher.BeginInvoke(new Action(() =>
+        catch
         {
-            try
-            {
-                Topmost = true;
-                Activate();
-                Focus();
-                Keyboard.Focus(txtCode);
-            }
-            finally
-            {
-                _forcandoFoco = false;
-            }
-        }));
-    }
-
-    private void Window_Loaded(object sender, RoutedEventArgs e)
-    {
-        ForcarFoco();
+            MessageBox.Show("Erro ao conectar com o servidor.");
+            DialogResult = false;
+            Close();
+        }
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        // ✅ não força foco se já está autenticado (NovaSenhaWindow está aberto)
-        if (mostrandoDialog || _forcandoFoco || autenticado)
+        if (mostrandoDialog || !IsVisible || WindowState == WindowState.Minimized)
             return;
 
-        ForcarFoco();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!mostrandoDialog && IsVisible && !IsActive)
+                WindowFocusHelper.ForcarFoco(this, txtCode);
+        }), System.Windows.Threading.DispatcherPriority.Background);
     }
 
-    private void Validar_Click(object sender, RoutedEventArgs e)
+    private async void Validar_Click(object sender, RoutedEventArgs e)
     {
         string code = txtCode.Text.Trim();
 
-        if (code.Length != 6)
+        if (code.Length != 6 || !code.All(char.IsDigit))
         {
-            Mostrar("Digite o código de 6 dígitos.");
+            Mostrar("Digite 6 dígitos.");
             return;
         }
 
-        var key = Base32Encoding.ToBytes(secret);
-        var totp = new Totp(key);
-
-        bool valid = totp.VerifyTotp(
-            code,
-            out long _,
-            new VerificationWindow(1, 1)
-        );
-
-        if (!valid)
+        try
         {
-            Mostrar("Código inválido.");
-            txtCode.Clear();
+            ToggleValidacao(false);
+
+            var response = await ServerApiService.ValidarCodigoMfaAsync(login, code);
+
+            if (!response.Sucesso)
+            {
+                Mostrar(response.Erro ?? "Erro MFA");
+                txtCode.Focus();
+                return;
+            }
+
+            if (!response.Valido)
+            {
+                Mostrar("Código inválido.");
+                txtCode.Clear();
+                txtCode.Focus();
+                return;
+            }
+
+            autenticado = true;
+
+            Hide();
+
+            var novaSenha = new NovaSenhaWindow(login);
+            bool? ok = novaSenha.ShowDialog();
+
+            if (ok == true)
+            {
+                fluxoConcluido = true;
+                DialogResult = true;
+                Close();
+                return;
+            }
+
+            // se o usuário fechou/cancelou a troca de senha, volta pra tela MFA
+            Show();
+            Activate();
+            WindowFocusHelper.ForcarFoco(this, txtCode);
+        }
+        catch (Exception ex)
+        {
+            Mostrar("Erro no fluxo de redefinição: " + ex.Message);
+            Show();
+            Activate();
             txtCode.Focus();
-            return;
         }
+        finally
+        {
+            ToggleValidacao(true);
+        }
+    }
 
-        autenticado = true; // ✅ seta ANTES de abrir NovaSenhaWindow
-        Hide();
-
-        var novaSenha = new NovaSenhaWindow(login);
-        novaSenha.ShowDialog(); // ✅ sem Topmost aqui — NovaSenhaWindow controla o próprio foco
-
-        Close();
+    private void ToggleValidacao(bool enabled)
+    {
+        btnValidar.IsEnabled = enabled;
+        btnCancelar.IsEnabled = enabled;
+        txtCode.IsEnabled = enabled;
     }
 
     private void Mostrar(string msg)
@@ -160,28 +159,28 @@ public partial class ResetSenhaWindow : Window
     private void Cancelar_Click(object sender, RoutedEventArgs e)
     {
         cancelado = true;
+        DialogResult = false;
         Close();
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)
     {
-        if (autenticado || cancelado)
+        if (fluxoConcluido || cancelado)
             return;
 
         mostrandoDialog = true;
 
-        var result = MessageBox.Show(
-            "Deseja cancelar o processo de redefinição de senha?",
-            "Cancelar",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question
-        );
+        var result = MessageBox.Show("Deseja cancelar?", "Cancelar", MessageBoxButton.YesNo);
 
         mostrandoDialog = false;
 
         if (result == MessageBoxResult.No)
+        {
             e.Cancel = true;
-        else
-            cancelado = true;
+            return;
+        }
+
+        cancelado = true;
+        DialogResult = false;
     }
 }

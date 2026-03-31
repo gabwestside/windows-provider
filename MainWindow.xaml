@@ -5,133 +5,44 @@
     Title="CredentialProviderAPP"
     Width="1280"
     Height="720"
-    AllowsTransparency="True"
-    Background="Transparent"
+    Background="#15171A"
     Deactivated="Window_Deactivated"
     Icon="Resources/Icon.ico"
     ResizeMode="NoResize"
     ShowInTaskbar="False"
     Topmost="True"
-    WindowStartupLocation="CenterScreen"
-    WindowStyle="None">
+    WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
+        <SolidColorBrush x:Key="BgPage" Color="#15171A" />
+        <SolidColorBrush x:Key="BgCard" Color="#1E2126" />
+        <SolidColorBrush x:Key="BgSoft" Color="#262A31" />
+        <SolidColorBrush x:Key="BorderSoft" Color="#323743" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#C9D1D9" />
+        <SolidColorBrush x:Key="TextMuted" Color="#8B949E" />
+        <SolidColorBrush x:Key="Accent" Color="#4F8CFF" />
+        <SolidColorBrush x:Key="AccentHover" Color="#3B78E7" />
+        <SolidColorBrush x:Key="Success" Color="#22C55E" />
 
-        <SolidColorBrush x:Key="TextPrimary" Color="#0F172A" />
-        <SolidColorBrush x:Key="TextSecondary" Color="#64748B" />
-        <SolidColorBrush x:Key="TextMuted" Color="#94A3B8" />
-        <SolidColorBrush x:Key="BorderColor" Color="#E2E8F0" />
-
-        <!--  ══ INPUT USUÁRIO ══  -->
-        <Style x:Key="ModernInput" TargetType="TextBox">
-            <Setter Property="Background" Value="#F8FAFC" />
-            <Setter Property="Foreground" Value="#0F172A" />
-            <Setter Property="BorderBrush" Value="#E2E8F0" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
-            <Setter Property="Height" Value="48" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border
-                            x:Name="Bd"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="10">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="44" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Grid.Column="0"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    FontSize="15"
-                                    Foreground="#CBD5E1"
-                                    Text="👤" />
-                                <ScrollViewer
-                                    x:Name="PART_ContentHost"
-                                    Grid.Column="1"
-                                    VerticalAlignment="Center" />
-                                <TextBlock
-                                    x:Name="Ph"
-                                    Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI"
-                                    FontSize="14"
-                                    Foreground="#CBD5E1"
-                                    IsHitTestVisible="False"
-                                    Text="Seu nome de usuário" />
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2563EB" />
-                                <Setter TargetName="Bd" Property="Background" Value="White" />
-                                <Setter TargetName="Bd" Property="BorderThickness" Value="1.5" />
-                            </Trigger>
-                            <Trigger Property="Text" Value="">
-                                <Setter TargetName="Ph" Property="Visibility" Value="Visible" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!--  ══ INPUT CÓDIGO OTP ══  -->
-        <Style x:Key="OtpInput" TargetType="TextBox">
-            <Setter Property="Background" Value="#F8FAFC" />
-            <Setter Property="Foreground" Value="#0F172A" />
-            <Setter Property="BorderBrush" Value="#E2E8F0" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="30" />
-            <Setter Property="FontFamily" Value="Consolas" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Height" Value="64" />
-            <Setter Property="TextAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border
-                            x:Name="Bd"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="12">
-                            <ScrollViewer
-                                x:Name="PART_ContentHost"
-                                Margin="12,0"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2563EB" />
-                                <Setter TargetName="Bd" Property="Background" Value="White" />
-                                <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!--  ══ BOTÃO PRIMÁRIO ══  -->
-        <Style x:Key="BtnPrimary" TargetType="Button">
-            <Setter Property="Background" Value="#2563EB" />
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Padding" Value="12,0" />
             <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#111318" />
+            <Setter Property="BorderBrush" Value="#323743" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{StaticResource Accent}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Height" Value="48" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -139,22 +50,15 @@
                         <Border
                             x:Name="Bd"
                             Background="{TemplateBinding Background}"
-                            CornerRadius="10">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                    BlurRadius="14"
-                                    Opacity="0.28"
-                                    ShadowDepth="3"
-                                    Color="#2563EB" />
-                            </Border.Effect>
+                            CornerRadius="8">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1D4ED8" />
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentHover}" />
                             </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1E40AF" />
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.55" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -162,410 +66,357 @@
             </Setter>
         </Style>
 
-        <!--  ══ BOTÃO SECUNDÁRIO ══  -->
-        <Style x:Key="BtnSecondary" TargetType="Button">
-            <Setter Property="Background" Value="#F1F5F9" />
-            <Setter Property="Foreground" Value="#334155" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
-            <Setter Property="FontWeight" Value="Medium" />
-            <Setter Property="Height" Value="44" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border
-                            x:Name="Bd"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="10">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#E2E8F0" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#CBD5E1" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <Style
+            x:Key="SecondaryButton"
+            BasedOn="{StaticResource PrimaryButton}"
+            TargetType="Button">
+            <Setter Property="Background" Value="#2D333B" />
         </Style>
 
+        <Style x:Key="MethodRadio" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
     </Window.Resources>
 
-    <!--
-        ══════════════════════════════════════════════
-        ROOT — gradiente de fundo suave
-        ══════════════════════════════════════════════
-    -->
-    <Border>
-        <Border.Background>
-            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Offset="0" Color="#EEF2FF" />
-                <GradientStop Offset="0.5" Color="#F0F4FF" />
-                <GradientStop Offset="1" Color="#E8EFFE" />
-            </LinearGradientBrush>
-        </Border.Background>
+    <Grid Background="{StaticResource BgPage}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="86" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <!--  Lado esquerdo decorativo  -->
-                <ColumnDefinition Width="460" />
-                <!--  Card de login  -->
-            </Grid.ColumnDefinitions>
+        <!--  HEADER  -->
+        <Border
+            Grid.Row="0"
+            Background="#101216"
+            BorderBrush="{StaticResource BorderSoft}"
+            BorderThickness="0,0,0,1">
+            <Grid Margin="28,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-            <!--
-                ══════════════════════════════════════
-                LADO ESQUERDO — branding + decoração
-                ══════════════════════════════════════
-            -->
-            <Grid Grid.Column="0">
+                <Image
+                    Grid.Column="0"
+                    Width="54"
+                    Height="54"
+                    Source="Resources/Icon.bmp" />
 
-                <!--  Círculo decorativo superior esquerdo  -->
-                <Ellipse
-                    Width="600"
-                    Height="600"
-                    Margin="-200,-200,0,0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Opacity="0.15">
-                    <Ellipse.Fill>
-                        <RadialGradientBrush>
-                            <GradientStop Offset="0" Color="#2563EB" />
-                            <GradientStop Offset="1" Color="Transparent" />
-                        </RadialGradientBrush>
-                    </Ellipse.Fill>
-                </Ellipse>
-
-                <!--  Círculo decorativo inferior direito  -->
-                <Ellipse
-                    Width="400"
-                    Height="400"
-                    Margin="0,0,-80,-80"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Bottom"
-                    Opacity="0.10">
-                    <Ellipse.Fill>
-                        <RadialGradientBrush>
-                            <GradientStop Offset="0" Color="#6366F1" />
-                            <GradientStop Offset="1" Color="Transparent" />
-                        </RadialGradientBrush>
-                    </Ellipse.Fill>
-                </Ellipse>
-
-                <!--  Conteúdo de branding  -->
-                <StackPanel
-                    Margin="80,0,60,0"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
-
-                    <!--  Logo box  -->
-                    <Border
-                        Width="68"
-                        Height="68"
-                        Margin="0,0,0,24"
-                        HorizontalAlignment="Left"
-                        Background="#2563EB"
-                        CornerRadius="16">
-                        <Border.Effect>
-                            <DropShadowEffect
-                                BlurRadius="20"
-                                Opacity="0.32"
-                                ShadowDepth="5"
-                                Color="#2563EB" />
-                        </Border.Effect>
-                        <Image
-                            Width="40"
-                            Height="40"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            RenderOptions.BitmapScalingMode="HighQuality"
-                            Source="Resources/Icon.bmp" />
-                    </Border>
-
-                    <!--  Nome do app  -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
                     <TextBlock
-                        Margin="0,0,0,12"
-                        FontFamily="Segoe UI"
-                        FontSize="34"
-                        FontWeight="Bold"
-                        Foreground="#0F172A"
+                        FontSize="28"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimary}"
                         Text="CredentialProviderAPP" />
 
-                    <!--  Subtítulo  -->
                     <TextBlock
-                        MaxWidth="380"
-                        Margin="0,0,0,40"
-                        FontFamily="Segoe UI"
-                        FontSize="15"
-                        Foreground="#64748B"
-                        LineHeight="26"
-                        Text="Autenticação segura em dois fatores&#x0a;para o seu ambiente corporativo."
-                        TextWrapping="Wrap" />
-
-                    <!--  Badge TOTP  -->
-                    <StackPanel Margin="0,0,0,12" Orientation="Horizontal">
-                        <Border
-                            Padding="14,7"
-                            Background="#EFF6FF"
-                            BorderBrush="#BFDBFE"
-                            BorderThickness="1"
-                            CornerRadius="20">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock
-                                    Margin="0,0,7,0"
-                                    VerticalAlignment="Center"
-                                    FontSize="13"
-                                    Text="🔒" />
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI"
-                                    FontSize="12"
-                                    FontWeight="Medium"
-                                    Foreground="#1D4ED8"
-                                    Text="TOTP · Google Authenticator" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-
-                    <!--  Badge AD  -->
-                    <StackPanel Orientation="Horizontal">
-                        <Border
-                            Padding="14,7"
-                            Background="#F0FDF4"
-                            BorderBrush="#BBF7D0"
-                            BorderThickness="1"
-                            CornerRadius="20">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock
-                                    Margin="0,0,7,0"
-                                    VerticalAlignment="Center"
-                                    FontSize="13"
-                                    Text="✅" />
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI"
-                                    FontSize="12"
-                                    FontWeight="Medium"
-                                    Foreground="#15803D"
-                                    Text="Integrado ao Active Directory" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-
+                        Margin="0,4,0,0"
+                        FontSize="13"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Configuração de autenticação em dois fatores" />
                 </StackPanel>
             </Grid>
+        </Border>
 
-            <!--
-                ══════════════════════════════════════
-                LADO DIREITO — card de login
-                ══════════════════════════════════════
-            -->
+        <!--  CONTENT  -->
+        <Grid Grid.Row="1" Margin="28">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="1.15*" />
+            </Grid.ColumnDefinitions>
+
+            <!--  ESQUERDA  -->
             <Border
-                Grid.Column="1"
-                Background="White"
-                BorderBrush="#E2E8F0"
-                BorderThickness="1,0,0,0">
-                <Border.Effect>
-                    <DropShadowEffect
-                        BlurRadius="40"
-                        Direction="180"
-                        Opacity="0.08"
-                        ShadowDepth="0" />
-                </Border.Effect>
+                Grid.Column="0"
+                Padding="26"
+                Background="{StaticResource BgCard}"
+                BorderBrush="{StaticResource BorderSoft}"
+                BorderThickness="1"
+                CornerRadius="14">
 
-                <Grid>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
 
-                    <!--  Faixa de cor no topo  -->
-                    <Border Height="5" VerticalAlignment="Top">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Offset="0" Color="#2563EB" />
-                                <GradientStop Offset="1" Color="#6366F1" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-
-                    <!--  Formulário centralizado  -->
-                    <StackPanel
-                        Width="340"
-                        Margin="0,20,0,20"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
-
-                        <!--  Título do card  -->
-                        <TextBlock
-                            x:Name="lblTitulo"
-                            Margin="0,0,0,8"
-                            HorizontalAlignment="Center"
-                            FontFamily="Segoe UI"
-                            FontSize="24"
-                            FontWeight="Bold"
-                            Foreground="#0F172A"
-                            Text="Bem-vindo de volta" />
-
-                        <!--  Mensagem dinâmica  -->
                         <TextBlock
                             x:Name="lblMensagem"
-                            Margin="0,0,0,32"
-                            HorizontalAlignment="Center"
-                            FontFamily="Segoe UI"
-                            FontSize="13"
-                            Foreground="#64748B"
-                            Text="Acesse sua conta para gerenciar credenciais"
-                            TextAlignment="Center"
+                            Margin="0,0,0,18"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimary}"
+                            Text="Digite o usuário"
                             TextWrapping="Wrap" />
 
-                        <!--  Label + Input usuário  -->
+                        <!--  USUÁRIO  -->
                         <TextBlock
-                            Margin="0,0,0,8"
-                            FontFamily="Segoe UI"
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Foreground="#475569"
-                            Text="Digite o usuário" />
+                            Margin="0,0,0,6"
+                            FontSize="13"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Usuário" />
 
-                        <TextBox
-                            x:Name="txtUser"
-                            Margin="0,0,0,16"
-                            Style="{StaticResource ModernInput}" />
+                        <StackPanel Margin="0,0,0,18" Orientation="Horizontal">
+                            <TextBox
+                                x:Name="txtUser"
+                                Width="280"
+                                Margin="0,0,10,0"
+                                Style="{StaticResource ModernTextBox}" />
 
-                        <!--  Botão Entrar  -->
-                        <Button
-                            x:Name="btnBuscar"
-                            Margin="0,0,0,12"
-                            Click="BuscarUsuario_Click"
-                            Style="{StaticResource BtnPrimary}">
-                            <StackPanel Orientation="Horizontal">
+                            <Button
+                                x:Name="btnBuscar"
+                                Width="110"
+                                Click="BuscarUsuario_Click"
+                                Content="Buscar"
+                                Style="{StaticResource PrimaryButton}" />
+                        </StackPanel>
+
+                        <!--  ESCOLHA DO MÉTODO  -->
+                        <Border
+                            x:Name="panelMetodo"
+                            Margin="0,0,0,18"
+                            Padding="18"
+                            Background="{StaticResource BgSoft}"
+                            BorderBrush="{StaticResource BorderSoft}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Visibility="Collapsed">
+
+                            <StackPanel>
                                 <TextBlock
-                                    Margin="0,0,8,0"
-                                    VerticalAlignment="Center"
-                                    Text="Entrar" />
-                            </StackPanel>
-                        </Button>
+                                    Margin="0,0,0,12"
+                                    FontSize="15"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimary}"
+                                    Text="Escolha como deseja configurar o MFA" />
 
-                        <!--  Botão Gerar QR  -->
+                                <RadioButton
+                                    x:Name="rbAuthenticator"
+                                    Checked="MetodoMfa_Checked"
+                                    Content="Aplicativo autenticador (QR Code)"
+                                    GroupName="MetodoMfa"
+                                    Style="{StaticResource MethodRadio}" />
+
+                                <RadioButton
+                                    x:Name="rbSms"
+                                    Checked="MetodoMfa_Checked"
+                                    Content="SMS"
+                                    GroupName="MetodoMfa"
+                                    Style="{StaticResource MethodRadio}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock
+                            x:Name="lblMetodoInfo"
+                            Margin="0,0,0,16"
+                            FontSize="13"
+                            Foreground="{StaticResource TextSecondary}"
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
+
+                        <!--  QR  -->
+                        <Border
+                            x:Name="panelQr"
+                            Margin="0,0,0,18"
+                            Padding="18"
+                            Background="#FFFFFF"
+                            CornerRadius="12"
+                            Visibility="Collapsed">
+                            <Grid>
+                                <Image
+                                    x:Name="imgQR"
+                                    Width="240"
+                                    Height="240"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
                         <Button
                             x:Name="btnGerarQR"
                             Margin="0,0,0,12"
                             Click="GerarQR_Click"
-                            Style="{StaticResource BtnSecondary}"
-                            Visibility="Collapsed">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock
-                                    Margin="0,0,8,0"
-                                    VerticalAlignment="Center"
-                                    FontSize="15"
-                                    Text="⿻" />
-                                <TextBlock VerticalAlignment="Center" Text="Gerar QR Code" />
-                            </StackPanel>
-                        </Button>
+                            Content="Gerar QR Code novamente"
+                            Style="{StaticResource SecondaryButton}"
+                            Visibility="Collapsed" />
 
-                        <!--  Links rodapé  -->
+                        <Button
+                            x:Name="btnEnviarSms"
+                            Margin="0,0,0,12"
+                            Click="EnviarSms_Click"
+                            Content="Enviar código por SMS"
+                            Style="{StaticResource PrimaryButton}"
+                            Visibility="Collapsed" />
+
+                        <!--  CÓDIGO  -->
+                        <TextBlock
+                            x:Name="lblCodigo"
+                            Margin="0,6,0,6"
+                            FontSize="13"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Código de verificação"
+                            Visibility="Collapsed" />
+
+                        <TextBox
+                            x:Name="txtCode"
+                            Margin="0,0,0,12"
+                            HorizontalContentAlignment="Center"
+                            FontSize="22"
+                            MaxLength="6"
+                            Style="{StaticResource ModernTextBox}"
+                            Visibility="Collapsed" />
+
+                        <Button
+                            x:Name="btnValidar"
+                            Click="ValidarCodigo_Click"
+                            Content="Validar código"
+                            Style="{StaticResource PrimaryButton}"
+                            Visibility="Collapsed" />
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!--  DIREITA  -->
+            <Border
+                Grid.Column="2"
+                Padding="24"
+                Background="{StaticResource BgCard}"
+                BorderBrush="{StaticResource BorderSoft}"
+                BorderThickness="1"
+                CornerRadius="14">
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+
+                        <TextBlock
+                            Margin="0,0,0,16"
+                            FontSize="18"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimary}"
+                            Text="Como configurar" />
+
                         <Border
-                            Height="1"
-                            Margin="0,4,0,14"
-                            Background="#F1F5F9" />
-
-                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                            <TextBlock
-                                FontFamily="Segoe UI"
-                                FontSize="12"
-                                Foreground="#94A3B8">
-                                <Hyperlink Foreground="#94A3B8" TextDecorations="None">
-                                    Esqueceu o usuário?
-                                </Hyperlink>
-                            </TextBlock>
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="#CBD5E1"
-                                Text="  ·  " />
-                            <TextBlock
-                                FontFamily="Segoe UI"
-                                FontSize="12"
-                                Foreground="#94A3B8">
-                                <Hyperlink Foreground="#94A3B8" TextDecorations="None">
-                                    Suporte técnico
-                                </Hyperlink>
-                            </TextBlock>
-                        </StackPanel>
-
-                        <!--  ── QR CODE ──  -->
-                        <Border
-                            x:Name="painelQR"
-                            Margin="0,16,0,0"
+                            Margin="0,0,0,16"
                             Padding="16"
-                            Background="#F8FAFC"
-                            BorderBrush="#E2E8F0"
+                            Background="{StaticResource BgSoft}"
+                            BorderBrush="{StaticResource BorderSoft}"
                             BorderThickness="1"
-                            CornerRadius="12"
-                            Visibility="Collapsed">
+                            CornerRadius="10">
                             <StackPanel>
                                 <TextBlock
-                                    Margin="0,0,0,12"
-                                    HorizontalAlignment="Center"
-                                    FontFamily="Segoe UI"
-                                    FontSize="12"
+                                    FontSize="15"
                                     FontWeight="SemiBold"
-                                    Foreground="#475569"
-                                    Text="Escaneie com o Google Authenticator" />
-                                <Image
-                                    x:Name="imgQR"
-                                    Width="200"
-                                    Height="200"
-                                    HorizontalAlignment="Center"
-                                    RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                                    Foreground="{StaticResource TextPrimary}"
+                                    Text="Opção 1: Aplicativo autenticador" />
+
+                                <TextBlock
+                                    Margin="0,10,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="1. Abra a App Store ou Play Store no seu celular."
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="2. Procure por Google Authenticator ou Microsoft Authenticator."
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="3. Instale o aplicativo autenticador."
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="4. Escaneie o QR Code exibido nesta tela."
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="5. Digite o código gerado pelo app para concluir."
+                                    TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
-                        <!--  ── CÓDIGO OTP ──  -->
-                        <StackPanel
-                            x:Name="painelCodigo"
-                            Margin="0,16,0,0"
-                            Visibility="Collapsed">
+                        <Border
+                            Margin="0,0,0,16"
+                            Padding="16"
+                            Background="{StaticResource BgSoft}"
+                            BorderBrush="{StaticResource BorderSoft}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                            <StackPanel>
+                                <TextBlock
+                                    FontSize="15"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimary}"
+                                    Text="Opção 2: SMS" />
 
-                            <TextBlock
-                                Margin="0,0,0,8"
-                                FontFamily="Segoe UI"
-                                FontSize="12"
-                                FontWeight="SemiBold"
-                                Foreground="#475569"
-                                Text="Código de verificação" />
+                                <TextBlock
+                                    Margin="0,10,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="1. Selecione a opção SMS."
+                                    TextWrapping="Wrap" />
 
-                            <TextBox
-                                x:Name="txtCode"
-                                Margin="0,0,0,14"
-                                MaxLength="6"
-                                Style="{StaticResource OtpInput}" />
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="2. Clique em Enviar código por SMS."
+                                    TextWrapping="Wrap" />
 
-                            <Button
-                                x:Name="btnValidar"
-                                Click="ValidarCodigo_Click"
-                                Style="{StaticResource BtnPrimary}">
-                                <TextBlock VerticalAlignment="Center" Text="Verificar código" />
-                            </Button>
-                        </StackPanel>
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="3. Digite o código recebido no seu celular."
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="4. Clique em Validar código para finalizar."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Padding="16"
+                            Background="#132238"
+                            BorderBrush="#28476F"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                            <StackPanel>
+                                <TextBlock
+                                    FontSize="15"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="Dica" />
+
+                                <TextBlock
+                                    Margin="0,10,0,0"
+                                    FontSize="13"
+                                    Foreground="#D5E6FF"
+                                    Text="Caso prefira mais segurança e praticidade no dia a dia, use um aplicativo autenticador. O SMS pode ser usado como alternativa."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
 
                     </StackPanel>
-
-                    <!--  Rodapé do card  -->
-                    <TextBlock
-                        Margin="0,0,0,18"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Bottom"
-                        FontFamily="Segoe UI"
-                        FontSize="11"
-                        Foreground="#CBD5E1">
-                        © 2026 CredentialProvider System
-                    </TextBlock>
-
-                </Grid>
+                </ScrollViewer>
             </Border>
-
         </Grid>
-    </Border>
+    </Grid>
 </Window>

@@ -1,5 +1,5 @@
-using CredentialProviderAPP.Models;
-using System.IO;
+using CredentialProviderAPP.Models.Api;
+using CredentialProviderAPP.Utils;
 using System.Windows;
 using System.Windows.Input;
 
@@ -7,16 +7,16 @@ namespace CredentialProviderAPP.Views
 {
     public partial class RegraSenhaWindow : Window
     {
-        private readonly string policyPath =
-            Path.Combine(
-                Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty,
-                "password_policy.txt");
-
         private bool policyExists = false;
 
         public RegraSenhaWindow()
         {
             InitializeComponent();
+            Loaded += RegraSenhaWindow_Loaded;
+        }
+
+        private void RegraSenhaWindow_Loaded(object sender, RoutedEventArgs e)
+        {
             CheckExistingPolicy();
         }
 
@@ -29,82 +29,87 @@ namespace CredentialProviderAPP.Views
 
         private void CheckExistingPolicy()
         {
-            if (File.Exists(policyPath))
-            {
-                policyExists = true;
-
-                ModernMessageBox.Show(
-                    "Regra de senha encontrada. Visualize ou edite abaixo.",
-                    "Política encontrada",
-                    ModernMessageBox.Kind.Info,
-                    this);
-
-                lblBtnSalvar.Text = "Atualizar";
-
-                LoadPolicy();
-            }
-            else
-            {
-                var r = ModernMessageBox.ShowYesNo(
-                    "Nenhuma regra de senha foi encontrada.\nDeseja criar uma agora?",
-                    "Política de senha",
-                    ModernMessageBox.Kind.Warning,
-                    this);
-
-                if (r != MessageBoxResult.Yes)
-                    Close();
-            }
-        }
-
-        private void LoadPolicy()
-        {
             try
             {
-                var lines = File.ReadAllLines(policyPath);
+                var policy = PasswordPolicyFileHelper.Load();
 
-                if (lines.Length < 6)
+                if (policy != null)
                 {
-                    ModernMessageBox.Show(
-                        "O arquivo de política está inválido ou corrompido.",
-                        "Erro", ModernMessageBox.Kind.Error, this);
+                    policyExists = true;
+
+                    MessageBox.Show(
+                        "Regra de senha encontrada.\nClique OK para visualizar ou editar.",
+                        "Política encontrada",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    btnSalvar.Content = "Atualizar";
+                    LoadPolicy(policy);
                     return;
                 }
 
-                var policy = new PasswordPolicy
-                {
-                    MinLength = int.Parse(lines[0]),
-                    MinSpecialChars = int.Parse(lines[1]),
-                    AllowedSpecialChars = lines[2],
-                    RequireUppercase = bool.Parse(lines[3]),
-                    RequireLowercase = bool.Parse(lines[4]),
-                    RequireNumber = bool.Parse(lines[5])
-                };
+                policyExists = false;
+                btnSalvar.Content = "Salvar";
 
+                MessageBox.Show(
+                    "Regra de senha não encontrada.\nA tela será aberta em branco para criar uma nova.",
+                    "Política de senha",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                ClearFields();
+            }
+            catch (Exception ex)
+            {
+                policyExists = false;
+                btnSalvar.Content = "Salvar";
+                ClearFields();
+
+                MessageBox.Show(
+                    "Erro ao carregar política: " + ex.Message + "\nA tela será aberta em branco.",
+                    "Erro",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private void LoadPolicy(PasswordPolicyConfig policy)
+        {
+            try
+            {
                 txtTamanhoSenha.Text = policy.MinLength.ToString();
                 txtQtdEspecial.Text = policy.MinSpecialChars.ToString();
-                txtCaracteres.Text = policy.AllowedSpecialChars;
+                txtCaracteres.Text = policy.AllowedSpecialChars ?? string.Empty;
+
                 chkMaiuscula.IsChecked = policy.RequireUppercase;
                 chkMinuscula.IsChecked = policy.RequireLowercase;
                 chkNumero.IsChecked = policy.RequireNumber;
             }
-            catch
+            catch (Exception ex)
             {
-                ModernMessageBox.Show(
-                    "Erro ao carregar a política de senha.",
-                    "Erro", ModernMessageBox.Kind.Error, this);
+                ClearFields();
+                MessageBox.Show("Erro ao aplicar a política na tela: " + ex.Message);
             }
+        }
+
+        private void ClearFields()
+        {
+            txtTamanhoSenha.Text = string.Empty;
+            txtQtdEspecial.Text = "0";
+            txtCaracteres.Text = string.Empty;
+
+            chkMaiuscula.IsChecked = false;
+            chkMinuscula.IsChecked = false;
+            chkNumero.IsChecked = false;
         }
 
         private void Salvar_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                // Valida tamanho mínimo
-                if (!int.TryParse(txtTamanhoSenha.Text, out int tamanho) || tamanho <= 0)
+                if (!int.TryParse(txtTamanhoSenha.Text?.Trim(), out int tamanho) || tamanho <= 0)
                 {
-                    ModernMessageBox.Show(
-                        "Informe um tamanho mínimo válido (número maior que zero).",
-                        "Atenção", ModernMessageBox.Kind.Warning, this);
+                    MessageBox.Show("Informe um tamanho mínimo válido.");
                     txtTamanhoSenha.Focus();
                     return;
                 }
@@ -113,37 +118,31 @@ namespace CredentialProviderAPP.Views
                 int especiais = 0;
                 if (!string.IsNullOrWhiteSpace(txtQtdEspecial.Text))
                 {
-                    if (!int.TryParse(txtQtdEspecial.Text, out especiais) || especiais < 0)
+                    if (!int.TryParse(txtQtdEspecial.Text.Trim(), out especiais) || especiais < 0)
                     {
-                        ModernMessageBox.Show(
-                            "Quantidade de caracteres especiais inválida.",
-                            "Atenção", ModernMessageBox.Kind.Warning, this);
+                        MessageBox.Show("Quantidade de caracteres especiais inválida.");
                         txtQtdEspecial.Focus();
                         return;
                     }
                 }
 
-                string caracteres = txtCaracteres.Text;
+                string caracteres = txtCaracteres.Text?.Trim() ?? string.Empty;
 
-                if (string.IsNullOrWhiteSpace(caracteres) && especiais > 0)
+                if (especiais > 0 && string.IsNullOrWhiteSpace(caracteres))
                 {
-                    ModernMessageBox.Show(
-                        "Informe os caracteres especiais permitidos.",
-                        "Atenção", ModernMessageBox.Kind.Warning, this);
+                    MessageBox.Show("Informe os caracteres especiais permitidos.");
                     txtCaracteres.Focus();
                     return;
                 }
 
-                if (caracteres.Any(char.IsLetterOrDigit))
+                if (!string.IsNullOrEmpty(caracteres) && caracteres.Any(char.IsLetterOrDigit))
                 {
-                    ModernMessageBox.Show(
-                        "Caracteres especiais não podem conter letras ou números.",
-                        "Atenção", ModernMessageBox.Kind.Warning, this);
+                    MessageBox.Show("Caracteres especiais não podem conter letras ou números.");
                     txtCaracteres.Focus();
                     return;
                 }
 
-                var policy = new PasswordPolicy
+                var policy = new PasswordPolicyConfig
                 {
                     MinLength = tamanho,
                     MinSpecialChars = especiais,
@@ -153,19 +152,10 @@ namespace CredentialProviderAPP.Views
                     RequireNumber = chkNumero.IsChecked == true
                 };
 
-                string[] data =
-                {
-                    policy.MinLength.ToString(),
-                    policy.MinSpecialChars.ToString(),
-                    policy.AllowedSpecialChars,
-                    policy.RequireUppercase.ToString(),
-                    policy.RequireLowercase.ToString(),
-                    policy.RequireNumber.ToString()
-                };
-
-                File.WriteAllLines(policyPath, data);
+                PasswordPolicyFileHelper.Save(policy);
 
                 policyExists = true;
+                btnSalvar.Content = "Atualizar";
 
                 ModernMessageBox.Show(
                     "Política de senha salva com sucesso.",

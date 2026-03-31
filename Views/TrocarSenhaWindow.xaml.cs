@@ -1,4 +1,5 @@
-﻿using CredentialProviderAPP.Models;
+﻿using CredentialProviderAPP.Config;
+using CredentialProviderAPP.Models;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
@@ -22,6 +23,7 @@ namespace CredentialProviderAPP.Views
         public bool Confirmado { get; private set; } = false;
 
         public string SenhaGerada { get; private set; } = "";
+        public bool SomenteForcarTrocaNoProximoLogin { get; private set; } = false;
 
         // ── política carregada ────────────────────────────────────────
         private int _minLength = 8;
@@ -113,7 +115,7 @@ namespace CredentialProviderAPP.Views
             if (n == 1)
                 txtEmail.Text = !string.IsNullOrWhiteSpace(_usuarios[0].Email)
                     ? _usuarios[0].Email
-                    : "EMAIL-Não-Informado";
+                    : "";
         }
 
         // ══════════════════════════════════════════════════════════════
@@ -317,13 +319,19 @@ namespace CredentialProviderAPP.Views
             AtualizarValidador(SenhaGerada);
         }
 
-        // ══════════════════════════════════════════════════════════════
-        //  CONFIRMAR — envia e-mail(s)
-        // ══════════════════════════════════════════════════════════════
         private async void BtnConfirmar_Click(object sender, RoutedEventArgs e)
         {
             btnConfirmar.IsEnabled = false;
-            btnConfirmar.Content = "Enviando…";
+
+            if (SomenteForcarTrocaNoProximoLogin)
+            {
+                Confirmado = true;
+                SenhaGerada = "";
+                Close();
+                return;
+            }
+
+            txtBtnConfirmar.Text = "Enviando...";
 
             string email = txtEmail.Text.Trim();
 
@@ -332,6 +340,7 @@ namespace CredentialProviderAPP.Views
                 await Task.Run(() => EnviarEmails(email, SenhaGerada));
 
                 Confirmado = true;
+
                 ModernMessageBox.Show(
                     $"✅ Senha enviada com sucesso para: {email}\n\n" +
                     $"O(s) usuário(s) deve(m) alterar a senha no próximo acesso.",
@@ -348,9 +357,47 @@ namespace CredentialProviderAPP.Views
                     "Atenção",
                     ModernMessageBox.Kind.Warning);
 
-                // Ainda assim considera confirmado (AD já foi configurado antes de abrir esta janela)
-                Confirmado = true;
-                Close();
+                btnConfirmar.IsEnabled = true;
+                txtBtnConfirmar.Text = "Enviar e confirmar";
+            }
+        }
+
+        private void ChkSomenteForcarTroca_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            SomenteForcarTrocaNoProximoLogin = chkSomenteForcarTroca.IsChecked == true;
+
+            bool modoSenha = !SomenteForcarTrocaNoProximoLogin;
+
+            // Campos principais
+            txtEmail.IsEnabled = modoSenha;
+            pwdSenha.IsEnabled = modoSenha;
+            txtSenhaVisivel.IsEnabled = modoSenha;
+            btnRegerar.IsEnabled = modoSenha;
+            btnMostrarSenha.IsEnabled = modoSenha;
+
+            // Requisitos visuais
+            rowLength.Visibility = modoSenha ? Visibility.Visible : Visibility.Collapsed;
+            rowUpper.Visibility = modoSenha && _exigirMaiuscula ? Visibility.Visible : Visibility.Collapsed;
+            rowLower.Visibility = modoSenha && _exigirMinuscula ? Visibility.Visible : Visibility.Collapsed;
+            rowNumber.Visibility = modoSenha && _exigirNumero ? Visibility.Visible : Visibility.Collapsed;
+            rowSpecial.Visibility = modoSenha && _minEspeciais > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            // Barra de força
+            barForca1.Visibility = modoSenha ? Visibility.Visible : Visibility.Collapsed;
+            barForca2.Visibility = modoSenha ? Visibility.Visible : Visibility.Collapsed;
+            barForca3.Visibility = modoSenha ? Visibility.Visible : Visibility.Collapsed;
+            barForca4.Visibility = modoSenha ? Visibility.Visible : Visibility.Collapsed;
+            lblForca.Visibility = modoSenha ? Visibility.Visible : Visibility.Collapsed;
+
+            if (SomenteForcarTrocaNoProximoLogin)
+            {
+                txtBtnConfirmar.Text = "Confirmar";
+                btnConfirmar.IsEnabled = true;
+            }
+            else
+            {
+                txtBtnConfirmar.Text = "Enviar e confirmar";
+                AtualizarValidador(SenhaGerada);
             }
         }
 
@@ -358,83 +405,90 @@ namespace CredentialProviderAPP.Views
         //  ENVIO DE E-MAIL (SMTP)
         //  Configurações lidas de appsettings.json → seção "Email"
         // ══════════════════════════════════════════════════════════════
+
         private void EnviarEmails(string emailDestino, string senha)
         {
-            // ── Lê configurações do appsettings.json ─────────────────
             string smtpHost = ConfigHelper.Get("Email:SmtpHost");
-            int smtpPort = int.TryParse(ConfigHelper.Get("Email:SmtpPort"), out int p) ? p : 587;
-            bool enableSsl = !string.Equals(ConfigHelper.Get("Email:EnableSsl"), "false", StringComparison.OrdinalIgnoreCase);
+            int smtpPort = ConfigHelper.GetInt("Email:SmtpPort", 587);
+            bool enableSsl = ConfigHelper.GetBool("Email:EnableSsl", true);
             string smtpUser = ConfigHelper.Get("Email:Usuario");
             string smtpPassword = ConfigHelper.Get("Email:Senha");
-            string remetenteName = ConfigHelper.Get("Email:NomeRemetente");
+            string remetenteName = ConfigHelper.GetOptional("Email:NomeRemetente", "CredentialProviderAPP");
 
-            // Valida se as configurações foram preenchidas
-            if (string.IsNullOrWhiteSpace(smtpHost) || smtpHost == "smtp.seuprovedor.com")
-                throw new InvalidOperationException(
-                    "Configure a seção \"Email\" no appsettings.json antes de enviar e-mails.\n" +
-                    "Preencha: SmtpHost, SmtpPort, EnableSsl, Usuario, Senha, NomeRemetente.");
+            if (string.IsNullOrWhiteSpace(smtpHost))
+                throw new InvalidOperationException("Email:SmtpHost não configurado.");
 
-            if (string.IsNullOrWhiteSpace(smtpUser) || string.IsNullOrWhiteSpace(smtpPassword))
-                throw new InvalidOperationException(
-                    "As credenciais de e-mail (Email:Usuario e Email:Senha) não estão configuradas no appsettings.json.");
-            // ─────────────────────────────────────────────────────────
+            if (string.IsNullOrWhiteSpace(smtpUser))
+                throw new InvalidOperationException("Email:Usuario não configurado.");
+
+            if (string.IsNullOrWhiteSpace(smtpPassword))
+                throw new InvalidOperationException("Email:Senha não configurada.");
+
+            var destinatarios = emailDestino
+                .Split(',', ';')
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x) && x.Contains('@'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!destinatarios.Any())
+                throw new InvalidOperationException("Nenhum destinatário de e-mail válido foi informado.");
 
             string logins = string.Join(", ", _usuarios.Select(u => u.Login));
             string plural = _usuarios.Count > 1 ? "s" : "";
 
             string assunto = "Sua senha temporária — CredentialProviderAPP";
             string corpo = $@"
-                <html>
-                <body style='font-family:Segoe UI,Arial,sans-serif;color:#1A1D23;max-width:560px;margin:auto'>
-                  <div style='background:#2563EB;padding:28px 32px;border-radius:12px 12px 0 0'>
-                    <h2 style='color:white;margin:0;font-size:20px'>CredentialProviderAPP</h2>
-                    <p style='color:#BFD4FF;margin:6px 0 0;font-size:13px'>Sistema de Gestão de Credenciais</p>
-                  </div>
-                  <div style='background:white;padding:32px;border:1px solid #E8ECF0;border-top:none;border-radius:0 0 12px 12px'>
-                    <h3 style='margin:0 0 16px;font-size:17px'>Senha temporária definida</h3>
-                    <p style='color:#6B7280;font-size:13px;line-height:1.6'>
-                      O administrador do sistema definiu uma senha temporária para o{plural} usuário{plural}
-                      <strong>{logins}</strong>. Use-a no próximo acesso e altere imediatamente.
-                    </p>
+<html>
+<body style='font-family:Segoe UI,Arial,sans-serif;color:#1A1D23;max-width:560px;margin:auto'>
+  <div style='background:#2563EB;padding:28px 32px;border-radius:12px 12px 0 0'>
+    <h2 style='color:white;margin:0;font-size:20px'>CredentialProviderAPP</h2>
+    <p style='color:#BFD4FF;margin:6px 0 0;font-size:13px'>Sistema de Gestão de Credenciais</p>
+  </div>
 
-                    <div style='background:#F8FAFC;border:1px solid #E8ECF0;border-radius:8px;
-                                padding:16px 20px;margin:20px 0;text-align:center'>
-                      <p style='margin:0 0 4px;font-size:11px;color:#9CA3AF;letter-spacing:1px'>SENHA TEMPORÁRIA</p>
-                      <p style='margin:0;font-size:22px;font-weight:bold;font-family:Consolas,monospace;
-                                letter-spacing:4px;color:#1A1D23'>{senha}</p>
-                    </div>
+  <div style='background:white;padding:32px;border:1px solid #E8ECF0;border-top:none;border-radius:0 0 12px 12px'>
+    <h3 style='margin:0 0 16px;font-size:17px'>Senha temporária definida</h3>
 
-                    <p style='color:#EF4444;font-size:12px'>
-                      ⚠️ Por segurança, você <strong>deve alterar esta senha</strong> imediatamente após o login.
-                    </p>
+    <p style='color:#6B7280;font-size:13px;line-height:1.6'>
+      O administrador do sistema definiu uma senha temporária para o{plural} usuário{plural}
+      <strong>{logins}</strong>. Use-a no próximo acesso e altere imediatamente.
+    </p>
 
-                    <hr style='border:none;border-top:1px solid #E8ECF0;margin:24px 0'/>
-                    <p style='color:#9CA3AF;font-size:11px;margin:0'>
-                      Este é um e-mail automático gerado pelo CredentialProviderAPP.<br/>
-                      Não responda a este e-mail.
-                    </p>
-                  </div>
-                </body>
-                </html>";
+    <div style='background:#F8FAFC;border:1px solid #E8ECF0;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:center'>
+      <p style='margin:0 0 4px;font-size:11px;color:#9CA3AF;letter-spacing:1px'>SENHA TEMPORÁRIA</p>
+      <p style='margin:0;font-size:22px;font-weight:bold;font-family:Consolas,monospace;letter-spacing:4px;color:#1A1D23'>{senha}</p>
+    </div>
 
-            using var smtp = new SmtpClient(smtpHost, smtpPort);
-            smtp.EnableSsl = enableSsl;
-            smtp.Credentials = new NetworkCredential(smtpUser, smtpPassword);
+    <p style='color:#EF4444;font-size:12px'>
+      ⚠️ Por segurança, você <strong>deve alterar esta senha</strong> imediatamente após o login.
+    </p>
 
-            using var msg = new MailMessage();
-            msg.From = new MailAddress(smtpUser, remetenteName);
-            msg.Subject = assunto;
-            msg.Body = corpo;
-            msg.IsBodyHtml = true;
+    <hr style='border:none;border-top:1px solid #E8ECF0;margin:24px 0'/>
+    <p style='color:#9CA3AF;font-size:11px;margin:0'>
+      Este é um e-mail automático gerado pelo CredentialProviderAPP.<br/>
+      Não responda a este e-mail.
+    </p>
+  </div>
+</body>
+</html>";
 
-            // Múltiplos destinatários: separa por vírgula no campo de e-mail
-            foreach (var addr in emailDestino.Split(',', ';')
-                                             .Select(s => s.Trim())
-                                             .Where(s => s.Contains('@')))
+            using var smtp = new SmtpClient(smtpHost, smtpPort)
+            {
+                EnableSsl = enableSsl,
+                Credentials = new NetworkCredential(smtpUser, smtpPassword),
+                DeliveryMethod = SmtpDeliveryMethod.Network
+            };
+
+            using var msg = new MailMessage
+            {
+                From = new MailAddress(smtpUser, remetenteName),
+                Subject = assunto,
+                Body = corpo,
+                IsBodyHtml = true
+            };
+
+            foreach (var addr in destinatarios)
                 msg.To.Add(addr);
-
-            if (msg.To.Count == 0)
-                throw new Exception("Nenhum endereço de e-mail válido informado.");
 
             smtp.Send(msg);
         }

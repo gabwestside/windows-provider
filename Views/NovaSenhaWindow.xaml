@@ -7,12 +7,12 @@
     Height="780"
     AllowsTransparency="True"
     Background="#EEF0F4"
+    Loaded="Window_Loaded"
     ResizeMode="NoResize"
     ShowInTaskbar="False"
     Topmost="True"
     WindowStartupLocation="CenterScreen"
-    WindowStyle="None"
-    Loaded="Window_Loaded">
+    WindowStyle="None">
 
     <Window.Resources>
 
@@ -27,7 +27,7 @@
         <SolidColorBrush x:Key="RuleOk" Color="#22C55E" />
         <SolidColorBrush x:Key="RuleFail" Color="#EF4444" />
 
-        <!--  ══ PASSWORDBOX MODERNO ══  -->
+        <!--  PASSWORDBOX  -->
         <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
             <Setter Property="Background" Value="White" />
             <Setter Property="Foreground" Value="#1A1D23" />
@@ -63,7 +63,7 @@
             </Setter>
         </Style>
 
-        <!--  ══ BOTÃO PRIMÁRIO ══  -->
+        <!--  BOTÃO  -->
         <Style x:Key="BtnPrimary" TargetType="Button">
             <Setter Property="Background" Value="#7B93D1" />
             <Setter Property="Foreground" Value="White" />
@@ -101,10 +101,9 @@
 
     </Window.Resources>
 
-    <!--  Fundo clicável para arrastar  -->
     <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
 
-        <!--  ══ FUNDO ══  -->
+        <!--  FUNDO  -->
         <Border
             Background="{StaticResource BgPage}"
             BorderBrush="{StaticResource BorderColor}"
@@ -118,7 +117,7 @@
             </Border.Effect>
         </Border>
 
-        <!--  ══ CONTEÚDO CENTRAL ══  -->
+        <!--  CONTEÚDO CENTRAL  -->
         <Grid VerticalAlignment="Center">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -185,7 +184,7 @@
                         Text="Crie uma senha forte para proteger sua conta."
                         TextAlignment="Center" />
 
-                    <!--  Senha  -->
+                    <!--  SENHA  -->
                     <TextBlock
                         Margin="0,0,0,6"
                         FontFamily="Segoe UI"
@@ -197,27 +196,21 @@
                     <PasswordBox
                         x:Name="txtSenha"
                         Margin="0,0,0,18"
+                        KeyDown="Senha_KeyDown"
+                        LostFocus="Senha_LostFocus"
                         PasswordChanged="SenhaChanged"
                         Style="{StaticResource ModernPasswordBox}" />
 
-                    <!--  Confirmar  -->
-                    <TextBlock
-                        Margin="0,0,0,6"
-                        FontFamily="Segoe UI"
-                        FontSize="13"
-                        FontWeight="Medium"
-                        Foreground="{StaticResource TextSecondary}"
-                        Text="Confirmação da nova senha:" />
-
+                    <!--  CONFIRMAR  -->
                     <PasswordBox
                         x:Name="txtConfirmar"
                         Margin="0,0,0,24"
+                        KeyDown="Senha_KeyDown"
+                        LostFocus="Senha_LostFocus"
                         PasswordChanged="SenhaChanged"
                         Style="{StaticResource ModernPasswordBox}" />
 
                     <!--  REGRAS  -->
-                    <!--  (mantive exatamente seu bloco original)  -->
-
                     <Border
                         Margin="0,0,0,22"
                         Padding="16,14"
@@ -235,7 +228,6 @@
                                 FontWeight="SemiBold"
                                 Foreground="{StaticResource TextMuted}"
                                 Text="REQUISITOS DA SENHA" />
-
 
                             <!--  ruleLength  -->
                             <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
@@ -333,14 +325,16 @@
                                     Width="16"
                                     Height="16"
                                     Margin="0,0,10,0"
-                                    VerticalAlignment="Center"
+                                    VerticalAlignment="Top"
                                     Fill="{StaticResource RuleNeutral}" />
                                 <TextBlock
                                     x:Name="ruleBlacklist"
+                                    MaxWidth="300"
                                     VerticalAlignment="Center"
                                     FontFamily="Segoe UI"
                                     FontSize="13"
-                                    Foreground="{StaticResource TextSecondary}" />
+                                    Foreground="{StaticResource TextSecondary}"
+                                    TextWrapping="Wrap" />
                             </StackPanel>
 
                             <!--  ruleMatch  -->
@@ -357,17 +351,31 @@
                                     Fill="{StaticResource RuleNeutral}" />
                                 <TextBlock
                                     x:Name="ruleMatch"
+                                    MaxWidth="300"
                                     VerticalAlignment="Center"
                                     FontFamily="Segoe UI"
                                     FontSize="13"
                                     FontWeight="Medium"
-                                    Foreground="{StaticResource TextSecondary}" />
+                                    Foreground="{StaticResource TextSecondary}"
+                                    TextWrapping="Wrap" />
                             </StackPanel>
 
                         </StackPanel>
                     </Border>
 
-                    <!--  Botão salvar  -->
+                    <!--  STATUS OPCIONAL  -->
+                    <TextBlock
+                        x:Name="txtStatusValidacao"
+                        Margin="0,0,0,12"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI"
+                        FontSize="12"
+                        FontStyle="Italic"
+                        Foreground="{StaticResource TextMuted}"
+                        Text=""
+                        Visibility="Collapsed" />
+
+                    <!--  BOTÃO  -->
                     <Button
                         x:Name="btnSalvar"
                         Click="Salvar_Click"
@@ -377,7 +385,7 @@
                 </StackPanel>
             </Border>
 
-            <!--  ── RODAPÉ ──  -->
+            <!--  RODAPÉ  -->
             <TextBlock
                 Grid.Row="4"
                 HorizontalAlignment="Center"
@@ -387,7 +395,7 @@
                 Text="© 2023 CredentialProvider System - Todos os direitos reservados." />
         </Grid>
 
-        <!--  ═════════ BOTÃO X ═════════  -->
+        <!--  BOTÃO X  -->
         <Button
             Width="34"
             Height="34"
@@ -407,6 +415,48 @@
                 Foreground="#6B7280"
                 Text="✕" />
         </Button>
+
+        <!--  OVERLAY DE LOADING  -->
+        <Grid
+            x:Name="overlayLoading"
+            Panel.ZIndex="1000"
+            Background="#80FFFFFF"
+            Visibility="Collapsed">
+
+            <Border
+                Width="260"
+                Padding="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="White"
+                BorderBrush="{StaticResource BorderColor}"
+                BorderThickness="1"
+                CornerRadius="12">
+
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="18"
+                        Opacity="0.12"
+                        ShadowDepth="3" />
+                </Border.Effect>
+
+                <StackPanel>
+                    <ProgressBar
+                        Width="200"
+                        Height="8"
+                        Margin="0,0,0,12"
+                        IsIndeterminate="True" />
+
+                    <TextBlock
+                        x:Name="txtLoading"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI"
+                        FontSize="13"
+                        Foreground="{StaticResource TextSecondary}"
+                        Text="Carregando..." />
+                </StackPanel>
+            </Border>
+        </Grid>
 
     </Grid>
 </Window>

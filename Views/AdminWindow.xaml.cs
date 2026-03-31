@@ -7,6 +7,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Security.Principal;
+using CredentialProviderAPP.Helpers;
+using CredentialProviderAPP.Config;
 
 namespace CredentialProviderAPP.Views
 {
@@ -29,6 +32,7 @@ namespace CredentialProviderAPP.Views
         }
 
         private void MostrarLoading() => LoadingOverlay.Visibility = Visibility.Visible;
+
         private void OcultarLoading() => LoadingOverlay.Visibility = Visibility.Collapsed;
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -47,15 +51,6 @@ namespace CredentialProviderAPP.Views
                 menu.Placement = PlacementMode.Bottom;
                 menu.IsOpen = true;
             }
-        }
-
-        private DirectoryEntry CriarConexaoAD()
-        {
-            string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-            string usuario = ConfigHelper.Get("ActiveDirectory:Usuario");
-            string senha = ConfigHelper.Get("ActiveDirectory:Senha");
-
-            return new DirectoryEntry(ldap, usuario, senha);
         }
 
         private void ChkSelectAll_Click(object sender, RoutedEventArgs e)
@@ -143,7 +138,6 @@ namespace CredentialProviderAPP.Views
             var nums = new string(texto.Where(char.IsDigit).ToArray());
             return int.TryParse(nums, out int r) ? r : 0;
         }
-
 
         // ══════════════════════════════════════════════════════════════
         //  BUSCA AD
@@ -322,8 +316,6 @@ namespace CredentialProviderAPP.Views
             }.ShowDialog();
         }
 
-
-
         private async void AtivarMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
@@ -346,9 +338,6 @@ namespace CredentialProviderAPP.Views
             await BuscarUsuariosAsync(txtPesquisa.Text); // ← era AtualizarGrid()
         }
 
-
-
-
         private static string ObterStatusMFA(string? valor)
         {
             if (string.IsNullOrWhiteSpace(valor))
@@ -366,7 +355,7 @@ namespace CredentialProviderAPP.Views
 
             try
             {
-                using var root = CriarConexaoAD();
+                using var root = ActiveDirectoryHelper.CriarConexaoAD();
                 using var search = new DirectorySearcher(root)
                 {
                     Filter = "(&(objectCategory=person)(objectClass=user))",
@@ -434,7 +423,7 @@ namespace CredentialProviderAPP.Views
             try
             {
                 string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-                using var root = CriarConexaoAD();
+                using var root = ActiveDirectoryHelper.CriarConexaoAD();
 
                 foreach (var user in usuarios)
                 {
@@ -470,10 +459,12 @@ namespace CredentialProviderAPP.Views
 
         private void ResetarMFA(List<UsuarioViewModel> usuarios)
         {
+            int ok = 0;
+            int fail = 0;
+
             try
             {
-                string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-                using var root = CriarConexaoAD();
+                using var root = ActiveDirectoryHelper.CriarConexaoAD();
 
                 foreach (var user in usuarios)
                 {
@@ -487,15 +478,21 @@ namespace CredentialProviderAPP.Views
                         };
 
                         var result = searcher.FindOne();
-                        if (result == null) continue;
+                        if (result == null)
+                        {
+                            fail++;
+                            continue;
+                        }
 
                         using var entry = result.GetDirectoryEntry();
-                        entry.Properties["info"].Value = "setup"; // ← era extensionAttribute1
+                        entry.Properties["info"].Value = "setup";
                         entry.CommitChanges();
+                        ok++;
                     }
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine(ex.Message);
+                        fail++;
                     }
                 }
 
@@ -512,7 +509,7 @@ namespace CredentialProviderAPP.Views
             try
             {
                 string ldap = ConfigHelper.Get("ActiveDirectory:LDAP");
-                using var root = CriarConexaoAD();
+                using var root = ActiveDirectoryHelper.CriarConexaoAD();
 
                 foreach (var user in usuarios)
                 {
@@ -585,6 +582,56 @@ namespace CredentialProviderAPP.Views
         // ══════════════════════════════════════════════════════════════
         //  TROCAR SENHA NO PRÓXIMO LOGIN
         // ══════════════════════════════════════════════════════════════
+
+        private bool EstaNoControladorDeDominio()
+        {
+            try
+            {
+                var domain = Domain.GetComputerDomain();
+                string computerName = Environment.MachineName;
+
+                return domain.DomainControllers
+                    .Cast<DomainController>()
+                    .Any(dc => dc.Name.Equals(computerName, StringComparison.OrdinalIgnoreCase) ||
+                               dc.Name.StartsWith(computerName + ".", StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool UsarCredencialAtualDoWindows()
+        {
+            return EstaNoControladorDeDominio() && UsuarioEhAdministradorWindows();
+        }
+
+        private bool UsuarioEhAdministradorWindows()
+        {
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            WindowsPrincipal principal = new WindowsPrincipal(identity);
+
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
+        private PrincipalContext CriarContextoDominio()
+        {
+            string domFQDN = ConfigHelper.Get("ActiveDirectory:Domain");
+
+            if (UsarCredencialAtualDoWindows())
+            {
+                return new PrincipalContext(ContextType.Domain, domFQDN);
+            }
+
+            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
+            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
+
+            return new PrincipalContext(ContextType.Domain, domFQDN, adUser, adSenha);
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  TROCAR SENHA NO PRÓXIMO LOGIN
+        // ══════════════════════════════════════════════════════════════
         private void TrocarSenhaProximoLoginSelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
@@ -618,20 +665,27 @@ namespace CredentialProviderAPP.Views
             var modal = new TrocarSenhaWindow(usuarios) { Owner = this };
             modal.ShowDialog();
 
-            if (!modal.Confirmado) return;
+            if (!modal.Confirmado)
+                return;
 
             MostrarLoading();
-            try { ForcarTrocaSenha(usuarios, modal.SenhaGerada); }
-            finally { OcultarLoading(); }
+
+            try
+            {
+                if (modal.SomenteForcarTrocaNoProximoLogin)
+                    MarcarTrocaSenhaProximoLoginSemAlterarSenha(usuarios);
+                else
+                    ForcarTrocaSenha(usuarios, modal.SenhaGerada);
+            }
+            finally
+            {
+                OcultarLoading();
+            }
         }
 
-        private void ForcarTrocaSenha(List<UsuarioViewModel> usuarios, string senhaNova)
+        private void MarcarTrocaSenhaProximoLoginSemAlterarSenha(List<UsuarioViewModel> usuarios)
         {
             int ok = 0, fail = 0;
-
-            string adUser = ConfigHelper.Get("ActiveDirectory:Usuario");
-            string adSenha = ConfigHelper.Get("ActiveDirectory:Senha");
-            string domFQDN = ConfigHelper.Get("ActiveDirectory:Domain");
 
             foreach (var user in usuarios)
             {
@@ -642,7 +696,70 @@ namespace CredentialProviderAPP.Views
                         using var ctx = new PrincipalContext(ContextType.Machine);
                         var u = UserPrincipal.FindByIdentity(ctx, user.Login);
 
-                        if (u == null) { fail++; continue; }
+                        if (u == null)
+                        {
+                            fail++;
+                            continue;
+                        }
+
+                        u.ExpirePasswordNow();
+                        u.Save();
+                        ok++;
+                    }
+                    else
+                    {
+                        var login = LdapHelper.Escape(LdapHelper.NormalizeLogin(user.Login));
+
+                        using var searcher = new DirectorySearcher(ActiveDirectoryHelper.CriarConexaoAD())
+                        {
+                            Filter = $"(&(objectClass=user)(samAccountName={login}))"
+                        };
+
+                        var result = searcher.FindOne();
+                        if (result == null)
+                        {
+                            fail++;
+                            continue;
+                        }
+
+                        using var entry = result.GetDirectoryEntry();
+                        entry.Properties["pwdLastSet"].Value = 0;
+                        entry.CommitChanges();
+                        ok++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                    fail++;
+                }
+            }
+
+            string msg = $"✅ {ok} usuário(s) marcados para trocar senha no próximo login.";
+            if (fail > 0)
+                msg += $"\nFalha em {fail} usuário(s).";
+
+            MessageBox.Show(msg, "Concluído", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ForcarTrocaSenha(List<UsuarioViewModel> usuarios, string senhaNova)
+        {
+            int ok = 0, fail = 0;
+
+            foreach (var user in usuarios)
+            {
+                try
+                {
+                    if (user.Tipo?.Equals("Local", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        using var ctx = new PrincipalContext(ContextType.Machine);
+                        var u = UserPrincipal.FindByIdentity(ctx, user.Login);
+
+                        if (u == null)
+                        {
+                            fail++;
+                            continue;
+                        }
 
                         u.SetPassword(senhaNova);
                         u.ExpirePasswordNow();
@@ -653,30 +770,34 @@ namespace CredentialProviderAPP.Views
                     {
                         var login = LdapHelper.Escape(LdapHelper.NormalizeLogin(user.Login));
 
-                        // 1️⃣ grava a senha nova via PrincipalContext
-                        using var ctx = new PrincipalContext(ContextType.Domain, domFQDN, adUser, adSenha);
+                        using var ctx = CriarContextoDominio();
                         var u = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, login);
 
-                        if (u == null) { fail++; continue; }
+                        if (u == null)
+                        {
+                            fail++;
+                            continue;
+                        }
 
                         u.SetPassword(senhaNova);
                         u.Save();
 
-                        // 2️⃣ seta pwdLastSet = 0 + limpa MFA
-                        using var searcher = new DirectorySearcher(CriarConexaoAD())
+                        using var searcher = new DirectorySearcher(ActiveDirectoryHelper.CriarConexaoAD())
                         {
                             Filter = $"(&(objectClass=user)(samAccountName={login}))"
                         };
-                        var result = searcher.FindOne();
 
-                        if (result == null) { fail++; continue; }
+                        var result = searcher.FindOne();
+                        if (result == null)
+                        {
+                            fail++;
+                            continue;
+                        }
 
                         using var entry = result.GetDirectoryEntry();
 
-                        // força troca no próximo login
                         entry.Properties["pwdLastSet"].Value = 0;
 
-                        // ✅ zera MFA — usuário vai reconfigurar após trocar a senha
                         if (entry.Properties.Contains("info"))
                             entry.Properties["info"].Clear();
 
@@ -693,10 +814,9 @@ namespace CredentialProviderAPP.Views
 
             string msg = $"✅ {ok} usuário(s) configurados para trocar senha no próximo login.";
             if (fail > 0)
-                msg += $"\n⚠️ {fail} usuário(s) não puderam ser processados.";
+                msg += $"\nFalha em {fail} usuário(s).";
 
-            MessageBox.Show(msg, "Trocar Senha no Próximo Login",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(msg, "Concluído", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // ══════════════════════════════════════════════════════════════
@@ -709,6 +829,7 @@ namespace CredentialProviderAPP.Views
             if (chkUsuariosLocais.IsChecked == true) lista.AddRange(_usuariosLocais);
             return lista;
         }
+
         private async void ResetarMFASelecionados_Click(object sender, RoutedEventArgs e)
         {
             var sel = dgUsuarios.SelectedItems.Cast<UsuarioViewModel>().ToList();
