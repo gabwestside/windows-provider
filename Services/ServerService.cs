@@ -63,6 +63,7 @@ namespace CredentialProviderAPP.Services
                 if (path == "/mfa/status" && req.HttpMethod == "GET")
                 {
                     string login = req.QueryString["login"] ?? "";
+                    string clientMachine = req.QueryString["clientMachine"] ?? "";
 
                     if (string.IsNullOrWhiteSpace(login))
                     {
@@ -87,9 +88,21 @@ namespace CredentialProviderAPP.Services
                         return;
                     }
 
+                    // 🔥 NOVO: verifica se pode pular MFA
+                    if (PodePularMfa(result, clientMachine))
+                    {
+                        await ResponderJson(res, 200, new MfaStatusResponse
+                        {
+                            Sucesso = true,
+                            Status = "Trusted",
+                            Metodo = "trusted"
+                        });
+                        return;
+                    }
+
                     string info = ObterPropriedade(result, "info");
                     string status = ObterStatusMfa(info);
-                    string metodo = ExtrairMetodo(info); // novo
+                    string metodo = ExtrairMetodo(info);
 
                     await ResponderJson(res, 200, new MfaStatusResponse
                     {
@@ -338,7 +351,6 @@ namespace CredentialProviderAPP.Services
                     }
                 }
 
-
                 if (path == "/mfa/validate" && req.HttpMethod == "POST")
                 {
                     ValidateMfaRequest? data;
@@ -401,7 +413,6 @@ namespace CredentialProviderAPP.Services
                             return;
                         }
 
-                        // --- BIFURCAÇÃO SMS vs TOTP ---
                         bool isSms = data.Metodo?.Equals("sms", StringComparison.OrdinalIgnoreCase) == true;
 
                         if (isSms)
@@ -410,21 +421,31 @@ namespace CredentialProviderAPP.Services
 
                             if (!validoSms)
                             {
-                                await ResponderJson(res, 200, new ValidateMfaResponse { Sucesso = true, Valido = false });
+                                await ResponderJson(res, 200, new ValidateMfaResponse
+                                {
+                                    Sucesso = true,
+                                    Valido = false
+                                });
                                 return;
                             }
 
-                            if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+                            if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase) ||
+                                info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase))
                             {
                                 using var entry = CriarEntryComCredenciais(result.Path);
                                 entry.Properties["info"].Value = $"active-sms:{secret}";
                                 entry.CommitChanges();
                             }
 
-                            await ResponderJson(res, 200, new ValidateMfaResponse { Sucesso = true, Valido = true });
+                            SalvarMaquinaConfiavel(result, data.Login, data.ClientMachine, "sms");
+
+                            await ResponderJson(res, 200, new ValidateMfaResponse
+                            {
+                                Sucesso = true,
+                                Valido = true
+                            });
                             return;
                         }
-                        // --- FIM BIFURCAÇÃO ---
 
                         bool valido = ValidarTotp(secret, data.Codigo);
 
@@ -438,12 +459,15 @@ namespace CredentialProviderAPP.Services
                             return;
                         }
 
-                        if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+                        if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase) ||
+                            info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase))
                         {
                             using var entry = CriarEntryComCredenciais(result.Path);
-                            entry.Properties["info"].Value = $"active-sms:{secret}";
+                            entry.Properties["info"].Value = $"active-app:{secret}";
                             entry.CommitChanges();
                         }
+
+                        SalvarMaquinaConfiavel(result, data.Login, data.ClientMachine, "app");
 
                         await ResponderJson(res, 200, new ValidateMfaResponse
                         {
@@ -454,10 +478,12 @@ namespace CredentialProviderAPP.Services
                     }
                     catch (Exception ex)
                     {
+                        File.WriteAllText(@"C:\CredentialProvider\erro.txt", ex.ToString());
+
                         await ResponderJson(res, 500, new ValidateMfaResponse
                         {
                             Sucesso = false,
-                            Erro = "Erro ao validar MFA: " + ex.Message
+                            Erro = ex.Message
                         });
                         return;
                     }
@@ -967,38 +993,50 @@ namespace CredentialProviderAPP.Services
             if (string.IsNullOrWhiteSpace(info))
                 return null;
 
-            // novo formato
+            string valor;
+
             if (info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase))
-                return info["pending-app:".Length..].Trim();
-
-            if (info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase))
-                return info["pending-sms:".Length..].Trim();
-
-            if (info.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase))
-                return info["active-app:".Length..].Trim();
-
-            if (info.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase))
-                return info["active-sms:".Length..].Trim();
-
-            // retrocompatibilidade com formato antigo
-            if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
-                return info["pending:".Length..].Trim();
-
-            if (info.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
-                return info["active:".Length..].Trim();
-
-            if (string.Equals(info, "setup", StringComparison.OrdinalIgnoreCase))
+                valor = info["pending-app:".Length..].Trim();
+            else if (info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase))
+                valor = info["pending-sms:".Length..].Trim();
+            else if (info.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase))
+                valor = info["active-app:".Length..].Trim();
+            else if (info.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase))
+                valor = info["active-sms:".Length..].Trim();
+            else if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+                valor = info["pending:".Length..].Trim();
+            else if (info.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
+                valor = info["active:".Length..].Trim();
+            else if (string.Equals(info, "setup", StringComparison.OrdinalIgnoreCase))
                 return null;
+            else
+                valor = info.Trim();
 
-            return info.Trim();
+            int pipe = valor.IndexOf('|');
+            if (pipe >= 0)
+                valor = valor[..pipe].Trim();
+
+            return string.IsNullOrWhiteSpace(valor) ? null : valor;
         }
 
         private static string ExtrairMetodo(string info)
         {
+            if (string.IsNullOrWhiteSpace(info))
+                return "app";
+
+            if (info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase))
+                return "sms";
+
+            if (info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase))
+                return "app";
+
+            // retrocompatibilidade com formato antigo
             if (info.Contains("-sms:", StringComparison.OrdinalIgnoreCase))
                 return "sms";
 
-            return "app"; // padrão
+            return "app";
         }
 
         private static string GerarSecretBase32(int numBytes = 20)
@@ -1185,6 +1223,71 @@ namespace CredentialProviderAPP.Services
             string json = JsonSerializer.Serialize(payload);
             byte[] buffer = Encoding.UTF8.GetBytes(json);
             await res.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+        }
+
+        private static void SalvarMaquinaConfiavel(SearchResult result, string login, string? clientMachine, string? metodoForcado = null)
+        {
+            string maquina = string.IsNullOrWhiteSpace(clientMachine)
+                ? "UNKNOWN"
+                : clientMachine.Trim();
+
+            string servidor = Environment.MachineName;
+
+            int dias = 1;
+            if (int.TryParse(ConfigHelper.Get("Mfa:TrustedMachineDays"), out int d))
+                dias = d;
+
+            string expira = DateTime.UtcNow.AddDays(dias).ToString("o");
+
+            using var entry = CriarEntryComCredenciais(result.Path);
+
+            string infoAtual = entry.Properties["info"].Value?.ToString() ?? "";
+            string? secret = ExtrairSecret(infoAtual);
+
+            if (string.IsNullOrWhiteSpace(secret))
+                throw new InvalidOperationException("Não foi possível salvar máquina confiável: secret MFA não encontrado.");
+
+            string metodo = !string.IsNullOrWhiteSpace(metodoForcado)
+                ? metodoForcado.Trim().ToLowerInvariant()
+                : ExtrairMetodo(infoAtual);
+
+            string prefixo = metodo == "sms"
+                ? "active-sms:"
+                : "active-app:";
+
+            entry.Properties["info"].Value = $"{prefixo}{secret}|{maquina}|{servidor}|{expira}";
+            entry.CommitChanges();
+        }
+
+        private static bool PodePularMfa(SearchResult result, string? clientMachine)
+        {
+            string info = ObterPropriedade(result, "info");
+
+            if (string.IsNullOrWhiteSpace(info))
+                return false;
+
+            var partes = info.Split('|');
+
+            if (partes.Length < 4)
+                return false;
+
+            string maquina = partes[^3];
+            string servidor = partes[^2];
+            string expiraStr = partes[^1];
+
+            if (!DateTime.TryParse(expiraStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var expira))
+                return false;
+
+            if (expira < DateTime.UtcNow)
+                return false;
+
+            string maquinaAtual = string.IsNullOrWhiteSpace(clientMachine)
+                ? "UNKNOWN"
+                : clientMachine.Trim();
+
+            string servidorAtual = Environment.MachineName;
+
+            return maquina == maquinaAtual && servidor == servidorAtual;
         }
     }
 }

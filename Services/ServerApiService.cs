@@ -37,11 +37,15 @@ namespace CredentialProviderAPP.Services
             };
         }
 
-        public static async Task<MfaStatusResponse> ObterStatusMfaAsync(string login)
+        public static async Task<MfaStatusResponse> ObterStatusMfaAsync(string login, string clientMachine = "")
         {
             using var httpClient = CreateHttpClient();
 
-            var response = await httpClient.GetAsync($"mfa/status?login={Uri.EscapeDataString(login)}");
+            string url = string.IsNullOrWhiteSpace(clientMachine)
+                ? $"mfa/status?login={Uri.EscapeDataString(login)}"
+                : $"mfa/status?login={Uri.EscapeDataString(login)}&clientMachine={Uri.EscapeDataString(clientMachine)}";
+
+            var response = await httpClient.GetAsync(url);
 
             var result = await response.Content.ReadFromJsonAsync<MfaStatusResponse>();
             return result ?? new MfaStatusResponse
@@ -50,7 +54,6 @@ namespace CredentialProviderAPP.Services
                 Erro = $"Erro HTTP {(int)response.StatusCode}"
             };
         }
-
 
         public static async Task<DefaultApiResponse> TrocarSenhaAsync(string login, string novaSenha)
         {
@@ -122,7 +125,11 @@ namespace CredentialProviderAPP.Services
             return result ?? new DefaultApiResponse { Sucesso = false, Erro = "Resposta inválida." };
         }
 
-        public static async Task<ValidateMfaResponse> ValidarCodigoMfaAsync(string login, string codigo, string metodo = "app")
+        public static async Task<ValidateMfaResponse> ValidarCodigoMfaAsync(
+      string login,
+      string codigo,
+      string metodo = "app",
+      string clientMachine = "")
         {
             using var httpClient = CreateHttpClient();
 
@@ -130,14 +137,19 @@ namespace CredentialProviderAPP.Services
             {
                 Login = login,
                 Codigo = codigo,
-                Metodo = metodo
+                Metodo = metodo,
+                ClientMachine = clientMachine
             };
 
             var response = await httpClient.PostAsJsonAsync("mfa/validate", request);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<ValidateMfaResponse>();
-            return result ?? new ValidateMfaResponse { Sucesso = false, Erro = "Resposta inválida do servidor." };
+            return result ?? new ValidateMfaResponse
+            {
+                Sucesso = false,
+                Erro = "Resposta inválida do servidor."
+            };
         }
 
         public static async Task<PasswordPolicyResponse> ObterPoliticaSenhaAsync()

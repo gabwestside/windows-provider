@@ -13,13 +13,14 @@ public partial class VerificarCodigoWindow : Window
 {
     private readonly string login;
     private readonly string metodo; // "sms" ou "app"
+    private readonly string clientMachine;
     private bool autenticado = false;
     private bool mostrandoDialog = false;
     private bool _verificando = false;
 
     public bool CodigoValidado => autenticado;
 
-    public VerificarCodigoWindow(string login, string metodo = "app")
+    public VerificarCodigoWindow(string login, string metodo = "app", string clientMachine = "")
     {
         InitializeComponent();
 
@@ -27,6 +28,8 @@ public partial class VerificarCodigoWindow : Window
         this.metodo = string.IsNullOrWhiteSpace(metodo)
             ? "app"
             : metodo.Trim().ToLowerInvariant();
+
+        this.clientMachine = clientMachine?.Trim().Trim('"') ?? "";
 
         Topmost = true;
         ShowInTaskbar = false;
@@ -154,7 +157,11 @@ public partial class VerificarCodigoWindow : Window
             txtCode.IsEnabled = false;
 
             var metodoValidacao = metodo == "sms" ? "sms" : "app";
-            var response = await ServerApiService.ValidarCodigoMfaAsync(login, code, metodoValidacao);
+            var response = await ServerApiService.ValidarCodigoMfaAsync(
+                login,
+                code,
+                metodoValidacao,
+                clientMachine);
 
             if (!response.Sucesso)
             {
@@ -205,7 +212,6 @@ public partial class VerificarCodigoWindow : Window
             }
             catch (InvalidOperationException)
             {
-                // ignorado: janela não modal
             }
         }
     }

@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     private readonly AppMode _modo;
 
     private string metodoSelecionado = ""; // "app" ou "sms"
-
+    private readonly string _clientMachine = "";
 
     public MainWindow()
     {
@@ -30,11 +30,12 @@ public partial class MainWindow : Window
         _modo = AppMode.Default;
     }
 
-    public MainWindow(string login, AppMode modo)
+    public MainWindow(string login, AppMode modo, string clientMachine = "")
     {
         InitializeComponent();
 
         _modo = modo;
+        _clientMachine = clientMachine?.Trim().Trim('"') ?? "";
 
         if (string.IsNullOrWhiteSpace(login))
         {
@@ -55,12 +56,22 @@ public partial class MainWindow : Window
     {
         try
         {
-            var statusResponse = await ServerApiService.ObterStatusMfaAsync(login);
+            string maquinaOrigem = _clientMachine;
+
+            var statusResponse = await ServerApiService.ObterStatusMfaAsync(
+                login,
+                maquinaOrigem);
 
             if (!statusResponse.Sucesso)
             {
                 MostrarMensagem(statusResponse.Erro ?? "Erro ao consultar status do MFA.");
                 Environment.Exit(1);
+                return;
+            }
+
+            if (statusResponse.Status == "Trusted")
+            {
+                Environment.Exit(0);
                 return;
             }
 
@@ -138,7 +149,7 @@ a autenticação em dois fatores.";
             metodoSelecionado = "app";
 
             lblMetodoInfo.Text =
-    @"Você escolheu aplicativo autenticador.
+@"Você escolheu aplicativo autenticador.
 
 Escaneie o QR Code e depois informe
 o código gerado no aplicativo.";
@@ -159,7 +170,6 @@ o código gerado no aplicativo.";
             if (!string.IsNullOrWhiteSpace(otpAuthUrlAtual))
                 ExibirQrCode(otpAuthUrlAtual);
         }
-
         else if (rbSms.IsChecked == true)
         {
             metodoSelecionado = "sms";
@@ -175,6 +185,7 @@ o código gerado no aplicativo.";
             _ = AtualizarInfoTelefoneAsync();
         }
     }
+
     private bool _atualizandoTelefone = false;
     private const string MascaraTelefone = "(__) _____-____";
 
@@ -395,15 +406,13 @@ o código gerado no aplicativo.";
                 return;
             }
 
-            btnValidar.IsEnabled = false;
-            txtCode.IsEnabled = false;
+            string maquinaOrigem = _clientMachine;
 
-            // Por enquanto mantém a validação existente.
-            // Depois, no backend, você pode separar:
-            // - ValidarCodigoMfaAsync para app autenticador
-            // - ValidarCodigoSmsAsync para SMS
-
-            var response = await ServerApiService.ValidarCodigoMfaAsync(username, code, metodoSelecionado);
+            var response = await ServerApiService.ValidarCodigoMfaAsync(
+                username,
+                code,
+                metodoSelecionado,
+                maquinaOrigem);
 
             if (!response.Sucesso)
             {
@@ -471,10 +480,7 @@ o código gerado no aplicativo.";
                 panelCadastroTelefone.Visibility = Visibility.Collapsed;
                 btnEnviarSms.Visibility = Visibility.Visible;
 
-                // 🔥 NOVO: verifica status do código
                 var status = await ServerApiService.ObterStatusSmsAsync(loginAtual);
-
-                // 🔥 AQUI É O QUE TU QUERIA
                 btnEnviarSms.IsEnabled = status.PodeEnviar;
             }
         }
