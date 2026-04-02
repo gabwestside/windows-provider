@@ -44,14 +44,19 @@
                 Height="38"
                 Margin="0,0,0,12"
                 HorizontalContentAlignment="Center"
+                DataObject.Pasting="TxtCode_Pasting"
                 FontSize="20"
-                MaxLength="6" />
+                MaxLength="6"
+                PreviewTextInput="TxtCode_PreviewTextInput"
+                TextChanged="TxtCode_TextChanged" />
 
             <Button
                 x:Name="btnVerificar"
                 Height="36"
                 Click="Verificar_Click"
-                Content="Verificar" />
+                Content="Verificar"
+                IsDefault="True"
+                IsEnabled="False" />
         </StackPanel>
     </Grid>
 </Window>

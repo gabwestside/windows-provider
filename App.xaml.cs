@@ -22,26 +22,75 @@ namespace CredentialProviderAPP
             {
                 var mode = GetStartupMode(e.Args);
                 var login = GetStartupLogin(e.Args);
+                var clientMachine = GetStartupClientMachine(e.Args);
 
                 switch (mode)
                 {
                     case AppMode.CheckMfa:
                         {
-                            int result = VerificarMfaSilencioso(login);
+                            int result = VerificarMfaSilencioso(login, clientMachine);
                             Environment.Exit(result);
                             return;
                         }
 
                     case AppMode.Mfa:
                         {
-                            var verificarWindow = new VerificarCodigoWindow(login);
-                            verificarWindow.Show();
+                            File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] AppMode.Mfa iniciado. login={login} clientMachine={clientMachine}{Environment.NewLine}");
+
+                            string metodo = "app";
+
+                            try
+                            {
+                                string baseUrl = ConfigHelper.Get("Server:BaseUrl");
+                                string url = $"{baseUrl.TrimEnd('/')}/mfa/status?login={Uri.EscapeDataString(login)}&clientMachine={Uri.EscapeDataString(clientMachine)}";
+
+                                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                                var httpResp = client.GetAsync(url).GetAwaiter().GetResult();
+                                string json = httpResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+                                File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] status response: {json}{Environment.NewLine}");
+
+                                using var doc = JsonDocument.Parse(json);
+                                var root = doc.RootElement;
+
+                                string status = root.TryGetProperty("Status", out var statusProp)
+                                    ? statusProp.GetString() ?? ""
+                                    : "";
+
+                                if (root.TryGetProperty("Metodo", out var metodoProp))
+                                    metodo = metodoProp.GetString() ?? "app";
+
+                                // 🔥 se já estiver trusted, não abre tela nenhuma
+                                if (string.Equals(status, "Trusted", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                        $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] Máquina confiável detectada. Ignorando tela MFA.{Environment.NewLine}");
+
+                                    Environment.Exit(0);
+                                    return;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] erro ao obter status/metodo: {ex.Message}{Environment.NewLine}");
+                            }
+
+                            File.AppendAllText(@"C:\CredentialProvider\app_debug.txt",
+                                $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] metodo={metodo}, abrindo janela{Environment.NewLine}");
+
+                            var verificarWindow = new VerificarCodigoWindow(login, metodo, clientMachine);
+                            bool? ok = verificarWindow.ShowDialog();
+
+                            Environment.Exit(verificarWindow.CodigoValidado ? 0 : 1);
                             return;
                         }
 
                     case AppMode.Setup:
                         {
-                            var mainWindow = new MainWindow(login, AppMode.Setup);
+                            var mainWindow = new MainWindow(login, AppMode.Setup, clientMachine);
                             mainWindow.Show();
                             return;
                         }
@@ -91,6 +140,13 @@ namespace CredentialProviderAPP
             }
         }
 
+        private static string GetStartupClientMachine(string[] args)
+        {
+            return args != null && args.Length > 2
+                ? args[2].Trim().Trim('"')
+                : string.Empty;
+        }
+
         private static AppMode GetStartupMode(string[] args)
         {
             if (args == null || args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
@@ -115,7 +171,7 @@ namespace CredentialProviderAPP
                 : string.Empty;
         }
 
-        private static int VerificarMfaSilencioso(string login)
+        private static int VerificarMfaSilencioso(string login, string clientMachine)
         {
             try
             {
@@ -126,11 +182,11 @@ namespace CredentialProviderAPP
                 if (string.IsNullOrWhiteSpace(baseUrl))
                     return 3;
 
-                string url = $"{baseUrl.TrimEnd('/')}/mfa/status?login={Uri.EscapeDataString(login)}";
+                string url = $"{baseUrl.TrimEnd('/')}/mfa/status?login={Uri.EscapeDataString(login)}&clientMachine={Uri.EscapeDataString(clientMachine)}";
 
                 File.AppendAllText(
                     @"C:\CredentialProvider\app_debug.txt",
-                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] checkmfa local iniciado. Login={login} URL={url}{Environment.NewLine}"
+                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] checkmfa local iniciado. Login={login} clientMachine={clientMachine} URL={url}{Environment.NewLine}"
                 );
 
                 using var handler = new HttpClientHandler();
@@ -163,6 +219,7 @@ namespace CredentialProviderAPP
 
                 return status switch
                 {
+                    "Trusted" => 0,
                     "Configured" => 0,
                     "Pending" => 1,
                     "NotConfigured" => 2,

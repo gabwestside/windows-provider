@@ -82,7 +82,7 @@
 
     <Grid Background="{StaticResource BgPage}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="86" />
+            <RowDefinition Height="64" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -92,29 +92,28 @@
             Background="#101216"
             BorderBrush="{StaticResource BorderSoft}"
             BorderThickness="0,0,0,1">
-            <Grid Margin="28,16">
+            <Grid Margin="18,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <Image
                     Grid.Column="0"
-                    Width="54"
-                    Height="54"
+                    Width="40"
+                    Height="40"
                     Source="Resources/Icon.bmp" />
 
                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                     <TextBlock
-                        FontSize="28"
+                        FontSize="20"
                         FontWeight="SemiBold"
                         Foreground="{StaticResource TextPrimary}"
                         Text="CredentialProviderAPP" />
-
                     <TextBlock
-                        Margin="0,4,0,0"
-                        FontSize="13"
+                        Margin="0,2,0,0"
+                        FontSize="11"
                         Foreground="{StaticResource TextMuted}"
                         Text="Configuração de autenticação em dois fatores" />
                 </StackPanel>
@@ -143,8 +142,8 @@
 
                         <TextBlock
                             x:Name="lblMensagem"
-                            Margin="0,0,0,18"
-                            FontSize="16"
+                            Margin="0,0,0,10"
+                            FontSize="13"
                             FontWeight="SemiBold"
                             Foreground="{StaticResource TextPrimary}"
                             Text="Digite o usuário"
@@ -152,12 +151,12 @@
 
                         <!--  USUÁRIO  -->
                         <TextBlock
-                            Margin="0,0,0,6"
-                            FontSize="13"
+                            Margin="0,0,0,4"
+                            FontSize="12"
                             Foreground="{StaticResource TextMuted}"
                             Text="Usuário" />
 
-                        <StackPanel Margin="0,0,0,18" Orientation="Horizontal">
+                        <StackPanel Margin="0,0,0,10" Orientation="Horizontal">
                             <TextBox
                                 x:Name="txtUser"
                                 Width="280"
@@ -248,6 +247,43 @@
                             Content="Enviar código por SMS"
                             Style="{StaticResource PrimaryButton}"
                             Visibility="Collapsed" />
+
+
+                        <!--  CADASTRO DE TELEFONE — adicionar aqui  -->
+                        <Border
+                            x:Name="panelCadastroTelefone"
+                            Margin="0,0,0,12"
+                            Padding="16"
+                            Background="{StaticResource BgSoft}"
+                            BorderBrush="{StaticResource BorderSoft}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock
+                                    Margin="0,0,0,8"
+                                    FontSize="13"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Text="Nenhum celular cadastrado. Digite com DDD (ex: 85997319943):"
+                                    TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox
+                                        x:Name="txtTelefone"
+                                        Width="200"
+                                        Margin="0,0,10,0"
+                                        GotFocus="TxtTelefone_GotFocus"
+                                        PreviewKeyDown="TxtTelefone_PreviewKeyDown"
+                                        PreviewTextInput="TxtTelefone_PreviewTextInput"
+                                        Style="{StaticResource ModernTextBox}" />
+                                    <Button
+                                        x:Name="btnSalvarTelefone"
+                                        Width="100"
+                                        Click="SalvarTelefone_Click"
+                                        Content="Salvar"
+                                        Style="{StaticResource PrimaryButton}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
 
                         <!--  CÓDIGO  -->
                         <TextBlock

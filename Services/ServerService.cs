@@ -8,6 +8,13 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using CredentialProviderAPP.Models.Api;
+using CredentialProviderAPP.Utils;
+using CredentialProviderAPP.Helpers;
+using System.Linq;
+using CredentialProviderAPP.Models;
+using CredentialProviderAPP.Services.Sms;
+using CredentialProviderAPP.Models.Api;
 
 namespace CredentialProviderAPP.Services
 {
@@ -58,6 +65,7 @@ namespace CredentialProviderAPP.Services
                 if (path == "/mfa/status" && req.HttpMethod == "GET")
                 {
                     string login = req.QueryString["login"] ?? "";
+                    string clientMachine = req.QueryString["clientMachine"] ?? "";
 
                     if (string.IsNullOrWhiteSpace(login))
                     {
@@ -82,13 +90,27 @@ namespace CredentialProviderAPP.Services
                         return;
                     }
 
+                    // 🔥 NOVO: verifica se pode pular MFA
+                    if (PodePularMfa(result, clientMachine))
+                    {
+                        await ResponderJson(res, 200, new MfaStatusResponse
+                        {
+                            Sucesso = true,
+                            Status = "Trusted",
+                            Metodo = "trusted"
+                        });
+                        return;
+                    }
+
                     string info = ObterPropriedade(result, "info");
                     string status = ObterStatusMfa(info);
+                    string metodo = ExtrairMetodo(info);
 
                     await ResponderJson(res, 200, new MfaStatusResponse
                     {
                         Sucesso = true,
-                        Status = status
+                        Status = status,
+                        Metodo = metodo // novo
                     });
                     return;
                 }
@@ -235,6 +257,102 @@ namespace CredentialProviderAPP.Services
                     }
                 }
 
+                // GET — busca o telefone mascarado
+                if (path == "/mfa/telefone" && req.HttpMethod == "GET")
+                {
+                    string login = req.QueryString["login"] ?? "";
+
+                    if (string.IsNullOrWhiteSpace(login))
+                    {
+                        await ResponderJson(res, 400, new { Sucesso = false, Erro = "Login não informado." });
+                        return;
+                    }
+
+                    using var root = CriarConexaoAD();
+                    var result = BuscarUsuarioNoAD(root, login);
+
+                    if (result == null)
+                    {
+                        await ResponderJson(res, 404, new { Sucesso = false, Erro = "Usuário não encontrado." });
+                        return;
+                    }
+
+                    string telefone = ObterPropriedade(result, "mobile");
+
+                    if (string.IsNullOrWhiteSpace(telefone))
+                    {
+                        await ResponderJson(res, 200, new { Sucesso = true, TemTelefone = false, TelefoneMascarado = "" });
+                        return;
+                    }
+
+                    // Remove +55 e mascara: 997****43
+                    string numero = telefone.Replace("+55", "").Replace(" ", "").Trim();
+                    string mascarado = numero.Length >= 6
+                        ? numero[..3] + new string('*', numero.Length - 6) + numero[^3..]
+                        : numero;
+
+                    await ResponderJson(res, 200, new { Sucesso = true, TemTelefone = true, TelefoneMascarado = mascarado });
+                    return;
+                }
+
+                // POST — salva o telefone no AD
+                if (path == "/mfa/telefone" && req.HttpMethod == "POST")
+                {
+                    try
+                    {
+                        TelefoneRequest? data;
+
+                        using (var reader = new StreamReader(req.InputStream, req.ContentEncoding))
+                        {
+                            string body = await reader.ReadToEndAsync();
+                            File.AppendAllText(@"C:\CredentialProvider\server_error.txt",
+                                $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] /mfa/telefone POST body={body}{Environment.NewLine}");
+                            data = JsonSerializer.Deserialize<TelefoneRequest>(body,
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+
+                        if (data == null || string.IsNullOrWhiteSpace(data.Login) || string.IsNullOrWhiteSpace(data.Telefone))
+                        {
+                            await ResponderJson(res, 400, new DefaultApiResponse { Sucesso = false, Erro = "Dados inválidos." });
+                            return;
+                        }
+
+                        string telefoneFormatado = data.Telefone.Trim();
+                        if (!telefoneFormatado.StartsWith("+"))
+                            telefoneFormatado = "+55" + telefoneFormatado.TrimStart('0');
+
+                        File.AppendAllText(@"C:\CredentialProvider\server_error.txt",
+                            $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] /mfa/telefone salvando. login={data.Login} telefone={telefoneFormatado}{Environment.NewLine}");
+
+                        using var root = CriarConexaoAD();
+                        var result = BuscarUsuarioNoAD(root, data.Login);
+
+                        if (result == null)
+                        {
+                            await ResponderJson(res, 404, new DefaultApiResponse { Sucesso = false, Erro = "Usuário não encontrado." });
+                            return;
+                        }
+
+                        using var entry = CriarEntryComCredenciais(result.Path);
+                        entry.Properties["mobile"].Value = telefoneFormatado;
+                        entry.CommitChanges();
+
+                        File.AppendAllText(@"C:\CredentialProvider\server_error.txt",
+                            $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] /mfa/telefone salvo com sucesso.{Environment.NewLine}");
+
+                        await ResponderJson(res, 200, new DefaultApiResponse { Sucesso = true });
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        File.AppendAllText(@"C:\CredentialProvider\server_error.txt",
+                            $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] ERRO /mfa/telefone POST: {ex}{Environment.NewLine}");
+
+                        await ResponderJson(res, 500, new DefaultApiResponse { Sucesso = false, Erro = ex.Message });
+                        return;
+                    }
+                }
+
                 if (path == "/mfa/validate" && req.HttpMethod == "POST")
                 {
                     ValidateMfaRequest? data;
@@ -297,6 +415,40 @@ namespace CredentialProviderAPP.Services
                             return;
                         }
 
+                        bool isSms = data.Metodo?.Equals("sms", StringComparison.OrdinalIgnoreCase) == true;
+
+                        if (isSms)
+                        {
+                            bool validoSms = SmsMfaService.ValidarCodigo(data.Login, data.Codigo);
+
+                            if (!validoSms)
+                            {
+                                await ResponderJson(res, 200, new ValidateMfaResponse
+                                {
+                                    Sucesso = true,
+                                    Valido = false
+                                });
+                                return;
+                            }
+
+                            if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase) ||
+                                info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase))
+                            {
+                                using var entry = CriarEntryComCredenciais(result.Path);
+                                entry.Properties["info"].Value = $"active-sms:{secret}";
+                                entry.CommitChanges();
+                            }
+
+                            SalvarMaquinaConfiavel(result, data.Login, data.ClientMachine, "sms");
+
+                            await ResponderJson(res, 200, new ValidateMfaResponse
+                            {
+                                Sucesso = true,
+                                Valido = true
+                            });
+                            return;
+                        }
+
                         bool valido = ValidarTotp(secret, data.Codigo);
 
                         if (!valido)
@@ -309,12 +461,15 @@ namespace CredentialProviderAPP.Services
                             return;
                         }
 
-                        if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+                        if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase) ||
+                            info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase))
                         {
                             using var entry = CriarEntryComCredenciais(result.Path);
-                            entry.Properties["info"].Value = $"active:{secret}";
+                            entry.Properties["info"].Value = $"active-app:{secret}";
                             entry.CommitChanges();
                         }
+
+                        SalvarMaquinaConfiavel(result, data.Login, data.ClientMachine, "app");
 
                         await ResponderJson(res, 200, new ValidateMfaResponse
                         {
@@ -325,10 +480,12 @@ namespace CredentialProviderAPP.Services
                     }
                     catch (Exception ex)
                     {
+                        File.WriteAllText(@"C:\CredentialProvider\erro.txt", ex.ToString());
+
                         await ResponderJson(res, 500, new ValidateMfaResponse
                         {
                             Sucesso = false,
-                            Erro = "Erro ao validar MFA: " + ex.Message
+                            Erro = ex.Message
                         });
                         return;
                     }
@@ -359,6 +516,84 @@ namespace CredentialProviderAPP.Services
                         policy.RequireNumber
                     });
                     return;
+                }
+
+                if (path == "/mfa/sms/send" && req.HttpMethod == "POST")
+                {
+                    try
+                    {
+                        SmsSendRequest? data;
+
+                        using (var reader = new StreamReader(req.InputStream, req.ContentEncoding))
+                        {
+                            string body = await reader.ReadToEndAsync();
+                            data = JsonSerializer.Deserialize<SmsSendRequest>(body,
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+
+                        if (data == null || string.IsNullOrWhiteSpace(data.Login))
+                        {
+                            await ResponderJson(res, 400, new DefaultApiResponse
+                            {
+                                Sucesso = false,
+                                Erro = "Login não informado."
+                            });
+                            return;
+                        }
+
+                        // 🔹 VERIFICA SE JÁ EXISTE CÓDIGO VÁLIDO
+                        var (podeEnviar, _) = SmsMfaService.VerificarReenvio(data.Login);
+
+                        if (!podeEnviar)
+                        {
+                            await ResponderJson(res, 200, new
+                            {
+                                Sucesso = true,
+                                CodigoDisponivel = true,
+                                EnviadoAgora = false
+                            });
+                            return;
+                        }
+
+                        using var root = CriarConexaoAD();
+                        var result = BuscarUsuarioNoAD(root, data.Login);
+
+                        if (result == null)
+                        {
+                            await ResponderJson(res, 404, new DefaultApiResponse
+                            {
+                                Sucesso = false,
+                                Erro = "Usuário não encontrado."
+                            });
+                            return;
+                        }
+
+                        string telefone = ObterPropriedade(result, "mobile");
+
+                        if (string.IsNullOrWhiteSpace(telefone))
+                            telefone = "SEM_TELEFONE_CADASTRADO";
+
+                        // 🔹 ENVIA NOVO SMS
+                        await SmsMfaService.EnviarCodigoAsync(data.Login, telefone);
+
+                        await ResponderJson(res, 200, new
+                        {
+                            Sucesso = true,
+                            CodigoDisponivel = true,
+                            EnviadoAgora = true
+                        });
+
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        await ResponderJson(res, 500, new DefaultApiResponse
+                        {
+                            Sucesso = false,
+                            Erro = "Erro ao enviar SMS: " + ex.Message
+                        });
+                        return;
+                    }
                 }
 
                 if (path == "/password/change" && req.HttpMethod == "POST")
@@ -458,6 +693,27 @@ namespace CredentialProviderAPP.Services
                         });
                         return;
                     }
+                }
+
+                // GET — verifica se pode reenviar
+                if (path == "/mfa/sms/status" && req.HttpMethod == "GET")
+                {
+                    string login = req.QueryString["login"] ?? "";
+                    if (string.IsNullOrWhiteSpace(login))
+                    {
+                        await ResponderJson(res, 400, new { Sucesso = false, Erro = "Login não informado." });
+                        return;
+                    }
+
+                    var (podeEnviar, _) = SmsMfaService.VerificarReenvio(login);
+
+                    await ResponderJson(res, 200, new
+                    {
+                        Sucesso = true,
+                        CodigoDisponivel = !podeEnviar,
+                        PodeEnviar = podeEnviar
+                    });
+                    return;
                 }
 
                 if (path == "/password/blacklist" && req.HttpMethod == "GET")
@@ -647,6 +903,7 @@ namespace CredentialProviderAPP.Services
                 s.PropertiesToLoad.Add("mail");
                 s.PropertiesToLoad.Add("description");
                 s.PropertiesToLoad.Add("info");
+                s.PropertiesToLoad.Add("mobile"); // novo
 
                 return s;
             }
@@ -720,10 +977,14 @@ namespace CredentialProviderAPP.Services
             if (string.Equals(info, "setup", StringComparison.OrdinalIgnoreCase))
                 return "Pending";
 
-            if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+            if (info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase)) // retrocompat
                 return "Pending";
 
-            if (info.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
+            if (info.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("active:", StringComparison.OrdinalIgnoreCase)) // retrocompat
                 return "Configured";
 
             return "Configured";
@@ -734,16 +995,50 @@ namespace CredentialProviderAPP.Services
             if (string.IsNullOrWhiteSpace(info))
                 return null;
 
-            if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
-                return info.Substring("pending:".Length).Trim();
+            string valor;
 
-            if (info.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
-                return info.Substring("active:".Length).Trim();
-
-            if (string.Equals(info, "setup", StringComparison.OrdinalIgnoreCase))
+            if (info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase))
+                valor = info["pending-app:".Length..].Trim();
+            else if (info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase))
+                valor = info["pending-sms:".Length..].Trim();
+            else if (info.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase))
+                valor = info["active-app:".Length..].Trim();
+            else if (info.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase))
+                valor = info["active-sms:".Length..].Trim();
+            else if (info.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+                valor = info["pending:".Length..].Trim();
+            else if (info.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
+                valor = info["active:".Length..].Trim();
+            else if (string.Equals(info, "setup", StringComparison.OrdinalIgnoreCase))
                 return null;
+            else
+                valor = info.Trim();
 
-            return info.Trim();
+            int pipe = valor.IndexOf('|');
+            if (pipe >= 0)
+                valor = valor[..pipe].Trim();
+
+            return string.IsNullOrWhiteSpace(valor) ? null : valor;
+        }
+
+        private static string ExtrairMetodo(string info)
+        {
+            if (string.IsNullOrWhiteSpace(info))
+                return "app";
+
+            if (info.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase))
+                return "sms";
+
+            if (info.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase) ||
+                info.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase))
+                return "app";
+
+            // retrocompatibilidade com formato antigo
+            if (info.Contains("-sms:", StringComparison.OrdinalIgnoreCase))
+                return "sms";
+
+            return "app";
         }
 
         private static string GerarSecretBase32(int numBytes = 20)
@@ -930,6 +1225,71 @@ namespace CredentialProviderAPP.Services
             string json = JsonSerializer.Serialize(payload);
             byte[] buffer = Encoding.UTF8.GetBytes(json);
             await res.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+        }
+
+        private static void SalvarMaquinaConfiavel(SearchResult result, string login, string? clientMachine, string? metodoForcado = null)
+        {
+            string maquina = string.IsNullOrWhiteSpace(clientMachine)
+                ? "UNKNOWN"
+                : clientMachine.Trim();
+
+            string servidor = Environment.MachineName;
+
+            int dias = 1;
+            if (int.TryParse(ConfigHelper.Get("Mfa:TrustedMachineDays"), out int d))
+                dias = d;
+
+            string expira = DateTime.UtcNow.AddDays(dias).ToString("o");
+
+            using var entry = CriarEntryComCredenciais(result.Path);
+
+            string infoAtual = entry.Properties["info"].Value?.ToString() ?? "";
+            string? secret = ExtrairSecret(infoAtual);
+
+            if (string.IsNullOrWhiteSpace(secret))
+                throw new InvalidOperationException("Não foi possível salvar máquina confiável: secret MFA não encontrado.");
+
+            string metodo = !string.IsNullOrWhiteSpace(metodoForcado)
+                ? metodoForcado.Trim().ToLowerInvariant()
+                : ExtrairMetodo(infoAtual);
+
+            string prefixo = metodo == "sms"
+                ? "active-sms:"
+                : "active-app:";
+
+            entry.Properties["info"].Value = $"{prefixo}{secret}|{maquina}|{servidor}|{expira}";
+            entry.CommitChanges();
+        }
+
+        private static bool PodePularMfa(SearchResult result, string? clientMachine)
+        {
+            string info = ObterPropriedade(result, "info");
+
+            if (string.IsNullOrWhiteSpace(info))
+                return false;
+
+            var partes = info.Split('|');
+
+            if (partes.Length < 4)
+                return false;
+
+            string maquina = partes[^3];
+            string servidor = partes[^2];
+            string expiraStr = partes[^1];
+
+            if (!DateTime.TryParse(expiraStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var expira))
+                return false;
+
+            if (expira < DateTime.UtcNow)
+                return false;
+
+            string maquinaAtual = string.IsNullOrWhiteSpace(clientMachine)
+                ? "UNKNOWN"
+                : clientMachine.Trim();
+
+            string servidorAtual = Environment.MachineName;
+
+            return maquina == maquinaAtual && servidor == servidorAtual;
         }
     }
 }
