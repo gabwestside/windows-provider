@@ -341,16 +341,26 @@ namespace CredentialProviderAPP.Views
 
 
 
-        private static string ObterStatusMFA(string? valor)
-        {
-            if (string.IsNullOrWhiteSpace(valor))
-                return "Não configurado";
+private static string ObterStatusMFA(string? valor)
+{
+    if (string.IsNullOrWhiteSpace(valor))
+        return "Não configurado";
 
-            if (valor.Equals("setup", StringComparison.OrdinalIgnoreCase))
-                return "Pendente";
+    if (valor.Equals("setup", StringComparison.OrdinalIgnoreCase))
+        return "Pendente";
 
-            return "Ativo";
-        }
+    if (valor.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase) ||
+        valor.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase) ||
+        valor.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+        return "Pendente";
+
+    if (valor.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase) ||
+        valor.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase) ||
+        valor.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
+        return "Ativo";
+
+    return "Não configurado";
+}
 
         private List<UsuarioViewModel> BuscarUsuariosAD(string filtro)
         {

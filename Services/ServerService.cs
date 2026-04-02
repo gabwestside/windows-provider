@@ -89,13 +89,17 @@ namespace CredentialProviderAPP.Services
                     }
 
                     // 🔥 NOVO: verifica se pode pular MFA
+                    // 🔥 verifica se pode pular MFA
                     if (PodePularMfa(result, clientMachine))
                     {
+                        string infoTrusted = ObterPropriedade(result, "info");
+                        string metodoTrusted = ExtrairMetodo(infoTrusted);
+
                         await ResponderJson(res, 200, new MfaStatusResponse
                         {
                             Sucesso = true,
                             Status = "Trusted",
-                            Metodo = "trusted"
+                            Metodo = metodoTrusted
                         });
                         return;
                     }
