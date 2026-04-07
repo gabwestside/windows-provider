@@ -37,6 +37,19 @@ public partial class ResetSenhaWindow : Window
         };
     }
 
+    private void FecharComResultado(bool? resultado)
+    {
+        try
+        {
+            DialogResult = resultado;
+        }
+        catch
+        {
+        }
+
+        Close();
+    }
+
     private async void ResetSenhaWindow_Loaded(object sender, RoutedEventArgs e)
     {
         WindowFocusHelper.ForcarFoco(this, txtCode);
@@ -48,8 +61,7 @@ public partial class ResetSenhaWindow : Window
             if (!response.Sucesso)
             {
                 Mostrar(response.Erro ?? "Erro ao consultar MFA.");
-                DialogResult = false;
-                Close();
+                FecharComResultado(false);
                 return;
             }
 
@@ -58,8 +70,7 @@ public partial class ResetSenhaWindow : Window
                 !string.Equals(response.Status, "Trusted", StringComparison.OrdinalIgnoreCase))
             {
                 Mostrar("MFA precisa estar configurado.");
-                DialogResult = false;
-                Close();
+                FecharComResultado(false);
                 return;
             }
 
@@ -113,8 +124,7 @@ public partial class ResetSenhaWindow : Window
         catch
         {
             Mostrar("Erro ao conectar com o servidor.");
-            DialogResult = false;
-            Close();
+            FecharComResultado(false);
         }
     }
 
@@ -163,31 +173,13 @@ public partial class ResetSenhaWindow : Window
             }
 
             autenticado = true;
-
-            Hide();
-
-            var novaSenha = new NovaSenhaWindow(login);
-            bool? ok = novaSenha.ShowDialog();
-
-            if (ok == true)
-            {
-                fluxoConcluido = true;
-                DialogResult = true;
-                Close();
-                return;
-            }
-
-            // se o usuário cancelar a troca, volta pra tela MFA sem revalidar status
-            Show();
-            Activate();
-            txtCode.Clear();
-            WindowFocusHelper.ForcarFoco(this, txtCode);
+            fluxoConcluido = true;
+            FecharComResultado(true);
+            return;
         }
         catch (Exception ex)
         {
             Mostrar("Erro no fluxo de redefinição: " + ex.Message);
-            Show();
-            Activate();
             txtCode.Focus();
         }
         finally
@@ -213,8 +205,7 @@ public partial class ResetSenhaWindow : Window
     private void Cancelar_Click(object sender, RoutedEventArgs e)
     {
         cancelado = true;
-        DialogResult = false;
-        Close();
+        FecharComResultado(false);
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)
@@ -224,7 +215,12 @@ public partial class ResetSenhaWindow : Window
 
         mostrandoDialog = true;
 
-        var result = MessageBox.Show("Deseja cancelar?", "Cancelar", MessageBoxButton.YesNo);
+        var result = MessageBox.Show(
+            "Deseja cancelar?",
+            "Cancelar",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question
+        );
 
         mostrandoDialog = false;
 
@@ -235,6 +231,16 @@ public partial class ResetSenhaWindow : Window
         }
 
         cancelado = true;
-        DialogResult = false;
+
+        try
+        {
+            DialogResult = false;
+        }
+        catch
+        {
+        }
+
+        // não chama Close() aqui
+        // a janela já está fechando por causa do X
     }
 }

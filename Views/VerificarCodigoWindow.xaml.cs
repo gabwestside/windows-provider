@@ -17,6 +17,8 @@ public partial class VerificarCodigoWindow : Window
     private bool autenticado = false;
     private bool mostrandoDialog = false;
     private bool _verificando = false;
+    private int _tentativasRestantes = 3;
+    private const int MaxTentativas = 3;
 
     public bool CodigoValidado => autenticado;
 
@@ -178,7 +180,24 @@ public partial class VerificarCodigoWindow : Window
                 return;
             }
 
-            MostrarMensagem("Código inválido.", "Validação", MessageBoxImage.Warning);
+            _tentativasRestantes--;
+
+            if (_tentativasRestantes <= 0)
+            {
+                MostrarMensagem(
+                    "Código inválido. Número máximo de tentativas atingido. A sessão será encerrada.",
+                    "MFA",
+                    MessageBoxImage.Warning);
+
+                Close();
+                return;
+            }
+
+            MostrarMensagem(
+                $"Código inválido.\n\nTentativas restantes: {_tentativasRestantes}",
+                "Validação",
+                MessageBoxImage.Warning);
+
             txtCode.Clear();
             txtCode.Focus();
         }
@@ -204,18 +223,17 @@ public partial class VerificarCodigoWindow : Window
     {
         base.OnClosing(e);
 
-        if (!autenticado && this.IsLoaded)
+        if (!autenticado)
         {
-            try
-            {
-                DialogResult = false;
-            }
-            catch (InvalidOperationException)
-            {
-            }
+            _tentativasRestantes = 0; // força logoff
         }
-    }
 
+        try
+        {
+            DialogResult = false;
+        }
+        catch { }
+    }
     private void MostrarMensagem(string msg, string titulo = "Aviso", MessageBoxImage image = MessageBoxImage.Information)
     {
         mostrandoDialog = true;
