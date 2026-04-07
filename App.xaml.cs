@@ -94,15 +94,43 @@ namespace CredentialProviderAPP
                                     File.AppendAllText(@"C:\Temp\app_debug.txt",
                                         $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] Máquina confiável detectada. Ignorando tela MFA.{Environment.NewLine}");
 
-                                    Process.Start(new ProcessStartInfo
-                                    {
-                                        FileName = "calc.exe",
-                                        UseShellExecute = true
-                                    });
+                                    LiberarSessao();
 
                                     Environment.Exit(0);
                                     return;
                                 }
+
+                                if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    File.AppendAllText(@"C:\Temp\app_debug.txt",
+                                        $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] MFA pendente. Abrindo tela de cadastro.{Environment.NewLine}");
+
+                                    var mainWindow = new MainWindow(login, AppMode.Setup, clientMachine);
+                                    bool? setupOk = mainWindow.ShowDialog();
+
+                                    if (setupOk == true)
+                                    {
+                                        LiberarSessao();
+                                        Environment.Exit(0);
+                                        return;
+                                    }
+
+                                    LogoffSessaoAtual();
+                                    Environment.Exit(1);
+                                    return;
+                                }
+
+                                if (string.Equals(status, "NotConfigured", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    File.AppendAllText(@"C:\Temp\app_debug.txt",
+                                        $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] MFA não configurado. Liberando acesso sem MFA.{Environment.NewLine}");
+
+                                    LiberarSessao();
+
+                                    Environment.Exit(0);
+                                    return;
+                                }
+
                             }
                             catch (Exception ex)
                             {
@@ -118,11 +146,7 @@ namespace CredentialProviderAPP
 
                             if (verificarWindow.CodigoValidado)
                             {
-                                Process.Start(new ProcessStartInfo
-                                {
-                                    FileName = "calc.exe",
-                                    UseShellExecute = true
-                                });
+                                LiberarSessao();
 
                                 Environment.Exit(0);
                                 return;
@@ -398,6 +422,22 @@ namespace CredentialProviderAPP
             WindowsPrincipal principal = new WindowsPrincipal(identity);
 
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
+        private static void LiberarSessao()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "calc.exe", // depois você troca aqui
+                    UseShellExecute = true
+                });
+            }
+            catch
+            {
+                // evita crash se der erro ao abrir app
+            }
         }
     }
 }

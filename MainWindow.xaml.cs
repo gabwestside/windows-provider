@@ -428,6 +428,21 @@ o código gerado no aplicativo.";
 
             autenticado = true;
             MostrarMensagem("MFA configurado com sucesso!");
+
+            if (_modo == AppMode.Setup)
+            {
+                try
+                {
+                    DialogResult = true;
+                }
+                catch
+                {
+                }
+
+                Close();
+                return;
+            }
+
             Environment.Exit(0);
         }
         catch (Exception ex)
