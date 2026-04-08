@@ -62,98 +62,7 @@ namespace CredentialProviderAPP
                                 return;
                             }
 
-                            File.AppendAllText(@"C:\Temp\app_debug.txt",
-                                $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] AppMode.Mfa iniciado. login={login} clientMachine={clientMachine}{Environment.NewLine}");
-
-                            string metodo = "app";
-
-                            try
-                            {
-                                string baseUrl = ConfigHelper.Get("Server:BaseUrl");
-                                string url = $"{baseUrl.TrimEnd('/')}/mfa/status?login={Uri.EscapeDataString(login)}&clientMachine={Uri.EscapeDataString(clientMachine)}";
-
-                                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-                                var httpResp = client.GetAsync(url).GetAwaiter().GetResult();
-                                string json = httpResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-
-                                File.AppendAllText(@"C:\Temp\app_debug.txt",
-                                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] status response: {json}{Environment.NewLine}");
-
-                                using var doc = JsonDocument.Parse(json);
-                                var root = doc.RootElement;
-
-                                string status = root.TryGetProperty("Status", out var statusProp)
-                                    ? statusProp.GetString() ?? ""
-                                    : "";
-
-                                if (root.TryGetProperty("Metodo", out var metodoProp))
-                                    metodo = metodoProp.GetString() ?? "app";
-
-                                if (string.Equals(status, "Trusted", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    File.AppendAllText(@"C:\Temp\app_debug.txt",
-                                        $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] Máquina confiável detectada. Ignorando tela MFA.{Environment.NewLine}");
-
-                                    LiberarSessao();
-
-                                    Environment.Exit(0);
-                                    return;
-                                }
-
-                                if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    File.AppendAllText(@"C:\Temp\app_debug.txt",
-                                        $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] MFA pendente. Abrindo tela de cadastro.{Environment.NewLine}");
-
-                                    var mainWindow = new MainWindow(login, AppMode.Setup, clientMachine);
-                                    bool? setupOk = mainWindow.ShowDialog();
-
-                                    if (setupOk == true)
-                                    {
-                                        LiberarSessao();
-                                        Environment.Exit(0);
-                                        return;
-                                    }
-
-                                    LogoffSessaoAtual();
-                                    Environment.Exit(1);
-                                    return;
-                                }
-
-                                if (string.Equals(status, "NotConfigured", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    File.AppendAllText(@"C:\Temp\app_debug.txt",
-                                        $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] MFA não configurado. Liberando acesso sem MFA.{Environment.NewLine}");
-
-                                    LiberarSessao();
-
-                                    Environment.Exit(0);
-                                    return;
-                                }
-
-                            }
-                            catch (Exception ex)
-                            {
-                                File.AppendAllText(@"C:\Temp\app_debug.txt",
-                                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] erro ao obter status/metodo: {ex.Message}{Environment.NewLine}");
-                            }
-
-                            File.AppendAllText(@"C:\Temp\app_debug.txt",
-                                $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] metodo={metodo}, abrindo janela{Environment.NewLine}");
-
-                            var verificarWindow = new VerificarCodigoWindow(login, metodo, clientMachine);
-                            bool? ok = verificarWindow.ShowDialog();
-
-                            if (verificarWindow.CodigoValidado)
-                            {
-                                LiberarSessao();
-
-                                Environment.Exit(0);
-                                return;
-                            }
-
-                            LogoffSessaoAtual();
-                            Environment.Exit(1);
+                            _ = ExecutarFluxoMfaAsync(login, clientMachine);
                             return;
                         }
 
@@ -437,6 +346,126 @@ namespace CredentialProviderAPP
             catch
             {
                 // evita crash se der erro ao abrir app
+            }
+        }
+
+        private async Task ExecutarFluxoMfaAsync(string login, string clientMachine)
+        {
+            var loading = new LoadingWindow("Conectando ao serviço...");
+
+            try
+            {
+                loading.Show();
+                await Task.Delay(150); // dá tempo da UI renderizar e animar
+
+                bool apiOnline = await ServerApiService.ServicoDisponivelAsync();
+
+                if (!apiOnline)
+                {
+                    loading.Close();
+
+                    MessageBox.Show(
+                        "Serviço indisponível no momento, entre em contato com o suporte.",
+                        "MFA",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    LogoffSessaoAtual();
+                    Environment.Exit(1);
+                    return;
+                }
+
+                loading.AtualizarMensagem("Validando status do MFA...");
+
+                string metodo = "app";
+                string baseUrl = ConfigHelper.Get("Server:BaseUrl");
+                string url = $"{baseUrl.TrimEnd('/')}/mfa/status?login={Uri.EscapeDataString(login)}&clientMachine={Uri.EscapeDataString(clientMachine)}";
+
+                using var client = new HttpClient
+                {
+                    Timeout = TimeSpan.FromSeconds(10)
+                };
+
+                var httpResp = await client.GetAsync(url);
+                string json = await httpResp.Content.ReadAsStringAsync();
+
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                string status = root.TryGetProperty("Status", out var statusProp)
+                    ? statusProp.GetString() ?? ""
+                    : "";
+
+                if (root.TryGetProperty("Metodo", out var metodoProp))
+                    metodo = metodoProp.GetString() ?? "app";
+
+                loading.Close();
+
+                if (string.Equals(status, "Trusted", StringComparison.OrdinalIgnoreCase))
+                {
+                    LiberarSessao();
+                    Environment.Exit(0);
+                    return;
+                }
+
+                if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    var mainWindow = new MainWindow(login, AppMode.Setup, clientMachine);
+                    bool? setupOk = mainWindow.ShowDialog();
+
+                    if (setupOk == true)
+                    {
+                        LiberarSessao();
+                        Environment.Exit(0);
+                        return;
+                    }
+
+                    LogoffSessaoAtual();
+                    Environment.Exit(1);
+                    return;
+                }
+
+                if (string.Equals(status, "NotConfigured", StringComparison.OrdinalIgnoreCase))
+                {
+                    LiberarSessao();
+                    Environment.Exit(0);
+                    return;
+                }
+
+                var verificarWindow = new VerificarCodigoWindow(login, metodo, clientMachine);
+                bool? ok = verificarWindow.ShowDialog();
+
+                if (verificarWindow.CodigoValidado)
+                {
+                    LiberarSessao();
+                    Environment.Exit(0);
+                    return;
+                }
+
+                LogoffSessaoAtual();
+                Environment.Exit(1);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    loading.Close();
+                }
+                catch
+                {
+                }
+
+                File.AppendAllText(@"C:\Temp\app_debug.txt",
+                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] erro ao iniciar fluxo MFA: {ex}{Environment.NewLine}");
+
+                MessageBox.Show(
+                    "Serviço indisponível no momento, entre em contato com o suporte.",
+                    "MFA",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
+                LogoffSessaoAtual();
+                Environment.Exit(1);
             }
         }
     }
