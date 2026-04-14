@@ -20,7 +20,6 @@
         <SolidColorBrush x:Key="TextPrimary" Color="#1A1D23" />
         <SolidColorBrush x:Key="TextSecondary" Color="#6B7280" />
         <SolidColorBrush x:Key="TextMuted" Color="#9CA3AF" />
-        <SolidColorBrush x:Key="AccentBlue" Color="#2563EB" />
 
         <!--  INPUT  -->
         <Style x:Key="ModernInput" TargetType="TextBox">
@@ -52,6 +51,10 @@
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="#2563EB" />
                                 <Setter TargetName="Bd" Property="Background" Value="White" />
                                 <Setter TargetName="Bd" Property="BorderThickness" Value="1.5" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Background" Value="#F1F5F9" />
+                                <Setter Property="Foreground" Value="#CBD5E1" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -93,6 +96,10 @@
                                 <Setter TargetName="Track" Property="Background" Value="#2563EB" />
                                 <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
                                 <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Track" Property="Background" Value="#E2E8F0" />
+                                <Setter TargetName="Thumb" Property="Fill" Value="#CBD5E1" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -208,9 +215,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-
                     <StackPanel Grid.Column="0">
-                        <!--  Breadcrumb  -->
                         <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
                             <TextBlock
                                 FontFamily="Segoe UI"
@@ -228,7 +233,6 @@
                                 Foreground="{StaticResource TextSecondary}"
                                 Text="Política de Senha" />
                         </StackPanel>
-
                         <TextBlock
                             FontFamily="Segoe UI"
                             FontSize="22"
@@ -242,7 +246,6 @@
                             Foreground="{StaticResource TextSecondary}"
                             Text="Defina as regras de segurança e requisitos mínimos para as senhas." />
                     </StackPanel>
-
                     <Button
                         Grid.Column="1"
                         Width="28"
@@ -261,7 +264,7 @@
             <!--  ═══ CORPO ═══  -->
             <StackPanel Margin="32,24,32,24">
 
-                <!--  ── SEÇÃO: COMPRIMENTO E COMPLEXIDADE ──  -->
+                <!--  ── SEÇÃO 1: COMPRIMENTO E COMPLEXIDADE ──  -->
                 <Border
                     Margin="0,0,0,16"
                     Padding="24,20"
@@ -275,9 +278,7 @@
                             Opacity="0.05"
                             ShadowDepth="1" />
                     </Border.Effect>
-
                     <StackPanel>
-                        <!--  Título da seção  -->
                         <StackPanel Margin="0,0,0,20" Orientation="Horizontal">
                             <Border
                                 Width="28"
@@ -301,15 +302,12 @@
                                 Text="Parâmetros de Comprimento e Complexidade" />
                         </StackPanel>
 
-                        <!--  Tamanho mínimo + Qtd especiais (lado a lado)  -->
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="16" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-
-                            <!--  Tamanho mínimo  -->
                             <StackPanel Grid.Column="0">
                                 <TextBlock
                                     Margin="0,0,0,6"
@@ -329,8 +327,6 @@
                                     Foreground="{StaticResource TextMuted}"
                                     Text="Recomendado: 8 ou mais caracteres." />
                             </StackPanel>
-
-                            <!--  Qtd especiais  -->
                             <StackPanel Grid.Column="2">
                                 <TextBlock
                                     Margin="0,0,0,6"
@@ -352,7 +348,6 @@
                             </StackPanel>
                         </Grid>
 
-                        <!--  Caracteres permitidos (linha inteira)  -->
                         <StackPanel>
                             <TextBlock
                                 Margin="0,0,0,6"
@@ -375,7 +370,7 @@
                     </StackPanel>
                 </Border>
 
-                <!--  ── SEÇÃO: REQUISITOS ADICIONAIS ──  -->
+                <!--  ── SEÇÃO 2: REQUISITOS ADICIONAIS ──  -->
                 <Border
                     Margin="0,0,0,16"
                     Padding="24,20"
@@ -389,9 +384,7 @@
                             Opacity="0.05"
                             ShadowDepth="1" />
                     </Border.Effect>
-
                     <StackPanel>
-                        <!--  Título da seção  -->
                         <StackPanel Margin="0,0,0,20" Orientation="Horizontal">
                             <Border
                                 Width="28"
@@ -510,7 +503,105 @@
                     </StackPanel>
                 </Border>
 
-                <!--  ── BANNER DICA DE SEGURANÇA ──  -->
+                <!--  ── SEÇÃO 3: EXPIRAÇÃO DE SENHA ──  -->
+                <Border
+                    Margin="0,0,0,16"
+                    Padding="24,20"
+                    Background="White"
+                    BorderBrush="{StaticResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <Border.Effect>
+                        <DropShadowEffect
+                            BlurRadius="6"
+                            Opacity="0.05"
+                            ShadowDepth="1" />
+                    </Border.Effect>
+                    <StackPanel>
+                        <StackPanel Margin="0,0,0,20" Orientation="Horizontal">
+                            <Border
+                                Width="28"
+                                Height="28"
+                                Margin="0,0,10,0"
+                                Background="#FFF7ED"
+                                CornerRadius="6">
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontSize="14"
+                                    Foreground="#EA580C"
+                                    Text="⏱" />
+                            </Border>
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe UI"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimary}"
+                                Text="Expiração de Senha" />
+                        </StackPanel>
+
+                        <!--  Toggle ativar expiração  -->
+                        <Border
+                            Margin="0,0,0,16"
+                            Padding="0,0,0,16"
+                            BorderBrush="{StaticResource BorderColor}"
+                            BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock
+                                        FontFamily="Segoe UI"
+                                        FontSize="13"
+                                        FontWeight="Medium"
+                                        Foreground="{StaticResource TextPrimary}"
+                                        Text="Ativar expiração de senha" />
+                                    <TextBlock
+                                        Margin="0,3,0,0"
+                                        FontFamily="Segoe UI"
+                                        FontSize="12"
+                                        Foreground="{StaticResource TextSecondary}"
+                                        Text="Usuários serão obrigados a redefinir a senha após o período definido."
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                                <CheckBox
+                                    x:Name="chkExpiracaoAtiva"
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Checked="ChkExpiracao_Changed"
+                                    Style="{StaticResource ToggleSwitch}"
+                                    Unchecked="ChkExpiracao_Changed" />
+                            </Grid>
+                        </Border>
+
+                        <!--  Campo dias — desabilitado quando toggle está OFF  -->
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,6"
+                                FontFamily="Segoe UI"
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextSecondary}"
+                                Text="Dias até expiração" />
+                            <TextBox
+                                x:Name="txtDiasExpiracao"
+                                IsEnabled="False"
+                                PreviewTextInput="NumeroOnly"
+                                Style="{StaticResource ModernInput}" />
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontFamily="Segoe UI"
+                                FontSize="11"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Ex: 90 dias. Recomendado entre 60 e 180 dias." />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!--  ── BANNER DICA ──  -->
                 <Border
                     Margin="0,0,0,24"
                     Padding="16,14"
@@ -552,9 +643,9 @@
                                 Foreground="#1E40AF"
                                 LineHeight="18"
                                 TextWrapping="Wrap">
-                                As alterações na política de senha não afetarão as senhas atuais dos usuários
-                                imediatamente. Eles serão solicitados a atualizar suas senhas na próxima
-                                vez que precisarem realizar uma alteração obrigatória.
+                                As alterações na política de senha não afetarão as senhas atuais dos
+                                usuários imediatamente. Eles serão solicitados a atualizar suas senhas
+                                na próxima vez que precisarem realizar uma alteração obrigatória.
                             </TextBlock>
                         </StackPanel>
                     </Grid>
@@ -582,7 +673,6 @@
                 </StackPanel>
 
             </StackPanel>
-
         </StackPanel>
     </Border>
 </Window>

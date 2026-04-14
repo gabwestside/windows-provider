@@ -1,14 +1,18 @@
-using CredentialProviderAPP.Config;
-using CredentialProviderAPP.Helpers;
-using CredentialProviderAPP.Models.Api;
-using CredentialProviderAPP.Services.Sms;
-using CredentialProviderAPP.Utils;
+using System;
+using System.Collections.Generic;
 using System.DirectoryServices;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using CredentialProviderAPP.Models.Api;
+using CredentialProviderAPP.Utils;
+using CredentialProviderAPP.Helpers;
+using System.Linq;
+using CredentialProviderAPP.Models;
+using CredentialProviderAPP.Services.Sms;
+using CredentialProviderAPP.Models.Api;
 
 namespace CredentialProviderAPP.Services
 {
@@ -84,7 +88,8 @@ namespace CredentialProviderAPP.Services
                         return;
                     }
 
-                    // verifica se pode pular MFA
+                    // 🔥 NOVO: verifica se pode pular MFA
+                    // 🔥 verifica se pode pular MFA
                     if (PodePularMfa(result, clientMachine))
                     {
                         string infoTrusted = ObterPropriedade(result, "info");
@@ -505,12 +510,12 @@ namespace CredentialProviderAPP.Services
                     await ResponderJson(res, 200, new
                     {
                         Sucesso = true,
-                        policy.MinLength,
-                        policy.MinSpecialChars,
-                        policy.AllowedSpecialChars,
-                        policy.RequireUppercase,
-                        policy.RequireLowercase,
-                        policy.RequireNumber
+                        MinLength = policy.MinLength,
+                        MinSpecialChars = policy.MinSpecialChars,
+                        AllowedSpecialChars = policy.AllowedSpecialChars,
+                        RequireUppercase = policy.RequireUppercase,
+                        RequireLowercase = policy.RequireLowercase,
+                        RequireNumber = policy.RequireNumber
                     });
                     return;
                 }

@@ -2,6 +2,7 @@ using CredentialProviderAPP.Config;
 using CredentialProviderAPP.Models.Api;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace CredentialProviderAPP.Services
 {
@@ -19,6 +20,32 @@ namespace CredentialProviderAPP.Services
                 BaseAddress = new Uri(baseUrl, UriKind.Absolute),
                 Timeout = TimeSpan.FromSeconds(20)
             };
+        }
+
+        public static async Task<bool> ServicoDisponivelAsync()
+        {
+            try
+            {
+                using var httpClient = CreateHttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(5);
+
+                var response = await httpClient.GetAsync("health");
+
+                if (!response.IsSuccessStatusCode)
+                    return false;
+
+                using var stream = await response.Content.ReadAsStreamAsync();
+                using var doc = await JsonDocument.ParseAsync(stream);
+
+                if (doc.RootElement.TryGetProperty("Status", out var statusProp))
+                    return string.Equals(statusProp.GetString(), "ok", StringComparison.OrdinalIgnoreCase);
+
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static async Task<MfaSetupResponse> ObterSetupMfaAsync(string login)
@@ -103,31 +130,52 @@ namespace CredentialProviderAPP.Services
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<DefaultApiResponse>();
-            return result ?? new DefaultApiResponse { Sucesso = false, Erro = "Resposta inválida." };
+            return result ?? new DefaultApiResponse
+            {
+                Sucesso = false,
+                Erro = "Resposta inválida."
+            };
         }
 
         public static async Task<TelefoneResponse> ObterTelefoneAsync(string login)
         {
             using var httpClient = CreateHttpClient();
+
             var response = await httpClient.GetAsync($"mfa/telefone?login={Uri.EscapeDataString(login)}");
             var result = await response.Content.ReadFromJsonAsync<TelefoneResponse>();
-            return result ?? new TelefoneResponse { Sucesso = false, Erro = "Resposta inválida." };
+
+            return result ?? new TelefoneResponse
+            {
+                Sucesso = false,
+                Erro = "Resposta inválida."
+            };
         }
 
         public static async Task<DefaultApiResponse> SalvarTelefoneAsync(string login, string telefone)
         {
             using var httpClient = CreateHttpClient();
-            var response = await httpClient.PostAsJsonAsync("mfa/telefone", new TelefoneRequest { Login = login, Telefone = telefone });
+
+            var response = await httpClient.PostAsJsonAsync("mfa/telefone", new TelefoneRequest
+            {
+                Login = login,
+                Telefone = telefone
+            });
+
             response.EnsureSuccessStatusCode();
+
             var result = await response.Content.ReadFromJsonAsync<DefaultApiResponse>();
-            return result ?? new DefaultApiResponse { Sucesso = false, Erro = "Resposta inválida." };
+            return result ?? new DefaultApiResponse
+            {
+                Sucesso = false,
+                Erro = "Resposta inválida."
+            };
         }
 
         public static async Task<ValidateMfaResponse> ValidarCodigoMfaAsync(
-      string login,
-      string codigo,
-      string metodo = "app",
-      string clientMachine = "")
+            string login,
+            string codigo,
+            string metodo = "app",
+            string clientMachine = "")
         {
             using var httpClient = CreateHttpClient();
 
@@ -168,9 +216,14 @@ namespace CredentialProviderAPP.Services
         public static async Task<SmsStatusResponse> ObterStatusSmsAsync(string login)
         {
             using var httpClient = CreateHttpClient();
+
             var response = await httpClient.GetAsync($"mfa/sms/status?login={Uri.EscapeDataString(login)}");
             var result = await response.Content.ReadFromJsonAsync<SmsStatusResponse>();
-            return result ?? new SmsStatusResponse { Sucesso = false };
+
+            return result ?? new SmsStatusResponse
+            {
+                Sucesso = false
+            };
         }
 
         public static async Task<PasswordBlacklistResponse> ObterBlacklistSenhaAsync()

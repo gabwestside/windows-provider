@@ -1,15 +1,15 @@
-﻿using CredentialProviderAPP.Models;
+﻿using CredentialProviderAPP.Config;
+using CredentialProviderAPP.Helpers;
+using CredentialProviderAPP.Models;
 using CredentialProviderAPP.Utils;
 using System.DirectoryServices;
 using System.DirectoryServices.AccountManagement;
 using System.DirectoryServices.ActiveDirectory;
+using System.Security.Principal;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Security.Principal;
-using CredentialProviderAPP.Helpers;
-using CredentialProviderAPP.Config;
 
 namespace CredentialProviderAPP.Views
 {
@@ -346,7 +346,17 @@ namespace CredentialProviderAPP.Views
             if (valor.Equals("setup", StringComparison.OrdinalIgnoreCase))
                 return "Pendente";
 
-            return "Ativo";
+            if (valor.StartsWith("pending-app:", StringComparison.OrdinalIgnoreCase) ||
+                valor.StartsWith("pending-sms:", StringComparison.OrdinalIgnoreCase) ||
+                valor.StartsWith("pending:", StringComparison.OrdinalIgnoreCase))
+                return "Pendente";
+
+            if (valor.StartsWith("active-app:", StringComparison.OrdinalIgnoreCase) ||
+                valor.StartsWith("active-sms:", StringComparison.OrdinalIgnoreCase) ||
+                valor.StartsWith("active:", StringComparison.OrdinalIgnoreCase))
+                return "Ativo";
+
+            return "Não configurado";
         }
 
         private List<UsuarioViewModel> BuscarUsuariosAD(string filtro)

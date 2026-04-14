@@ -201,7 +201,7 @@ public partial class NovaSenhaWindow : Window
         {
             panelBlacklist.Visibility = Visibility.Visible;
             SetRule(dotBlacklist, ruleBlacklist, false,
-                $"A senha contém uma palavra proibida: {palavraProibida}");
+                $"A senha contém uma palavra proibida:\n{palavraProibida}");
         }
         else
         {

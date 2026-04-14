@@ -13,6 +13,7 @@ public partial class ResetSenhaWindow : Window
     private bool fluxoConcluido = false;
 
     private readonly string login;
+    private string metodoMfa = "app"; // "app" ou "sms"
 
     public ResetSenhaWindow(string login)
     {
@@ -34,6 +35,19 @@ public partial class ResetSenhaWindow : Window
         };
     }
 
+    private void FecharComResultado(bool? resultado)
+    {
+        try
+        {
+            DialogResult = resultado;
+        }
+        catch
+        {
+        }
+
+        Close();
+    }
+
     private async void ResetSenhaWindow_Loaded(object sender, RoutedEventArgs e)
     {
         WindowFocusHelper.ForcarFoco(this, txtCode);
@@ -44,25 +58,71 @@ public partial class ResetSenhaWindow : Window
 
             if (!response.Sucesso)
             {
-                MessageBox.Show(response.Erro ?? "Erro ao consultar MFA.");
-                DialogResult = false;
-                Close();
+                Mostrar(response.Erro ?? "Erro ao consultar MFA.");
+                FecharComResultado(false);
                 return;
             }
 
-            if (response.Status != "Configured")
+            // aceita Configured e Trusted
+            if (!string.Equals(response.Status, "Configured", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(response.Status, "Trusted", StringComparison.OrdinalIgnoreCase))
             {
-                MessageBox.Show("MFA precisa estar configurado.");
-                DialogResult = false;
-                Close();
+                Mostrar("MFA precisa estar configurado.");
+                FecharComResultado(false);
                 return;
             }
+
+            metodoMfa = string.IsNullOrWhiteSpace(response.Metodo)
+                ? "app"
+                : response.Metodo.Trim().ToLowerInvariant();
+
+            if (metodoMfa == "sms")
+            {
+                lblCodigo.Text = "Código enviado por SMS";
+                lblMetodoInfo.Text = "Enviando código por SMS para o telefone cadastrado...";
+                lblMetodoInfo.Visibility = Visibility.Visible;
+
+                try
+                {
+                    var statusSms = await ServerApiService.ObterStatusSmsAsync(login);
+
+                    if (statusSms.PodeEnviar)
+                    {
+                        var envio = await ServerApiService.EnviarCodigoSmsAsync(login);
+
+                        if (!envio.Sucesso)
+                        {
+                            lblMetodoInfo.Text = "Não foi possível enviar o código por SMS agora.";
+                        }
+                        else
+                        {
+                            lblMetodoInfo.Text = "Código enviado por SMS. Digite o código recebido para continuar.";
+                        }
+                    }
+                    else
+                    {
+                        lblMetodoInfo.Text = "Já existe um código SMS válido. Digite o código recebido para continuar.";
+                    }
+                }
+                catch
+                {
+                    lblMetodoInfo.Text = "Não foi possível enviar o SMS agora. Tente novamente.";
+                }
+            }
+            else
+            {
+                metodoMfa = "app";
+                lblCodigo.Text = "Código do aplicativo";
+                lblMetodoInfo.Text = "Abra o aplicativo autenticador e digite o código de 6 dígitos.";
+                lblMetodoInfo.Visibility = Visibility.Visible;
+            }
+
+            WindowFocusHelper.ForcarFoco(this, txtCode);
         }
         catch
         {
-            MessageBox.Show("Erro ao conectar com o servidor.");
-            DialogResult = false;
-            Close();
+            Mostrar("Erro ao conectar com o servidor.");
+            FecharComResultado(false);
         }
     }
 
@@ -92,12 +152,13 @@ public partial class ResetSenhaWindow : Window
         {
             ToggleValidacao(false);
 
-            var response = await ServerApiService.ValidarCodigoMfaAsync(login, code);
+            var response = await ServerApiService.ValidarCodigoMfaAsync(login, code, metodoMfa);
 
             if (!response.Sucesso)
             {
                 Mostrar(response.Erro ?? "Erro MFA");
                 txtCode.Focus();
+                txtCode.SelectAll();
                 return;
             }
 
@@ -110,30 +171,13 @@ public partial class ResetSenhaWindow : Window
             }
 
             autenticado = true;
-
-            Hide();
-
-            var novaSenha = new NovaSenhaWindow(login);
-            bool? ok = novaSenha.ShowDialog();
-
-            if (ok == true)
-            {
-                fluxoConcluido = true;
-                DialogResult = true;
-                Close();
-                return;
-            }
-
-            // se o usuário fechou/cancelou a troca de senha, volta pra tela MFA
-            Show();
-            Activate();
-            WindowFocusHelper.ForcarFoco(this, txtCode);
+            fluxoConcluido = true;
+            FecharComResultado(true);
+            return;
         }
         catch (Exception ex)
         {
             Mostrar("Erro no fluxo de redefinição: " + ex.Message);
-            Show();
-            Activate();
             txtCode.Focus();
         }
         finally
@@ -159,8 +203,7 @@ public partial class ResetSenhaWindow : Window
     private void Cancelar_Click(object sender, RoutedEventArgs e)
     {
         cancelado = true;
-        DialogResult = false;
-        Close();
+        FecharComResultado(false);
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)
@@ -170,7 +213,12 @@ public partial class ResetSenhaWindow : Window
 
         mostrandoDialog = true;
 
-        var result = MessageBox.Show("Deseja cancelar?", "Cancelar", MessageBoxButton.YesNo);
+        var result = MessageBox.Show(
+            "Deseja cancelar?",
+            "Cancelar",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question
+        );
 
         mostrandoDialog = false;
 
@@ -181,6 +229,16 @@ public partial class ResetSenhaWindow : Window
         }
 
         cancelado = true;
-        DialogResult = false;
+
+        try
+        {
+            DialogResult = false;
+        }
+        catch
+        {
+        }
+
+        // não chama Close() aqui
+        // a janela já está fechando por causa do X
     }
 }

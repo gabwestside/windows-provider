@@ -1,14 +1,14 @@
-﻿namespace CredentialProviderAPP.Models.Api
+namespace CredentialProviderAPP.Models.Api
 {
-    public class PasswordPolicyConfig
+    public class PasswordPolicyResponse
     {
+        public bool Sucesso { get; set; }
         public int MinLength { get; set; }
         public int MinSpecialChars { get; set; }
         public string AllowedSpecialChars { get; set; } = string.Empty;
         public bool RequireUppercase { get; set; }
         public bool RequireLowercase { get; set; }
         public bool RequireNumber { get; set; }
-        public bool ExpiracaoAtiva { get; set; } = false;
-        public int DiasExpiracao { get; set; } = 0;
+        public string? Erro { get; set; }
     }
 }
