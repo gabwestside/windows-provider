@@ -1,9 +1,7 @@
-using System;
-using System.Linq;
-using System.Windows;
-using System.Windows.Input;
 using CredentialProviderAPP.Models;
 using CredentialProviderAPP.Utils;
+using System.Windows;
+using System.Windows.Input;
 
 namespace CredentialProviderAPP.Views
 {
@@ -17,9 +15,28 @@ namespace CredentialProviderAPP.Views
             Loaded += RegraSenhaWindow_Loaded;
         }
 
+        // ── Arrastar janela ──
+        private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ButtonState == MouseButtonState.Pressed)
+                DragMove();
+        }
+
         private void RegraSenhaWindow_Loaded(object sender, RoutedEventArgs e)
         {
             CheckExistingPolicy();
+        }
+
+        private void ChkExpiracao_Changed(object sender, RoutedEventArgs e)
+        {
+            if (txtDiasExpiracao == null) return;
+
+            bool ativa = chkExpiracaoAtiva.IsChecked == true;
+            txtDiasExpiracao.IsEnabled = ativa;
+
+            // Limpa o campo ao desativar para não salvar valor residual
+            if (!ativa)
+                txtDiasExpiracao.Text = string.Empty;
         }
 
         private void CheckExistingPolicy()
@@ -32,42 +49,45 @@ namespace CredentialProviderAPP.Views
                 {
                     policyExists = true;
 
-                    MessageBox.Show(
-                        "Regra de senha encontrada.\nClique OK para visualizar ou editar.",
+                    ModernMessageBox.Show(
+                        "Regra de senha encontrada. Visualize ou edite abaixo.",
                         "Política encontrada",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                        ModernMessageBox.Kind.Info,
+                        this);
 
-                    btnSalvar.Content = "Atualizar";
+                    lblBtnSalvar.Text = "Atualizar";
                     LoadPolicy(policy);
                     return;
                 }
 
                 policyExists = false;
-                btnSalvar.Content = "Salvar";
+                lblBtnSalvar.Text = "Salvar Alterações";
 
-                MessageBox.Show(
-                    "Regra de senha não encontrada.\nA tela será aberta em branco para criar uma nova.",
+                ModernMessageBox.Show(
+                    "Nenhuma regra de senha encontrada.\nA tela será aberta em branco para criar uma nova.",
                     "Política de senha",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    ModernMessageBox.Kind.Warning,
+                    this);
 
                 ClearFields();
             }
             catch (Exception ex)
             {
                 policyExists = false;
-                btnSalvar.Content = "Salvar";
+                lblBtnSalvar.Text = "Salvar Alterações";
                 ClearFields();
 
-                MessageBox.Show(
-                    "Erro ao carregar política: " + ex.Message + "\nA tela será aberta em branco.",
+                ModernMessageBox.Show(
+                    "Erro ao carregar política:\n" + ex.Message + "\n\nA tela será aberta em branco.",
                     "Erro",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                    ModernMessageBox.Kind.Error,
+                    this);
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        //  CARREGAR POLÍTICA NOS CAMPOS
+        // ══════════════════════════════════════════════════════════════
         private void LoadPolicy(PasswordPolicyConfig policy)
         {
             try
@@ -79,14 +99,26 @@ namespace CredentialProviderAPP.Views
                 chkMaiuscula.IsChecked = policy.RequireUppercase;
                 chkMinuscula.IsChecked = policy.RequireLowercase;
                 chkNumero.IsChecked = policy.RequireNumber;
+
+                // Campos de expiração
+                chkExpiracaoAtiva.IsChecked = policy.ExpiracaoAtiva;
+                txtDiasExpiracao.IsEnabled = policy.ExpiracaoAtiva;
+                txtDiasExpiracao.Text = policy.ExpiracaoAtiva && policy.DiasExpiracao > 0
+                    ? policy.DiasExpiracao.ToString()
+                    : string.Empty;
             }
             catch (Exception ex)
             {
                 ClearFields();
-                MessageBox.Show("Erro ao aplicar a política na tela: " + ex.Message);
+                ModernMessageBox.Show(
+                    "Erro ao aplicar a política na tela:\n" + ex.Message,
+                    "Erro", ModernMessageBox.Kind.Error, this);
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        //  LIMPAR CAMPOS
+        // ══════════════════════════════════════════════════════════════
         private void ClearFields()
         {
             txtTamanhoSenha.Text = string.Empty;
@@ -96,26 +128,38 @@ namespace CredentialProviderAPP.Views
             chkMaiuscula.IsChecked = false;
             chkMinuscula.IsChecked = false;
             chkNumero.IsChecked = false;
+            chkExpiracaoAtiva.IsChecked = false;
+
+            txtDiasExpiracao.Text = string.Empty;
+            txtDiasExpiracao.IsEnabled = false;
         }
 
+        // ══════════════════════════════════════════════════════════════
+        //  SALVAR
+        // ══════════════════════════════════════════════════════════════
         private void Salvar_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                // Tamanho mínimo
                 if (!int.TryParse(txtTamanhoSenha.Text?.Trim(), out int tamanho) || tamanho <= 0)
                 {
-                    MessageBox.Show("Informe um tamanho mínimo válido.");
+                    ModernMessageBox.Show(
+                        "Informe um tamanho mínimo válido (número maior que zero).",
+                        "Atenção", ModernMessageBox.Kind.Warning, this);
                     txtTamanhoSenha.Focus();
                     return;
                 }
 
+                // Quantidade de especiais
                 int especiais = 0;
-
                 if (!string.IsNullOrWhiteSpace(txtQtdEspecial.Text))
                 {
                     if (!int.TryParse(txtQtdEspecial.Text.Trim(), out especiais) || especiais < 0)
                     {
-                        MessageBox.Show("Quantidade de caracteres especiais inválida.");
+                        ModernMessageBox.Show(
+                            "Quantidade de caracteres especiais inválida.",
+                            "Atenção", ModernMessageBox.Kind.Warning, this);
                         txtQtdEspecial.Focus();
                         return;
                     }
@@ -125,16 +169,36 @@ namespace CredentialProviderAPP.Views
 
                 if (especiais > 0 && string.IsNullOrWhiteSpace(caracteres))
                 {
-                    MessageBox.Show("Informe os caracteres especiais permitidos.");
+                    ModernMessageBox.Show(
+                        "Informe os caracteres especiais permitidos.",
+                        "Atenção", ModernMessageBox.Kind.Warning, this);
                     txtCaracteres.Focus();
                     return;
                 }
 
                 if (!string.IsNullOrEmpty(caracteres) && caracteres.Any(char.IsLetterOrDigit))
                 {
-                    MessageBox.Show("Caracteres especiais não podem conter letras ou números.");
+                    ModernMessageBox.Show(
+                        "Caracteres especiais não podem conter letras ou números.",
+                        "Atenção", ModernMessageBox.Kind.Warning, this);
                     txtCaracteres.Focus();
                     return;
+                }
+
+                // Expiração de senha
+                bool expiracaoAtiva = chkExpiracaoAtiva.IsChecked == true;
+                int diasExpiracao = 0;
+
+                if (expiracaoAtiva)
+                {
+                    if (!int.TryParse(txtDiasExpiracao.Text?.Trim(), out diasExpiracao) || diasExpiracao <= 0)
+                    {
+                        ModernMessageBox.Show(
+                            "Informe um número válido de dias para expiração (maior que zero).",
+                            "Atenção", ModernMessageBox.Kind.Warning, this);
+                        txtDiasExpiracao.Focus();
+                        return;
+                    }
                 }
 
                 var policy = new PasswordPolicyConfig
@@ -144,32 +208,31 @@ namespace CredentialProviderAPP.Views
                     AllowedSpecialChars = caracteres,
                     RequireUppercase = chkMaiuscula.IsChecked == true,
                     RequireLowercase = chkMinuscula.IsChecked == true,
-                    RequireNumber = chkNumero.IsChecked == true
+                    RequireNumber = chkNumero.IsChecked == true,
+                    ExpiracaoAtiva = expiracaoAtiva,
+                    DiasExpiracao = diasExpiracao
                 };
 
                 PasswordPolicyFileHelper.Save(policy);
 
                 policyExists = true;
-                btnSalvar.Content = "Atualizar";
+                lblBtnSalvar.Text = "Atualizar";
 
-                MessageBox.Show(
+                ModernMessageBox.Show(
                     "Política de senha salva com sucesso.",
-                    "Senha",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    "Sucesso", ModernMessageBox.Kind.Success, this);
 
                 Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao salvar política: " + ex.Message);
+                ModernMessageBox.Show(
+                    "Erro ao salvar política:\n" + ex.Message,
+                    "Erro", ModernMessageBox.Kind.Error, this);
             }
         }
 
-        private void Cancelar_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
+        private void Cancelar_Click(object sender, RoutedEventArgs e) => Close();
 
         private void NumeroOnly(object sender, TextCompositionEventArgs e)
         {

@@ -1,4 +1,4 @@
-namespace CredentialProviderAPP.Models
+﻿namespace CredentialProviderAPP.Models
 {
     public class PasswordPolicyConfig
     {
@@ -8,5 +8,7 @@ namespace CredentialProviderAPP.Models
         public bool RequireUppercase { get; set; }
         public bool RequireLowercase { get; set; }
         public bool RequireNumber { get; set; }
+        public bool ExpiracaoAtiva { get; set; } = false;
+        public int DiasExpiracao { get; set; } = 0;
     }
 }
