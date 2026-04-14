@@ -1,5 +1,5 @@
+using CredentialProviderAPP.Config;
 using System.IO;
-using CredentialProviderAPP.Utils;
 
 namespace CredentialProviderAPP.Services.Sms;
 

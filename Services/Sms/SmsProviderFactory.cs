@@ -1,4 +1,4 @@
-using CredentialProviderAPP.Utils;
+using CredentialProviderAPP.Config;
 
 namespace CredentialProviderAPP.Services.Sms;
 

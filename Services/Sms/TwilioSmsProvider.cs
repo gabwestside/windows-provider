@@ -1,4 +1,4 @@
-using CredentialProviderAPP.Utils;
+using CredentialProviderAPP.Config;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.Types;

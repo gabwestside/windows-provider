@@ -2,6 +2,8 @@ using CredentialProviderAPP.Services;
 using CredentialProviderAPP.Utils;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace CredentialProviderAPP.Views;
 
